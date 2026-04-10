@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
-import api from "./api/axios";
+import api from "../../api/axios";
 
 function Layout({ children }) {
   return (

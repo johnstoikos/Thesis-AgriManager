@@ -1,9 +1,10 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from "react-router-dom";
-import Login from "./Login";
-import Signup from "./Signup";
-import Dashboard from "./Dashboard";
+import Login from "./components/auth/Login";
+import Signup from "./components/auth/Signup";
+import Dashboard from "./components/Dashboard";
 import Navbar from "./components/Navbar"; 
-import Fields from "./Fields";
+import Fields from "./components/Fields";
+import FieldCrops from "./components/FieldCrops";
 
 // Helper συνάρτηση για το Auth
 const isLoggedIn = () => !!localStorage.getItem("jwt");
@@ -30,22 +31,21 @@ function PrivateRoute() {
 export default function App() {
   return (
     <Router>
+     
       <Routes>
-        {/* ΔΗΜΟΣΙΕΣ ΔΙΑΔΡΟΜΕΣ (Χωρίς Navbar) */}
+        {/* ΔΗΜΟΣΙΕΣ ΔΙΑΔΡΟΜΕΣ */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
-        {/* ΠΡΟΣΤΑΤΕΥΜΕΝΕΣ ΔΙΑΔΡΟΜΕΣ (Με Navbar) */}
+        {/* ΠΡΟΣΤΑΤΕΥΜΕΝΕΣ ΔΙΑΔΡΟΜΕΣ (Εδώ μέσα μπαίνουν όλα όσα θέλουν Navbar) */}
         <Route element={<PrivateRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
-          {/* Εδώ θα προσθέσουμε αργότερα: 
-              <Route path="/fields" element={<Fields />} /> 
-          */}
+          <Route path="/fields" element={<Fields />} /> 
+          <Route path="/fields/:fieldId/crops" element={<FieldCrops />} />
         </Route>
 
         {/* Redirects */}
         <Route path="*" element={<Navigate to={isLoggedIn() ? "/dashboard" : "/login"} replace />} />
-        <Route path="/fields" element={<Fields />} />
       </Routes>
     </Router>
   );

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import api from "./api/axios";
+import api from "../api/axios";
 import MapComponent from "./MapComponent";
 
 export default function Dashboard() {
