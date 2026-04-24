@@ -5,6 +5,7 @@ import Dashboard from "./components/Dashboard";
 import Navbar from "./components/Navbar"; 
 import Fields from "./components/Fields";
 import FieldCrops from "./components/FieldCrops";
+import GlobalTasks from "./components/GlobalTasks";
 
 // Helper συνάρτηση για το Auth
 const isLoggedIn = () => !!localStorage.getItem("jwt");
@@ -41,7 +42,9 @@ export default function App() {
         <Route element={<PrivateRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/fields" element={<Fields />} /> 
+          <Route path="/fields/:fieldId" element={<FieldCrops />} />
           <Route path="/fields/:fieldId/crops" element={<FieldCrops />} />
+          <Route path="/tasks" element={<GlobalTasks />} />
         </Route>
 
         {/* Redirects */}

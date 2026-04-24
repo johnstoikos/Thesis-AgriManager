@@ -33,6 +33,16 @@ export default function Fields() {
     fetchFields(); 
   }, []);
 
+  const calculateAreaInStremmata = (boundaryCoords) => {
+    if (!boundaryCoords || boundaryCoords.length < 4) return "";
+    try {
+      const polygon = turf.polygon([boundaryCoords]);
+      return (turf.area(polygon) / 1000).toFixed(2);
+    } catch (err) {
+      return "";
+    }
+  };
+
   // --- ΣΥΝΑΡΤΗΣΕΙΣ CRUD ---
 
   // 1. Προετοιμασία για Επεξεργασία (Update)
@@ -63,10 +73,11 @@ export default function Fields() {
   // 3. Υποβολή Φόρμας (Create ή Update)
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const autoCalculatedArea = calculateAreaInStremmata(formData.boundary);
 
     const payload = {
       name: formData.name,
-      area: parseFloat(formData.area),
+      area: parseFloat(autoCalculatedArea || formData.area),
       boundary: {
         type: "Polygon",
         coordinates: [formData.boundary]
@@ -222,7 +233,7 @@ export default function Fields() {
                     setFormData(prev => ({
                       ...prev,
                       boundary: coords,
-                      area: calculatedArea 
+                      area: calculatedArea || calculateAreaInStremmata(coords)
                     }));
                   }} 
                 />
