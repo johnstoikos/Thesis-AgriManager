@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { CloudSun, Droplets, Thermometer, Wind } from "lucide-react";
 import api from "../api/axios";
 import MapComponent from "./MapComponent";
 import * as turf from "@turf/turf";
@@ -12,6 +13,9 @@ export default function FieldCrops() {
   const [field, setField] = useState(null);
   const [crops, setCrops] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [weatherData, setWeatherData] = useState(null);
+  const [weatherLoading, setWeatherLoading] = useState(true);
+  const [weatherError, setWeatherError] = useState("");
   
   // States για το Modal Καλλιέργειας (Πολύγωνο)
   const [showModal, setShowModal] = useState(false);
@@ -57,8 +61,34 @@ export default function FieldCrops() {
     }
   };
 
+  const fetchWeatherData = async () => {
+    if (!fieldId) return;
+    setWeatherLoading(true);
+    setWeatherError("");
+    try {
+      const res = await api.get(`/api/weather/field/${fieldId}`);
+      setWeatherData(res.data || null);
+    } catch (err) {
+      console.error("Σφάλμα κατά τη φόρτωση καιρού:", err);
+      setWeatherData(null);
+      if (err?.response?.status === 403) {
+        setWeatherError("Δεν έχετε δικαίωμα πρόσβασης στα δεδομένα καιρού για αυτό το χωράφι.");
+      } else if (err?.response?.status === 404) {
+        setWeatherError("Δεν βρέθηκαν δεδομένα καιρού για το επιλεγμένο χωράφι.");
+      } else {
+        setWeatherError("Αποτυχία φόρτωσης δεδομένων καιρού.");
+      }
+    } finally {
+      setWeatherLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
+  }, [fieldId]);
+
+  useEffect(() => {
+    fetchWeatherData();
   }, [fieldId]);
 
   useEffect(() => {
@@ -179,10 +209,89 @@ export default function FieldCrops() {
     }
   };
 
-  if (loading) return <div className="p-20 text-center font-bold text-green-700 uppercase tracking-widest">Φόρτωση Δεδομένων...</div>;
+  const temperatureValue = weatherData?.temperature ?? weatherData?.tempC ?? weatherData?.temp ?? null;
+  const humidityValue = weatherData?.humidity ?? weatherData?.humidityPercent ?? null;
+  const windSpeedValue = weatherData?.windSpeed ?? weatherData?.windSpeedKmh ?? null;
+  const weatherDescription = String(weatherData?.description ?? weatherData?.weatherDescription ?? "");
+  const rainProbability = weatherData?.rainProbability ?? weatherData?.precipitationProbability ?? null;
+
+  const isWindHigh = Number(windSpeedValue) > 15;
+  const rainKeywords = ["βροχή", "rain"];
+  const hasRainKeyword = rainKeywords.some((keyword) => weatherDescription.toLowerCase().includes(keyword));
+  const hasHighRainProbability = Number(rainProbability) >= 60;
+  const hasRainWarning = hasRainKeyword || hasHighRainProbability;
 
   return (
     <div className="p-6 max-w-7xl mx-auto font-sans">
+      <div className="mb-6 rounded-3xl border border-white/50 bg-white/70 backdrop-blur-xl shadow-[0_18px_40px_rgba(15,23,42,0.08)] p-5 md:p-6">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-sky-600 font-black">Μετεωρολογικά Δεδομένα</p>
+            <h3 className="text-2xl font-black text-gray-900 mt-1">Καιρικό Widget Αγρού</h3>
+            <p className="text-sm text-gray-500 mt-1">Ζωντανή εικόνα συνθηκών για λήψη αγροτικών αποφάσεων.</p>
+          </div>
+          <button
+            onClick={fetchWeatherData}
+            className="self-start px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-sky-100 text-sky-700 hover:bg-sky-200 transition"
+          >
+            Ανανέωση Καιρού
+          </button>
+        </div>
+
+        {weatherLoading ? (
+          <div className="mt-5 text-sm font-semibold text-gray-500">Φόρτωση δεδομένων καιρού...</div>
+        ) : weatherError ? (
+          <div className="mt-5 text-sm font-semibold text-red-600">{weatherError}</div>
+        ) : (
+          <>
+            <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+              <div className="rounded-2xl bg-white/80 border border-sky-100 p-4 shadow-sm">
+                <div className="flex items-center gap-2 text-gray-600 text-xs font-bold uppercase tracking-wide">
+                  <Thermometer className="h-4 w-4 text-orange-500" />
+                  Θερμοκρασία
+                </div>
+                <p className="text-2xl font-black text-gray-900 mt-2">{temperatureValue ?? "--"}°C</p>
+              </div>
+
+              <div className="rounded-2xl bg-white/80 border border-cyan-100 p-4 shadow-sm">
+                <div className="flex items-center gap-2 text-gray-600 text-xs font-bold uppercase tracking-wide">
+                  <Droplets className="h-4 w-4 text-cyan-500" />
+                  Υγρασία
+                </div>
+                <p className="text-2xl font-black text-gray-900 mt-2">{humidityValue ?? "--"}%</p>
+              </div>
+
+              <div className="rounded-2xl bg-white/80 border border-indigo-100 p-4 shadow-sm">
+                <div className="flex items-center gap-2 text-gray-600 text-xs font-bold uppercase tracking-wide">
+                  <Wind className="h-4 w-4 text-indigo-500" />
+                  Ταχύτητα Ανέμου
+                </div>
+                <p className="text-2xl font-black text-gray-900 mt-2">{windSpeedValue ?? "--"} km/h</p>
+              </div>
+
+              <div className="rounded-2xl bg-white/80 border border-amber-100 p-4 shadow-sm">
+                <div className="flex items-center gap-2 text-gray-600 text-xs font-bold uppercase tracking-wide">
+                  <CloudSun className="h-4 w-4 text-amber-500" />
+                  Περιγραφή
+                </div>
+                <p className="text-lg font-black text-gray-900 mt-2">{weatherDescription || "Μη διαθέσιμη"}</p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-gray-200 bg-white/80 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] font-black text-gray-500 mb-2">Έξυπνη Συμβουλή (DSS)</p>
+              {isWindHigh ? (
+                <p className="text-sm font-bold text-red-600">⚠️ Προσοχή: Υψηλή ταχύτητα ανέμου. Ο ψεκασμός δεν συνιστάται.</p>
+              ) : hasRainWarning ? (
+                <p className="text-sm font-bold text-amber-600">🌧️ Αναμένεται βροχή. Αποφύγετε το πότισμα ή τη λίπανση.</p>
+              ) : (
+                <p className="text-sm font-bold text-emerald-600">✅ Οι συνθήκες είναι ιδανικές για αγροτικές εργασίες.</p>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
       {/* ΚΕΦΑΛΙΔΑ ΣΕΛΙΔΑΣ */}
       <div className="flex justify-between items-end mb-8 border-b pb-6">
         <div>
@@ -203,35 +312,39 @@ export default function FieldCrops() {
 
       {/* ΚΥΡΙΟΣ ΠΙΝΑΚΑΣ ΚΑΛΛΙΕΡΓΕΙΩΝ */}
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase">Καλλιέργεια / Ποικιλία</th>
-              <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase">Έκταση</th>
-              <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase text-center">Κάλυψη</th>
-              <th className="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase">Ενέργειες</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {crops.map(crop => (
-              <tr key={crop.id} className="hover:bg-green-50/30 transition">
-                <td className="px-6 py-4 font-bold text-gray-800">
-                  {crop.type} <span className="block font-normal text-gray-400 text-xs uppercase">{crop.variety || "Γενική"}</span>
-                </td>
-                <td className="px-6 py-4 font-mono text-sm">{crop.zoneArea?.toFixed(2)} στρ.</td>
-                <td className="px-6 py-4 text-center">
-                  <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-[10px] font-bold">
-                    {crop.coveragePercentage?.toFixed(1)}%
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-right space-x-4">
-                  <button onClick={() => handleOpenCropModal(crop)} className="text-blue-600 font-bold text-xs uppercase hover:underline">Επεξεργασία</button>
-                  <button onClick={() => handleDeleteCrop(crop.id)} className="text-red-400 font-bold text-xs uppercase hover:underline">Διαγραφή</button>
-                </td>
+        {loading ? (
+          <div className="p-12 text-center font-bold text-green-700 uppercase tracking-widest">Φόρτωση Δεδομένων...</div>
+        ) : (
+          <table className="w-full text-left">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase">Καλλιέργεια / Ποικιλία</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase">Έκταση</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase text-center">Κάλυψη</th>
+                <th className="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase">Ενέργειες</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {crops.map(crop => (
+                <tr key={crop.id} className="hover:bg-green-50/30 transition">
+                  <td className="px-6 py-4 font-bold text-gray-800">
+                    {crop.type} <span className="block font-normal text-gray-400 text-xs uppercase">{crop.variety || "Γενική"}</span>
+                  </td>
+                  <td className="px-6 py-4 font-mono text-sm">{crop.zoneArea?.toFixed(2)} στρ.</td>
+                  <td className="px-6 py-4 text-center">
+                    <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-[10px] font-bold">
+                      {crop.coveragePercentage?.toFixed(1)}%
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right space-x-4">
+                    <button onClick={() => handleOpenCropModal(crop)} className="text-blue-600 font-bold text-xs uppercase hover:underline">Επεξεργασία</button>
+                    <button onClick={() => handleDeleteCrop(crop.id)} className="text-red-400 font-bold text-xs uppercase hover:underline">Διαγραφή</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* MODAL 1: ΔΙΑΧΕΙΡΙΣΗ ΚΑΛΛΙΕΡΓΕΙΑΣ (ΠΟΛΥΓΩΝΟ) */}

@@ -14,6 +14,7 @@ export default function Navbar() {
           <Link to="/dashboard" className="hover:text-green-600 transition">Αρχική</Link>
           <Link to="/fields" className="hover:text-green-600 transition">Χωράφια</Link>
           <Link to="/tasks" className="hover:text-green-600 transition">Εργασίες</Link>
+          <Link to="/analytics" className="hover:text-green-600 transition">Στατιστικά</Link>
           <Link to="/profile" className="hover:text-green-600 transition">Προφίλ</Link>
         </div>
       </div>

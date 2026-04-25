@@ -6,6 +6,7 @@ import Navbar from "./components/Navbar";
 import Fields from "./components/Fields";
 import FieldCrops from "./components/FieldCrops";
 import GlobalTasks from "./components/GlobalTasks";
+import Analytics from "./components/Analytics";
 
 // Helper συνάρτηση για το Auth
 const isLoggedIn = () => !!localStorage.getItem("jwt");
@@ -45,6 +46,7 @@ export default function App() {
           <Route path="/fields/:fieldId" element={<FieldCrops />} />
           <Route path="/fields/:fieldId/crops" element={<FieldCrops />} />
           <Route path="/tasks" element={<GlobalTasks />} />
+          <Route path="/analytics" element={<Analytics />} />
         </Route>
 
         {/* Redirects */}
