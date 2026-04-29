@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { CloudSun, Droplets, Thermometer, Wind } from "lucide-react";
 import api from "../api/axios";
@@ -28,16 +28,18 @@ export default function FieldCrops() {
   const [tasks, setTasks] = useState([]);
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [pendingLocation, setPendingLocation] = useState(null);
+  const [focusedTaskLocation, setFocusedTaskLocation] = useState(null);
+  const [openedTaskId, setOpenedTaskId] = useState(null);
   
   // Στοιχεία φόρμας εργασίας (η θέση αποθηκεύεται στο pendingLocation)
   const [taskFormData, setTaskFormData] = useState({ taskType: "Πότισμα", description: "" });
 
   const TASK_STATUS_LABELS = {
     PENDING: "ΕΚΚΡΕΜΕΙ",
-    COMPLETED: "ΕΓΙΝΕ",
+    COMPLETED: "ΟΛΟΚΛΗΡΩΘΗΚΕ",
   };
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [fieldRes, cropsRes] = await Promise.all([
         api.get(`/api/fields/${fieldId}`),
@@ -50,7 +52,7 @@ export default function FieldCrops() {
       console.error("Σφάλμα κατά τη φόρτωση:", err);
       setLoading(false);
     }
-  };
+  }, [fieldId]);
 
   const fetchTasks = async (cropId) => {
     try {
@@ -61,7 +63,7 @@ export default function FieldCrops() {
     }
   };
 
-  const fetchWeatherData = async () => {
+  const fetchWeatherData = useCallback(async () => {
     if (!fieldId) return;
     setWeatherLoading(true);
     setWeatherError("");
@@ -81,15 +83,15 @@ export default function FieldCrops() {
     } finally {
       setWeatherLoading(false);
     }
-  };
+  }, [fieldId]);
 
   useEffect(() => {
     fetchData();
-  }, [fieldId]);
+  }, [fetchData]);
 
   useEffect(() => {
     fetchWeatherData();
-  }, [fieldId]);
+  }, [fetchWeatherData]);
 
   useEffect(() => {
     const shouldStartNewTask = searchParams.get("newTask") === "1";
@@ -99,6 +101,30 @@ export default function FieldCrops() {
     setShowModal(false);
     setShowCropPickerModal(true);
   }, [searchParams, loading, crops, showTaskModal]);
+
+  useEffect(() => {
+    const taskId = searchParams.get("taskId");
+    const cropId = searchParams.get("cropId");
+    const lng = Number(searchParams.get("lng"));
+    const lat = Number(searchParams.get("lat"));
+
+    if (!taskId || !cropId || loading || openedTaskId === taskId) return;
+
+    const crop = crops.find((item) => String(item.id) === String(cropId));
+    if (!crop) return;
+
+    setShowModal(false);
+    setShowCropPickerModal(false);
+    setSelectedCrop(crop);
+    setIsAddingTask(false);
+    setPendingLocation(null);
+    if (Number.isFinite(lng) && Number.isFinite(lat)) {
+      setFocusedTaskLocation([lng, lat]);
+    }
+    fetchTasks(crop.id);
+    setShowTaskModal(true);
+    setOpenedTaskId(taskId);
+  }, [searchParams, loading, crops, openedTaskId]);
 
   const clearNewTaskQuery = () => {
     const next = new URLSearchParams(searchParams);
@@ -137,6 +163,7 @@ export default function FieldCrops() {
       setShowModal(false);
       fetchData();
     } catch (err) {
+      console.error("Σφάλμα κατά την αποθήκευση καλλιέργειας:", err);
       alert("Σφάλμα κατά την αποθήκευση της καλλιέργειας.");
     }
   };
@@ -184,6 +211,7 @@ export default function FieldCrops() {
       setTaskFormData({ taskType: "Πότισμα", description: "" });
       fetchTasks(selectedCrop.id);
     } catch (err) {
+      console.error("Σφάλμα κατά την αποθήκευση εργασίας:", err);
       alert("Σφάλμα κατά την αποθήκευση της εργασίας.");
     }
   };
@@ -204,6 +232,7 @@ export default function FieldCrops() {
         fetchData();
         if (selectedCrop?.id === id) setShowTaskModal(false);
       } catch (err) {
+        console.error("Σφάλμα κατά τη διαγραφή καλλιέργειας:", err);
         alert("Σφάλμα κατά τη διαγραφή.");
       }
     }
@@ -382,7 +411,7 @@ export default function FieldCrops() {
             <div className="p-8 md:w-1/3 border-r bg-gray-50 overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-black uppercase tracking-tighter text-blue-700">📋 Εργασίες: {selectedCrop.type}</h3>
-                <button onClick={() => { setShowTaskModal(false); setIsAddingTask(false); setPendingLocation(null); }} className="text-gray-300 hover:text-red-500 text-2xl">×</button>
+                <button onClick={() => { setShowTaskModal(false); setIsAddingTask(false); setPendingLocation(null); setFocusedTaskLocation(null); }} className="text-gray-300 hover:text-red-500 text-2xl">×</button>
               </div>
 
               {!isAddingTask ? (
@@ -420,7 +449,7 @@ export default function FieldCrops() {
                     <button 
                       disabled={t.status === 'COMPLETED'} 
                       onClick={() => handleCompleteTask(t.id)} 
-                      className={`text-[9px] px-3 py-1.5 rounded-lg font-black tracking-widest uppercase transition-all ${t.status === 'COMPLETED' ? 'bg-gray-100 text-gray-400 cursor-default' : 'bg-orange-100 text-orange-600 hover:bg-orange-200'}`}
+                      className={`text-[9px] px-3 py-1.5 rounded-lg font-black tracking-widest uppercase transition-all ${t.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700 cursor-default' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
                     >
                       {TASK_STATUS_LABELS[t.status] || t.status}
                     </button>
@@ -436,6 +465,7 @@ export default function FieldCrops() {
                 tasks={tasks}
                 isAddingTask={isAddingTask}
                 pendingLocation={pendingLocation} // Περνάμε την πινέζα που μεταφέρεται
+                focusedLocation={focusedTaskLocation}
                 onPointSelect={(coords) => setPendingLocation(coords)}
               />
             </div>

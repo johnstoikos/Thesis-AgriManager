@@ -24,6 +24,7 @@ export default function Login() {
       localStorage.setItem("jwt", response.data.token);
       window.location.href = "/dashboard";
     } catch (err) {
+      console.error("Σφάλμα σύνδεσης:", err);
       setError("Λάθος στοιχεία ή πρόβλημα σύνδεσης");
     }
   };

@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  Activity,
+  AlertTriangle,
+  BarChart3,
+  CheckCircle2,
+  ClipboardList,
+  Layers3,
+  Sprout,
+} from "lucide-react";
+import {
   Bar,
   BarChart,
   CartesianGrid,
@@ -12,15 +21,111 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import * as turf from "@turf/turf";
 import api from "../api/axios";
+import { EmptyState, ErrorState, SectionCard, SkeletonLines, StatCard, Surface } from "./ui";
 
-const PIE_COLORS = ["#16a34a", "#0ea5e9", "#f59e0b", "#8b5cf6", "#ef4444", "#14b8a6", "#f97316", "#6366f1"];
+const CROP_COLORS = ["#059669", "#0f766e", "#84a98c", "#22c55e", "#14b8a6", "#64748b"];
+const TASK_COLORS = {
+  Εκκρεμείς: "#f59e0b",
+  Ολοκληρωμένες: "#10b981",
+  Άγνωστη: "#64748b",
+};
+const TASK_STATUS_LABELS = {
+  PENDING: "Εκκρεμείς",
+  COMPLETED: "Ολοκληρωμένες",
+};
 
-function StatCard({ title, value, accentClass }) {
+function formatSquareMeters(value) {
+  return new Intl.NumberFormat("el-GR", {
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function toNumber(value) {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") return Number(value.replace(",", "."));
+  return Number(value);
+}
+
+function getPolygonSquareMeters(geoJsonPolygon) {
+  const coordinates = geoJsonPolygon?.coordinates;
+  if (!Array.isArray(coordinates) || !Array.isArray(coordinates[0]) || coordinates[0].length < 4) {
+    return 0;
+  }
+
+  try {
+    return turf.area(turf.polygon(coordinates));
+  } catch (err) {
+    console.warn("Αδυναμία υπολογισμού έκτασης πολυγώνου:", err);
+    return 0;
+  }
+}
+
+function getFieldSquareMeters(field) {
+  const storedStremmata = toNumber(field.area);
+  if (Number.isFinite(storedStremmata) && storedStremmata > 0) {
+    return storedStremmata * 1000;
+  }
+
+  return getPolygonSquareMeters(field.boundary);
+}
+
+function getCropStremmata(crop) {
+  const storedZoneArea = toNumber(crop.zoneArea);
+  if (Number.isFinite(storedZoneArea) && storedZoneArea > 0) {
+    return storedZoneArea;
+  }
+
+  return getPolygonSquareMeters(crop.zoneBoundary) / 1000;
+}
+
+function ChartSkeleton() {
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-      <p className="text-xs font-bold uppercase tracking-wider text-gray-500">{title}</p>
-      <p className={`mt-2 text-3xl font-black tracking-tight ${accentClass}`}>{value}</p>
+    <div className="flex h-[340px] flex-col justify-between rounded-3xl border border-slate-100 bg-slate-50/70 p-6">
+      <SkeletonLines lines={2} />
+      <div className="flex items-end gap-3">
+        {[45, 70, 55, 86, 62, 76].map((height, index) => (
+          <div
+            key={index}
+            className="flex-1 animate-pulse rounded-t-2xl bg-slate-200/90"
+            style={{ height: `${height}%` }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ChartEmptyState({ icon, title, description }) {
+  return (
+    <div className="flex h-[340px] items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50/70 p-6">
+      <EmptyState
+        icon={icon}
+        title={title}
+        description={description}
+        className="border-0 bg-transparent p-0 shadow-none"
+      />
+    </div>
+  );
+}
+
+function GreekTooltip({ active, payload, label, valueSuffix = "" }) {
+  if (!active || !payload?.length) return null;
+
+  return (
+    <div className="rounded-2xl border border-white/70 bg-white/95 px-4 py-3 text-sm shadow-xl backdrop-blur-xl">
+      <p className="font-black text-slate-950">{label || payload[0].name}</p>
+      {payload.map((entry) => (
+        <div key={entry.dataKey || entry.name} className="mt-1 flex items-center gap-2 text-slate-600">
+          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+          <span className="font-semibold">{entry.name}:</span>
+          <span>
+            {entry.value}
+            {valueSuffix}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -53,7 +158,9 @@ export default function Analytics() {
         });
         setCrops(allCrops);
 
-        const taskResults = await Promise.allSettled(allCrops.map((crop) => api.get(`/api/tasks/crop/${crop.id}`)));
+        const taskResults = await Promise.allSettled(
+          allCrops.map((crop) => api.get(`/api/tasks/crop/${crop.id}`))
+        );
         const allTasks = [];
         taskResults.forEach((result) => {
           if (result.status !== "fulfilled") return;
@@ -72,142 +179,240 @@ export default function Analytics() {
     fetchAnalyticsData();
   }, []);
 
-  const cropTypeById = useMemo(() => {
-    const lookup = {};
-    crops.forEach((crop) => {
-      lookup[crop.id] = crop.type || "Άγνωστος τύπος";
-    });
-    return lookup;
-  }, [crops]);
-
-  const stats = useMemo(() => {
-    const totalArea = crops.reduce((sum, crop) => sum + Number(crop.zoneArea || 0), 0);
-    const pendingTasks = tasks.filter((task) => task.status === "PENDING").length;
-    const completedTasks = tasks.filter((task) => task.status === "COMPLETED").length;
-    return {
-      totalArea,
-      totalCrops: crops.length,
-      pendingTasks,
-      completedTasks,
-      totalFields: fields.length,
-    };
-  }, [crops, tasks, fields.length]);
-
-  const cropsByAreaData = useMemo(() => {
+  const cropData = useMemo(() => {
     const grouped = crops.reduce((acc, crop) => {
-      const type = crop.type || "Άγνωστος τύπος";
-      const area = Number(crop.zoneArea || 0);
-      acc[type] = (acc[type] || 0) + area;
+      const name = crop.type || "Άγνωστη καλλιέργεια";
+      const area = getCropStremmata(crop);
+      acc[name] = (acc[name] || 0) + area;
       return acc;
     }, {});
 
     return Object.entries(grouped)
-      .map(([type, area]) => ({ type, area: Number(area.toFixed(2)) }))
-      .sort((a, b) => b.area - a.area);
+      .map(([name, value]) => ({ name, value: Number(value.toFixed(2)) }))
+      .filter((entry) => entry.value > 0)
+      .sort((a, b) => b.value - a.value);
   }, [crops]);
 
-  const taskStatusByCropTypeData = useMemo(() => {
-    const grouped = {};
+  const cropCountData = useMemo(() => {
+    const grouped = crops.reduce((acc, crop) => {
+      const name = crop.type || "Άγνωστη καλλιέργεια";
+      acc[name] = (acc[name] || 0) + 1;
+      return acc;
+    }, {});
 
-    tasks.forEach((task) => {
-      const cropType = cropTypeById[task.cropId] || "Άγνωστος τύπος";
-      if (!grouped[cropType]) {
-        grouped[cropType] = { cropType, PENDING: 0, COMPLETED: 0 };
-      }
-      if (task.status === "PENDING") grouped[cropType].PENDING += 1;
-      if (task.status === "COMPLETED") grouped[cropType].COMPLETED += 1;
-    });
+    return Object.entries(grouped)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [crops]);
 
-    return Object.values(grouped).sort((a, b) => a.cropType.localeCompare(b.cropType, "el"));
-  }, [tasks, cropTypeById]);
+  const cropChartData = cropData.length > 0 ? cropData : cropCountData;
+  const cropChartUsesArea = cropData.length > 0;
 
-  if (loading) {
-    return <div className="text-center py-12 font-bold text-green-700">Φόρτωση στατιστικών...</div>;
-  }
+  const taskData = useMemo(() => {
+    const grouped = tasks.reduce((acc, task) => {
+      const name = TASK_STATUS_LABELS[task.status] || "Άγνωστη";
+      acc[name] = (acc[name] || 0) + 1;
+      return acc;
+    }, {});
+
+    return ["Εκκρεμείς", "Ολοκληρωμένες", "Άγνωστη"]
+      .filter((name) => grouped[name])
+      .map((name) => ({ name, value: grouped[name] }));
+  }, [tasks]);
+
+  const stats = useMemo(() => {
+    const totalFieldSquareMeters = fields.reduce((sum, field) => sum + getFieldSquareMeters(field), 0);
+    const pendingTasks = tasks.filter((task) => task.status === "PENDING").length;
+    const completedTasks = tasks.filter((task) => task.status === "COMPLETED").length;
+    const totalTasks = tasks.length;
+    const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    return {
+      totalFieldSquareMeters,
+      activeZones: crops.length,
+      pendingTasks,
+      completedTasks,
+      completionPercentage,
+      totalFields: fields.length,
+      totalTasks,
+    };
+  }, [crops.length, tasks, fields]);
 
   if (error) {
-    return <div className="text-center py-12 font-bold text-red-600">{error}</div>;
+    return (
+      <ErrorState
+        title="Δεν ήταν δυνατή η φόρτωση των analytics"
+        description={error}
+      />
+    );
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-black tracking-tight text-gray-900">Analytics Dashboard</h2>
-        <p className="text-sm text-gray-500 mt-1">
-          Επιχειρησιακή εικόνα καλλιεργειών και εργασιών για {stats.totalFields} χωράφια.
-        </p>
+    <div className="space-y-7">
+      <Surface className="overflow-hidden p-6 md:p-7">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700">
+              Αναλυτικά στοιχεία
+            </p>
+            <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
+              Πίνακας Analytics
+            </h1>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+              Συγκεντρωτική εικόνα εκτάσεων, ενεργών ζωνών και εργασιών για {stats.totalFields} χωράφια.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 rounded-3xl border border-white/70 bg-emerald-950 p-4 text-white shadow-2xl shadow-emerald-950/10 sm:min-w-80">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-emerald-100/80">Εργασίες</p>
+              <p className="mt-1 text-3xl font-black">{stats.totalTasks}</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-emerald-100/80">Ολοκληρώθηκαν</p>
+              <p className="mt-1 text-3xl font-black">{stats.completedTasks}</p>
+            </div>
+          </div>
+        </div>
+      </Surface>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {loading ? (
+          Array.from({ length: 4 }).map((_, index) => (
+            <Surface key={index} className="p-5">
+              <div className="h-11 w-11 animate-pulse rounded-2xl bg-slate-200" />
+              <SkeletonLines lines={3} className="mt-5" />
+            </Surface>
+          ))
+        ) : (
+          <>
+            <StatCard
+              icon={Layers3}
+              title="Συνολική Έκταση"
+              value={`${formatSquareMeters(stats.totalFieldSquareMeters)} m²`}
+              helper="Άθροισμα έκτασης όλων των χωραφιών"
+              tone="emerald"
+            />
+            <StatCard
+              icon={Sprout}
+              title="Ενεργές Ζώνες"
+              value={stats.activeZones}
+              helper="Καταγεγραμμένες καλλιέργειες"
+              tone="sky"
+            />
+            <StatCard
+              icon={CheckCircle2}
+              title="Ποσοστό Ολοκλήρωσης"
+              value={`${stats.completionPercentage}%`}
+              helper="Ολοκληρωμένες προς σύνολο εργασιών"
+              tone="emerald"
+            />
+            <StatCard
+              icon={AlertTriangle}
+              title="Εκκρεμότητες"
+              value={stats.pendingTasks}
+              helper="Εργασίες που χρειάζονται ενέργεια"
+              tone="amber"
+            />
+          </>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard title="Συνολική Διαχειριζόμενη Έκταση" value={`${stats.totalArea.toFixed(2)} στρ.`} accentClass="text-green-700" />
-        <StatCard title="Σύνολο Καλλιεργειών" value={stats.totalCrops} accentClass="text-sky-700" />
-        <StatCard title="Εκκρεμείς Εργασίες" value={stats.pendingTasks} accentClass="text-amber-600" />
-        <StatCard title="Ολοκληρωμένες Εργασίες" value={stats.completedTasks} accentClass="text-emerald-600" />
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
-          <h3 className="text-lg font-black text-gray-900">Κατανομή Καλλιεργειών ανά Έκταση</h3>
-          <p className="text-xs text-gray-500 mt-1">Ομαδοποίηση κατά τύπο καλλιέργειας (στρέμματα).</p>
-          <div className="h-[340px] mt-4">
-            {cropsByAreaData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-sm text-gray-400">
-                Δεν υπάρχουν αρκετά δεδομένα καλλιεργειών.
-              </div>
-            ) : (
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <SectionCard
+          title="Κατανομή Καλλιεργειών"
+          description={
+            cropChartUsesArea
+              ? "Ομαδοποίηση ανά τύπο καλλιέργειας και συνολική έκταση σε στρέμματα."
+              : "Ομαδοποίηση ανά τύπο καλλιέργειας με βάση το πλήθος ζωνών, επειδή δεν υπάρχει διαθέσιμη έκταση ζώνης."
+          }
+          badge="Καλλιέργειες"
+          side={<BarChart3 className="h-6 w-6 text-emerald-700" />}
+        >
+          {loading ? (
+            <ChartSkeleton />
+          ) : cropChartData.length === 0 ? (
+            <ChartEmptyState
+              icon={Sprout}
+              title="Δεν υπάρχουν δεδομένα καλλιεργειών"
+              description="Μόλις προστεθούν ζώνες καλλιεργειών, η κατανομή θα εμφανιστεί εδώ."
+            />
+          ) : (
+            <div className="h-[340px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={cropsByAreaData}
-                    dataKey="area"
-                    nameKey="type"
+                    data={cropChartData}
+                    dataKey="value"
+                    nameKey="name"
                     cx="50%"
                     cy="50%"
-                    outerRadius={120}
-                    innerRadius={60}
+                    innerRadius="52%"
+                    outerRadius="78%"
+                    paddingAngle={3}
                     label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                    labelLine={false}
                   >
-                    {cropsByAreaData.map((entry, index) => (
-                      <Cell key={`${entry.type}-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                    {cropChartData.map((entry, index) => (
+                      <Cell key={entry.name} fill={CROP_COLORS[index % CROP_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip
-                    formatter={(value) => [`${value} στρ.`, "Έκταση"]}
-                    contentStyle={{ borderRadius: "12px", border: "1px solid #e5e7eb" }}
+                  <Tooltip content={<GreekTooltip valueSuffix={cropChartUsesArea ? " στρ." : " ζώνες"} />} />
+                  <Legend
+                    formatter={(value) => <span className="text-sm font-semibold text-slate-600">{value}</span>}
+                    iconType="circle"
                   />
-                  <Legend />
                 </PieChart>
               </ResponsiveContainer>
-            )}
-          </div>
-        </section>
+            </div>
+          )}
+        </SectionCard>
 
-        <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
-          <h3 className="text-lg font-black text-gray-900">Επισκόπηση Κατάστασης Εργασιών</h3>
-          <p className="text-xs text-gray-500 mt-1">Πλήθος εκκρεμών και ολοκληρωμένων εργασιών ανά τύπο καλλιέργειας.</p>
-          <div className="h-[340px] mt-4">
-            {taskStatusByCropTypeData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-sm text-gray-400">
-                Δεν υπάρχουν αρκετά δεδομένα εργασιών.
-              </div>
-            ) : (
+        <SectionCard
+          title="Ανάλυση Εργασιών"
+          description="Σύγκριση κατάστασης εργασιών με άμεση εικόνα εκκρεμοτήτων και ολοκλήρωσης."
+          badge="Εργασίες"
+          side={<Activity className="h-6 w-6 text-amber-600" />}
+        >
+          {loading ? (
+            <ChartSkeleton />
+          ) : taskData.length === 0 ? (
+            <ChartEmptyState
+              icon={ClipboardList}
+              title="Δεν υπάρχουν δεδομένα εργασιών"
+              description="Οι εργασίες θα εμφανιστούν εδώ όταν συνδεθούν με καλλιέργειες."
+            />
+          ) : (
+            <div className="h-[340px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={taskStatusByCropTypeData} barGap={8}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="cropType" tick={{ fontSize: 12 }} interval={0} angle={-15} textAnchor="end" height={60} />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip
-                    contentStyle={{ borderRadius: "12px", border: "1px solid #e5e7eb" }}
-                    formatter={(value, name) => [value, name === "PENDING" ? "ΕΚΚΡΕΜΕΙ" : "ΟΛΟΚΛΗΡΩΘΗΚΕ"]}
+                <BarChart data={taskData} margin={{ top: 12, right: 16, left: 0, bottom: 8 }}>
+                  <CartesianGrid stroke="#e2e8f0" strokeDasharray="4 6" vertical={false} />
+                  <XAxis
+                    dataKey="name"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "#475569", fontSize: 12, fontWeight: 700 }}
                   />
-                  <Legend formatter={(value) => (value === "PENDING" ? "ΕΚΚΡΕΜΕΙ" : "ΟΛΟΚΛΗΡΩΘΗΚΕ")} />
-                  <Bar dataKey="PENDING" fill="#f59e0b" radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="COMPLETED" fill="#16a34a" radius={[6, 6, 0, 0]} />
+                  <YAxis
+                    allowDecimals={false}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "#64748b", fontSize: 12 }}
+                  />
+                  <Tooltip content={<GreekTooltip />} />
+                  <Legend
+                    formatter={() => <span className="text-sm font-semibold text-slate-600">Πλήθος εργασιών</span>}
+                    iconType="circle"
+                  />
+                  <Bar dataKey="value" name="Πλήθος εργασιών" radius={[14, 14, 6, 6]}>
+                    {taskData.map((entry) => (
+                      <Cell key={entry.name} fill={TASK_COLORS[entry.name] || TASK_COLORS.Άγνωστη} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
-            )}
-          </div>
-        </section>
+            </div>
+          )}
+        </SectionCard>
       </div>
     </div>
   );

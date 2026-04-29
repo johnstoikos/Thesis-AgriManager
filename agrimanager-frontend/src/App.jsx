@@ -1,12 +1,13 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./components/auth/Login";
 import Signup from "./components/auth/Signup";
 import Dashboard from "./components/Dashboard";
-import Navbar from "./components/Navbar"; 
+import AppShell from "./components/AppShell";
 import Fields from "./components/Fields";
 import FieldCrops from "./components/FieldCrops";
 import GlobalTasks from "./components/GlobalTasks";
 import Analytics from "./components/Analytics";
+import Profile from "./components/Profile";
 
 // Helper συνάρτηση για το Auth
 const isLoggedIn = () => !!localStorage.getItem("jwt");
@@ -17,17 +18,7 @@ function PrivateRoute() {
     return <Navigate to="/login" replace />;
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Το Navbar θα εμφανίζεται σε ΟΛΕΣ τις προστατευμένες σελίδες */}
-      <Navbar /> 
-      
-      {/* Εδώ μέσα θα "κουμπώνουν" οι σελίδες Dashboard, Fields, κλπ. */}
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        <Outlet /> 
-      </main>
-    </div>
-  );
+  return <AppShell />;
 }
 
 export default function App() {
@@ -47,6 +38,7 @@ export default function App() {
           <Route path="/fields/:fieldId/crops" element={<FieldCrops />} />
           <Route path="/tasks" element={<GlobalTasks />} />
           <Route path="/analytics" element={<Analytics />} />
+          <Route path="/profile" element={<Profile />} />
         </Route>
 
         {/* Redirects */}

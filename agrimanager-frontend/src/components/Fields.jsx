@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
 import MapComponent from "./MapComponent";
@@ -18,7 +18,7 @@ export default function Fields() {
   });
 
   // Φόρτωση των χωραφιών
-  const fetchFields = async () => {
+  const fetchFields = useCallback(async () => {
     try {
       const res = await api.get("/api/fields");
       setFields(res.data);
@@ -27,10 +27,28 @@ export default function Fields() {
       console.error("Σφάλμα φόρτωσης:", err);
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { 
-    fetchFields(); 
+  useEffect(() => {
+    let isMounted = true;
+
+    api.get("/api/fields")
+      .then((res) => {
+        if (!isMounted) return;
+        setFields(res.data);
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        console.error("Σφάλμα φόρτωσης:", err);
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const calculateAreaInStremmata = (boundaryCoords) => {
@@ -39,6 +57,7 @@ export default function Fields() {
       const polygon = turf.polygon([boundaryCoords]);
       return (turf.area(polygon) / 1000).toFixed(2);
     } catch (err) {
+      console.error("Σφάλμα υπολογισμού έκτασης:", err);
       return "";
     }
   };
@@ -129,7 +148,7 @@ export default function Fields() {
         }));
       }
     } catch (err) {
-      console.error("Λάθος μορφή συντεταγμένων");
+      console.error("Λάθος μορφή συντεταγμένων:", err);
     }
   };
 
@@ -151,6 +170,9 @@ export default function Fields() {
       </div>
 
       <div className="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
+        {loading ? (
+          <div className="px-6 py-10 text-center text-sm font-bold text-green-700">Φόρτωση χωραφιών...</div>
+        ) : (
         <table className="w-full text-left">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
@@ -192,6 +214,7 @@ export default function Fields() {
             )}
           </tbody>
         </table>
+        )}
       </div>
 
       {showModal && (

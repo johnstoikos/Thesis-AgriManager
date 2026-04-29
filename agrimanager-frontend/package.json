@@ -13,6 +13,8 @@
     "@geoman-io/leaflet-geoman-free": "^2.19.2",
     "@turf/turf": "^7.3.4",
     "axios": "^1.13.6",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.7",
     "leaflet": "^1.9.4",
     "leaflet-geometryutil": "^0.10.3",
     "lucide-react": "^1.11.0",
@@ -24,6 +26,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@tailwindcss/vite": "^4.2.4",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",

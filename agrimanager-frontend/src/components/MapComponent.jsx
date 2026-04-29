@@ -22,6 +22,43 @@ const yellowIcon = new L.Icon({
     iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
 });
 
+function getTaskMarkerMeta(taskType = "") {
+  const type = taskType.toLowerCase();
+  if (type.includes("ποτ")) return { color: "#2563eb", label: "Π" };
+  if (type.includes("λιπ")) return { color: "#eab308", label: "Λ" };
+  if (type.includes("ψεκ")) return { color: "#7c3aed", label: "Ψ" };
+  if (type.includes("συγ")) return { color: "#16a34a", label: "Σ" };
+  if (type.includes("κλαδ")) return { color: "#f97316", label: "Κ" };
+  return { color: "#64748b", label: "Ε" };
+}
+
+function getTaskIcon(taskType) {
+  const { color, label } = getTaskMarkerMeta(taskType);
+  return L.divIcon({
+    className: "task-div-marker",
+    iconSize: [38, 38],
+    iconAnchor: [19, 38],
+    popupAnchor: [0, -36],
+    html: `
+      <div style="
+        width: 38px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9999px 9999px 9999px 0;
+        transform: rotate(-45deg);
+        background: ${color};
+        color: white;
+        border: 3px solid rgba(255,255,255,0.95);
+        box-shadow: 0 14px 30px rgba(15,23,42,0.28);
+      ">
+        <span style="transform: rotate(45deg); font-weight: 900; font-size: 13px; font-family: system-ui, sans-serif;">${label}</span>
+      </div>
+    `,
+  });
+}
+
 // --- 1. Ο "Σωτήρας" των Modals: Διορθώνει το μέγεθος του χάρτη ---
 function MapResizer() {
   const map = useMap();
@@ -84,24 +121,29 @@ function TaskClickHandler({ isAddingTask, onPointSelect }) {
 }
 
 // --- 4. Αυτόματο Κεντράρισμα ---
-function MapEvents({ boundary, parentBoundary }) {
+function MapEvents({ boundary, parentBoundary, focusedLocation }) {
   const map = useMap();
   useEffect(() => {
+    if (focusedLocation?.length === 2) {
+      map.flyTo([focusedLocation[1], focusedLocation[0]], 18, { duration: 0.8 });
+      return;
+    }
+
     const target = (parentBoundary?.length > 0) ? parentBoundary : (boundary?.length > 0 ? boundary : null);
     if (target && target.length > 0) {
       map.flyTo([target[0][1], target[0][0]], 16);
     }
-  }, [parentBoundary, boundary, map]);
+  }, [parentBoundary, boundary, focusedLocation, map]);
   return null;
 }
 
 // --- ΤΟ ΚΕΝΤΡΙΚΟ COMPONENT ---
 export default function MapComponent({ 
   onPolygonComplete, boundary, parentBoundary, existingCrops, 
-  tasks, isAddingTask, onPointSelect, pendingLocation 
+  tasks, isAddingTask, onPointSelect, pendingLocation, focusedLocation
 }) {
   return (
-    <div style={{ height: '100%', width: '100%', minHeight: '500px', position: 'relative' }}>
+    <div className="relative z-0 isolate" style={{ height: '100%', width: '100%', minHeight: '500px' }}>
       <MapContainer 
         center={[38.2466, 21.7346]} 
         zoom={13} 
@@ -110,18 +152,23 @@ export default function MapComponent({
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         
         <MapResizer />
-        <MapEvents boundary={boundary} parentBoundary={parentBoundary} />
+        <MapEvents boundary={boundary} parentBoundary={parentBoundary} focusedLocation={focusedLocation} />
         <GeomanControls onPolygonComplete={onPolygonComplete} boundary={boundary} />
         <TaskClickHandler isAddingTask={isAddingTask} onPointSelect={onPointSelect} />
 
         {/* Εμφάνιση αποθηκευμένων εργασιών */}
         {tasks?.map(task => (
           task?.location?.coordinates && (
-            <Marker key={task.id} position={[task.location.coordinates[1], task.location.coordinates[0]]}>
+            <Marker
+              key={task.id}
+              position={[task.location.coordinates[1], task.location.coordinates[0]]}
+              icon={getTaskIcon(task.taskType)}
+            >
               <Popup>
                 <div className="font-sans text-xs">
-                  <strong>{task.taskType}</strong><br/>
-                  {task.description}
+                  <strong>{task.taskType || "Εργασία"}</strong><br/>
+                  {task.description || "Χωρίς περιγραφή"}<br/>
+                  <span>{task.status === "COMPLETED" ? "Ολοκληρωμένη" : "Εκκρεμής"}</span>
                 </div>
               </Popup>
             </Marker>

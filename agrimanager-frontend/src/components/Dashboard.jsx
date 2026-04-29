@@ -20,11 +20,6 @@ export default function Dashboard() {
       });
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("jwt");
-    window.location.href = "/login";
-  };
-
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 font-sans">
       <p className="text-green-600 font-bold animate-pulse text-xl">Φόρτωση δεδομένων από το χωράφι...</p>
