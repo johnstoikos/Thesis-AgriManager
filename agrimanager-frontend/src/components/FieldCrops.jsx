@@ -378,7 +378,7 @@ export default function FieldCrops() {
 
       {/* MODAL 1: ΔΙΑΧΕΙΡΙΣΗ ΚΑΛΛΙΕΡΓΕΙΑΣ (ΠΟΛΥΓΩΝΟ) */}
       {showModal && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white w-full max-w-6xl rounded-3xl shadow-2xl flex flex-col md:flex-row h-[600px] overflow-hidden">
             <div className="p-8 md:w-1/3 border-r bg-gray-50 overflow-y-auto">
               <h3 className="text-2xl font-black mb-6 uppercase tracking-tight">{formData.id ? "✍️ Διόρθωση" : "🌱 Νέα Ζώνη"}</h3>
@@ -406,7 +406,7 @@ export default function FieldCrops() {
 
       {/* MODAL 2: ΔΙΑΧΕΙΡΙΣΗ ΕΡΓΑΣΙΩΝ (ΣΗΜΕΙΟ) */}
       {showTaskModal && selectedCrop && (
-        <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+        <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
           <div className="bg-white w-full max-w-6xl rounded-3xl shadow-2xl flex flex-col md:flex-row h-[700px] overflow-hidden border border-white/10">
             <div className="p-8 md:w-1/3 border-r bg-gray-50 overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
@@ -474,7 +474,7 @@ export default function FieldCrops() {
       )}
 
       {showCropPickerModal && (
-        <div className="fixed inset-0 z-[1150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-gray-100">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-lg font-black text-gray-900">Επιλογή Καλλιέργειας</h3>

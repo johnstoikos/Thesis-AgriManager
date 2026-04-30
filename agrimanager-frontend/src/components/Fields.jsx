@@ -218,8 +218,8 @@ export default function Fields() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-lg max-h-[95vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="w-full max-w-lg max-h-[95vh] overflow-y-auto rounded-2xl bg-white p-8 shadow-xl dark:bg-slate-900">
             <h3 className="text-xl font-bold mb-4">
               {formData.id ? "Επεξεργασία Χωραφιού" : "Νέο Χωράφι"}
             </h3>

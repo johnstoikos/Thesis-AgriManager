@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { MapContainer, TileLayer, useMap, Marker, Popup, Polygon, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, useMap, Marker, Popup, Polygon, Tooltip, useMapEvents } from 'react-leaflet';
+import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import * as turf from '@turf/turf';
 import 'leaflet/dist/leaflet.css';
@@ -140,8 +141,44 @@ function MapEvents({ boundary, parentBoundary, focusedLocation }) {
 // --- ΤΟ ΚΕΝΤΡΙΚΟ COMPONENT ---
 export default function MapComponent({ 
   onPolygonComplete, boundary, parentBoundary, existingCrops, 
-  tasks, isAddingTask, onPointSelect, pendingLocation, focusedLocation
+  tasks, isAddingTask, onPointSelect, pendingLocation, focusedLocation,
+  dashboardFields,
 }) {
+  const navigate = useNavigate();
+
+  const fieldMarkers = Array.isArray(dashboardFields)
+    ? dashboardFields
+        .map((field, index) => {
+          const coords = field?.boundary?.coordinates?.[0] ?? field?.boundary?.coordinates ?? [];
+          if (!Array.isArray(coords) || coords.length === 0) return null;
+
+          let position = null;
+          try {
+            const polygon = turf.polygon([coords]);
+            const center = turf.centerOfMass(polygon)?.geometry?.coordinates;
+            if (Array.isArray(center) && center.length >= 2) {
+              position = [center[1], center[0]];
+            }
+          } catch (err) {
+            // ignore turf failure and fallback to first coordinate
+          }
+
+          if (!position && Array.isArray(coords[0]) && coords[0].length >= 2) {
+            position = [coords[0][1], coords[0][0]];
+          }
+
+          if (!position) return null;
+
+          return {
+            id: field?.id ?? `field-${index}`,
+            name: field?.name || field?.title || `Field ${field?.id ?? index}`,
+            position,
+            field,
+          };
+        })
+        .filter(Boolean)
+    : [];
+
   return (
     <div className="relative z-0 isolate" style={{ height: '100%', width: '100%', minHeight: '500px' }}>
       <MapContainer 
@@ -155,6 +192,21 @@ export default function MapComponent({
         <MapEvents boundary={boundary} parentBoundary={parentBoundary} focusedLocation={focusedLocation} />
         <GeomanControls onPolygonComplete={onPolygonComplete} boundary={boundary} />
         <TaskClickHandler isAddingTask={isAddingTask} onPointSelect={onPointSelect} />
+
+        {fieldMarkers.map((marker) => (
+          <Marker
+            key={marker.id}
+            position={marker.position}
+            eventHandlers={{
+              click: () => navigate(`/fields/${marker.field.id}`),
+            }}
+          >
+            <Tooltip direction="top" offset={[0, -10]} opacity={0.9}>
+              {marker.name}
+            </Tooltip>
+            <Popup>{marker.name}</Popup>
+          </Marker>
+        ))}
 
         {/* Εμφάνιση αποθηκευμένων εργασιών */}
         {tasks?.map(task => (
