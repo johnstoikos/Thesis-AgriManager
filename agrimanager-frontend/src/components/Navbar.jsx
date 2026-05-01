@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Button } from "./ui";
 
 export default function Navbar() {
   const handleLogout = () => {
@@ -18,12 +19,12 @@ export default function Navbar() {
           <Link to="/profile" className="hover:text-green-600 transition">Προφίλ</Link>
         </div>
       </div>
-      <button 
+      <Button
         onClick={handleLogout}
-        className="bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition text-sm font-bold"
+        variant="danger"
       >
         Αποσύνδεση
-      </button>
+      </Button>
     </nav>
   );
 }

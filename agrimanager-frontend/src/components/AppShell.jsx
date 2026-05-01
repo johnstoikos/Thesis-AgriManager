@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   BarChart3,
   Bell,
+  CalendarDays,
   LayoutDashboard,
   LogOut,
   Map,
@@ -12,6 +13,7 @@ import {
   UserCircle2,
 } from "lucide-react";
 import { useAppPreferences } from "../i18n";
+import { Button } from "./ui";
 
 const formatDate = (value) => {
   if (!value) return null;
@@ -69,13 +71,8 @@ const navItems = [
 
 function BellDropdown() {
   const [isOpen, setIsOpen] = useState(false);
-  const [alerts, setAlerts] = useState([]);
+  const [alerts] = useState(() => buildAssistantAlerts(readAssistantContext()));
   const dropdownRef = useRef(null);
-
-  useEffect(() => {
-    const notifications = buildAssistantAlerts(readAssistantContext());
-    setAlerts(notifications);
-  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -89,10 +86,10 @@ function BellDropdown() {
 
   return (
     <div ref={dropdownRef} className="relative">
-      <button
-        type="button"
+      <Button
         onClick={() => setIsOpen((open) => !open)}
-        className="relative rounded-2xl border border-slate-200 bg-white/80 p-3 text-slate-500 shadow-sm transition hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300 dark:hover:text-emerald-300"
+        variant="secondary"
+        className="relative h-11 w-11 rounded-2xl p-0 text-slate-500 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300"
         aria-label="Notifications"
       >
         <Bell className="h-5 w-5" />
@@ -101,7 +98,7 @@ function BellDropdown() {
             {alerts.length}
           </span>
         )}
-      </button>
+      </Button>
 
       {isOpen && (
         <div className="absolute right-0 z-20 mt-2 w-80 rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-950">
@@ -176,14 +173,14 @@ export default function AppShell() {
               <p className="text-xs text-emerald-100/70">{t.shell.activeSession}</p>
             </div>
           </div>
-          <button
-            type="button"
+          <Button
             onClick={handleLogout}
-            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/20"
+            variant="ghost"
+            className="mt-4 w-full rounded-2xl bg-white/10 text-white hover:bg-white/20"
           >
             <LogOut className="h-4 w-4" />
             {t.shell.logout}
-          </button>
+          </Button>
         </div>
       </aside>
 
@@ -197,10 +194,11 @@ export default function AppShell() {
 
             <div className="inline-flex rounded-2xl border border-slate-200 bg-white/80 p-1 shadow-sm dark:border-slate-700 dark:bg-slate-900/80">
               {["el", "en"].map((code) => (
-                <button
+                <Button
                   key={code}
-                  type="button"
                   onClick={() => setLanguage(code)}
+                  variant="ghost"
+                  size="sm"
                   className={[
                     "h-9 min-w-10 rounded-xl px-2 text-xs font-black transition",
                     language === code
@@ -209,20 +207,30 @@ export default function AppShell() {
                   ].join(" ")}
                 >
                   {code.toUpperCase()}
-                </button>
+                </Button>
               ))}
             </div>
 
-            <button
-              type="button"
+            <Button
               onClick={toggleTheme}
-              className="rounded-2xl border border-slate-200 bg-white/80 p-3 text-slate-500 shadow-sm transition hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300 dark:hover:text-emerald-300"
+              variant="secondary"
+              className="h-11 w-11 rounded-2xl p-0 text-slate-500 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300"
               aria-label="Toggle theme"
             >
               {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            </button>
+            </Button>
 
             <BellDropdown />
+
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => navigate("/tasks?view=calendar")}
+              className="h-11 rounded-2xl px-3"
+            >
+              <CalendarDays className="h-4 w-4" />
+              <span className="hidden sm:inline">Calendar</span>
+            </Button>
           </div>
           <nav className="mx-auto mt-3 flex max-w-7xl gap-2 overflow-x-auto lg:hidden">
             {navItems.map((item) => (

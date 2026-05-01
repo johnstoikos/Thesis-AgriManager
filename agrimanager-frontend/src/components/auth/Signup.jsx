@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../../api/axios";
+import { Button } from "../ui";
 
 export default function Signup() {
   const [formData, setFormData] = useState({
@@ -60,12 +61,12 @@ export default function Signup() {
           {error && <p className="text-red-500 text-sm font-semibold">{error}</p>}
           {message && <p className="text-green-600 text-sm font-semibold">{message}</p>}
 
-          <button 
+          <Button
             type="submit" 
-            className="w-full bg-green-600 text-white p-2 rounded font-bold hover:bg-green-700 transition duration-200"
+            className="w-full"
           >
             Εγγραφή
-          </button>
+          </Button>
         </form>
 
         <p className="mt-6 text-center text-sm text-gray-600">

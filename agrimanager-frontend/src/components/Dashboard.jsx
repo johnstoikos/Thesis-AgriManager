@@ -38,7 +38,7 @@ export default function Dashboard() {
     tasks: [],
   });
   const [loading, setLoading] = useState(true);
-  const [advisorLoading, setAdvisorLoading] = useState(true);
+  const [, setAdvisorLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {

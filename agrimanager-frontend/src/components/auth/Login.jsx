@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import api from "../../api/axios";
+import { Button } from "../ui";
 
 function Layout({ children }) {
   return (
@@ -54,12 +55,12 @@ export default function Login() {
           />
         </div>
         {error && <p className="text-red-500 text-sm">{error}</p>}
-        <button 
+        <Button
           type="submit" 
-          className="w-full bg-green-600 text-white p-2 rounded hover:bg-green-700 transition duration-200 font-bold"
+          className="w-full"
         >
           Είσοδος
-        </button>
+        </Button>
         <Link to="/signup" className="text-sm text-green-600 mt-4 block text-center hover:underline">
           Δεν έχετε λογαριασμό; Εγγραφείτε!
         </Link>

@@ -200,15 +200,22 @@ export function ModalShell({ title, description, onClose, children, className = 
             <h3 className="text-xl font-black text-slate-950 dark:text-slate-100">{title}</h3>
             {description && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p>}
           </div>
-          <button
-            type="button"
+          <Button
             onClick={onClose}
-            className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+            variant="ghost"
+            size="sm"
+            className="h-10 w-10 rounded-xl p-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-100"
+            aria-label="Κλείσιμο"
           >
             <X className="h-5 w-5" />
-          </button>
+          </Button>
         </div>
         {children}
+        <div className="flex justify-end border-t border-slate-100 px-6 py-4 dark:border-slate-800">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Ακύρωση
+          </Button>
+        </div>
       </div>
     </div>
   );

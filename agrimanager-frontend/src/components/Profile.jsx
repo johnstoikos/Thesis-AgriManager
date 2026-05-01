@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Camera, CheckCircle2, KeyRound, Save, UserCircle2 } from "lucide-react";
 import {
   Button,
@@ -28,12 +28,15 @@ function getStoredUser() {
 
 export default function Profile() {
   const storedUser = useMemo(() => getStoredUser(), []);
+  const fileInputRef = useRef(null);
   const [showSaved, setShowSaved] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState(storedUser.profilePhoto || storedUser.avatarUrl || "");
   const [formData, setFormData] = useState({
     fullName: storedUser.fullName || storedUser.name || "Χρήστης AgriManager",
     email: storedUser.email || storedUser.username || "user@agrimanager.local",
     phone: storedUser.phone || "",
+    profilePhoto: storedUser.profilePhoto || storedUser.avatarUrl || "",
   });
 
   const updateField = (field, value) => {
@@ -42,9 +45,27 @@ export default function Profile() {
   };
 
   const handleSave = () => {
-    localStorage.setItem("profile", JSON.stringify(formData));
+    localStorage.setItem("profile", JSON.stringify({ ...formData, profilePhoto: avatarPreview }));
     setShowSaved(true);
     window.setTimeout(() => setShowSaved(false), 3000);
+  };
+
+  const handleAvatarChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("Παρακαλώ επιλέξτε αρχείο εικόνας.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const preview = String(reader.result || "");
+      setAvatarPreview(preview);
+      setFormData((prev) => ({ ...prev, profilePhoto: preview }));
+      setShowSaved(false);
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -76,14 +97,30 @@ export default function Profile() {
         >
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[220px_1fr]">
             <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/60 p-5 text-center">
-              <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-full bg-white text-emerald-700 shadow-inner ring-1 ring-emerald-100">
-                <UserCircle2 className="h-16 w-16" />
-              </div>
-              <Button variant="secondary" className="mt-5 w-full">
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                variant="ghost"
+                className="mx-auto flex h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-white p-0 text-emerald-700 shadow-inner ring-1 ring-emerald-100 transition hover:ring-4 hover:ring-emerald-200"
+                aria-label="Επιλογή φωτογραφίας προφίλ"
+              >
+                {avatarPreview ? (
+                  <img src={avatarPreview} alt="Φωτογραφία προφίλ" className="h-full w-full object-cover" />
+                ) : (
+                  <UserCircle2 className="h-16 w-16" />
+                )}
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
+              <Button variant="secondary" className="mt-5 w-full" onClick={() => fileInputRef.current?.click()}>
                 <Camera className="h-4 w-4" />
                 Φωτογραφία
               </Button>
-              <p className="mt-3 text-xs leading-5 text-slate-500">Μελλοντικά θα υποστηρίζεται μεταφόρτωση εικόνας προφίλ.</p>
+              <p className="mt-3 text-xs leading-5 text-slate-500">Κάντε κλικ στο avatar για άμεση προεπισκόπηση.</p>
             </div>
 
             <div className="grid grid-cols-1 gap-4">

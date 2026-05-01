@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
 import MapComponent from "./MapComponent";
 import * as turf from '@turf/turf';
+import { Button, FieldInput, FieldLabel, ModalShell, Surface } from "./ui";
 
 export default function Fields() {
   const [fields, setFields] = useState([]);
@@ -81,9 +82,13 @@ export default function Fields() {
     if (window.confirm("Είσαι σίγουρος ότι θέλεις να διαγράψεις αυτό το χωράφι;")) {
       try {
         await api.delete(`/api/fields/${id}`);
-        fetchFields(); 
+        setFields((prev) => prev.filter((field) => field.id !== id));
       } catch (err) {
         console.error("Σφάλμα κατά τη διαγραφή:", err);
+        if (err?.response?.status === 400) {
+          alert("Δεν μπορεί να διαγραφεί το στοιχείο γιατί συνδέεται με άλλα δεδομένα (π.χ. καλλιέργειες).");
+          return;
+        }
         alert("Αποτυχία διαγραφής.");
       }
     }
@@ -155,21 +160,26 @@ export default function Fields() {
   const navigate = useNavigate();
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Τα Χωράφια μου</h2>
-        <button 
+    <div className="space-y-6">
+      <Surface className="p-6 md:p-7">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700">Διαχείριση αγρών</p>
+            <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950">Τα Χωράφια μου</h2>
+            <p className="mt-2 text-sm text-slate-500">Προβολή, επεξεργασία και σύνδεση χωραφιών με καλλιέργειες.</p>
+          </div>
+          <Button
           onClick={() => {
             setFormData({ id: null, name: "", area: "", boundary: [] }); // Reset για νέο χωράφι
             setShowModal(true);
           }}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 transition"
         >
           + Προσθήκη Χωραφιού
-        </button>
-      </div>
+          </Button>
+        </div>
+      </Surface>
 
-      <div className="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
+      <Surface className="overflow-hidden">
         {loading ? (
           <div className="px-6 py-10 text-center text-sm font-bold text-green-700">Φόρτωση χωραφιών...</div>
         ) : (
@@ -189,25 +199,31 @@ export default function Fields() {
                 <tr key={field.id}>
                   <td className="px-6 py-4 font-medium">{field.name}</td>
                   <td className="px-6 py-4">{field.area} στρ.</td>
-                  <td className="px-6 py-4 flex gap-4">
-                    <button 
+                  <td className="px-6 py-4">
+                    <div className="flex flex-wrap gap-2">
+                    <Button
                       onClick={() => handleEdit(field)}
-                      className="text-blue-600 hover:underline font-bold"
+                      variant="secondary"
+                      size="sm"
                     >
                       Επεξεργασία
-                    </button>
-                                        <button 
+                    </Button>
+                    <Button
                       onClick={() => navigate(`/fields/${field.id}/crops`)}
-                      className="bg-blue-600 text-white px-3 py-1 rounded-md font-bold"
+                      variant="secondary"
+                      size="sm"
+                      className="border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
                     >
                       Καλλιέργειες
-                    </button>
-                    <button 
+                    </Button>
+                    <Button
                       onClick={() => handleDelete(field.id)}
-                      className="text-red-600 hover:underline font-bold"
+                      variant="danger"
+                      size="sm"
                     >
                       Διαγραφή
-                    </button>
+                    </Button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -215,59 +231,62 @@ export default function Fields() {
           </tbody>
         </table>
         )}
-      </div>
+      </Surface>
 
       {showModal && (
-        <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black bg-opacity-50 p-4">
-          <div className="w-full max-w-lg max-h-[95vh] overflow-y-auto rounded-2xl bg-white p-8 shadow-xl dark:bg-slate-900">
-            <h3 className="text-xl font-bold mb-4">
-              {formData.id ? "Επεξεργασία Χωραφιού" : "Νέο Χωράφι"}
-            </h3>
-            <form onSubmit={handleSubmit}>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700">Όνομα</label>
-                <input 
+        <ModalShell
+          title={formData.id ? "Επεξεργασία Χωραφιού" : "Νέο Χωράφι"}
+          description="Συμπληρώστε τα στοιχεία και σχεδιάστε το όριο του χωραφιού στον χάρτη."
+          onClose={() => {
+            setShowModal(false);
+            setFormData({ id: null, name: "", area: "", boundary: [] });
+          }}
+          size="lg"
+          className="max-h-[92vh] flex flex-col"
+        >
+          <form onSubmit={handleSubmit} className="min-h-0 overflow-y-auto p-6">
+            <div className="grid grid-cols-1 gap-5">
+              <div>
+                <FieldLabel>Όνομα</FieldLabel>
+                <FieldInput
                   type="text" required
-                  className="w-full mt-1 p-2 border rounded-md"
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
                 />
               </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700">Έκταση (Στρέμματα)</label>
-                <input 
+              <div>
+                <FieldLabel>Έκταση (Στρέμματα)</FieldLabel>
+                <FieldInput
                   type="number" step="0.01" required
-                  className="w-full mt-1 p-2 border rounded-md bg-gray-50 font-bold text-green-700"
+                  className="bg-slate-50 font-bold text-emerald-700"
                   value={formData.area || ""}
                   onChange={(e) => setFormData({...formData, area: e.target.value})}
                   placeholder="Υπολογίζεται αυτόματα..."
                 />
               </div>
 
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Σχεδίαση ή Προβολή στο Χάρτη
-                </label>
-                <MapComponent 
-                  allFields={fields} 
-                  boundary={formData.boundary} 
-                  onPolygonComplete={(coords, calculatedArea) => {
-                    setFormData(prev => ({
-                      ...prev,
-                      boundary: coords,
-                      area: calculatedArea || calculateAreaInStremmata(coords)
-                    }));
-                  }} 
-                />
-              </div>  
+              <div>
+                <FieldLabel>Σχεδίαση ή Προβολή στο Χάρτη</FieldLabel>
+                <div className="h-[520px] overflow-hidden rounded-2xl border border-slate-200">
+                  <MapComponent
+                    allFields={fields}
+                    boundary={formData.boundary}
+                    onPolygonComplete={(coords, calculatedArea) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        boundary: coords,
+                        area: calculatedArea || calculateAreaInStremmata(coords)
+                      }));
+                    }}
+                  />
+                </div>
+              </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700">
-                  Ή Επικόλληση Συντεταγμένων (lng, lat ανά γραμμή)
-                </label>
+              <div>
+                <FieldLabel>Ή Επικόλληση Συντεταγμένων (lng, lat ανά γραμμή)</FieldLabel>
                 <textarea 
-                  className="w-full mt-1 p-2 border rounded-md text-xs font-mono bg-gray-50"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-mono text-slate-900 outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-300/60"
                   rows="3"
                   placeholder="21.7346, 38.2466&#10;21.7350, 38.2470..."
                   onChange={(e) => handleManualCoordsChange(e.target.value)}
@@ -275,27 +294,26 @@ export default function Fields() {
               </div>
 
               <div className="flex justify-end gap-2 pt-4">
-                <button 
-                  type="button" 
+                <Button
+                  type="button"
+                  variant="secondary"
                   onClick={() => {
                     setShowModal(false);
                     setFormData({ id: null, name: "", area: "", boundary: [] });
                   }}
-                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md transition"
                 >
                   Ακύρωση
-                </button>
-                <button 
+                </Button>
+                <Button
                   type="submit"
                   disabled={formData.boundary.length === 0}
-                  className={`px-4 py-2 rounded-md text-white font-bold transition ${formData.boundary.length === 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
                 >
                   {formData.id ? "Ενημέρωση" : "Αποθήκευση"}
-                </button>
+                </Button>
               </div>
-            </form>
-          </div>
-        </div>
+            </div>
+          </form>
+        </ModalShell>
       )}
     </div>
   );

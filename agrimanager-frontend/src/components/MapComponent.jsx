@@ -159,7 +159,7 @@ export default function MapComponent({
             if (Array.isArray(center) && center.length >= 2) {
               position = [center[1], center[0]];
             }
-          } catch (err) {
+          } catch {
             // ignore turf failure and fallback to first coordinate
           }
 

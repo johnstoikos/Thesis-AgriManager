@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Calendar, dateFnsLocalizer } from "react-big-calendar";
+import { format, getDay, parse, startOfWeek } from "date-fns";
+import { el } from "date-fns/locale";
 import {
   CheckCircle2,
   Download,
@@ -28,6 +31,7 @@ import {
   StatusBadge,
   Surface,
 } from "./ui";
+import "react-big-calendar/lib/css/react-big-calendar.css";
 
 const STATUS_LABELS = {
   PENDING: "ΕΚΚΡΕΜΕΙ",
@@ -40,6 +44,28 @@ const STATUS_COLORS = {
 };
 
 const TYPE_OPTIONS = ["Όλοι οι τύποι", "Πότισμα", "Λίπανση", "Ψεκασμός", "Συγκομιδή", "Κλάδεμα", "Άλλο"];
+const locales = { el };
+const calendarLocalizer = dateFnsLocalizer({
+  format,
+  parse,
+  startOfWeek: (date) => startOfWeek(date, { locale: el, weekStartsOn: 1 }),
+  getDay,
+  locales,
+});
+const calendarMessages = {
+  allDay: "Όλη μέρα",
+  previous: "Προηγούμενο",
+  next: "Επόμενο",
+  today: "Σήμερα",
+  month: "Μήνας",
+  week: "Εβδομάδα",
+  day: "Ημέρα",
+  agenda: "Ατζέντα",
+  date: "Ημερομηνία",
+  time: "Ώρα",
+  event: "Εργασία",
+  noEventsInRange: "Δεν υπάρχουν εργασίες σε αυτό το διάστημα.",
+};
 
 function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
@@ -75,6 +101,7 @@ function getTaskIcon(taskType = "") {
 
 export default function GlobalTasks() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tasks, setTasks] = useState([]);
   const [fields, setFields] = useState([]);
   const [cropLookup, setCropLookup] = useState({});
@@ -85,6 +112,7 @@ export default function GlobalTasks() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [typeFilter, setTypeFilter] = useState("Όλοι οι τύποι");
   const [search, setSearch] = useState("");
+  const viewMode = searchParams.get("view") === "calendar" ? "calendar" : "list";
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -159,6 +187,18 @@ export default function GlobalTasks() {
     });
   }, [tasks, statusFilter, typeFilter, search]);
 
+  const calendarEvents = useMemo(() => {
+    return filteredTasks
+      .filter((task) => task.taskDate)
+      .map((task) => ({
+        title: task.taskType || "Εργασία",
+        start: new Date(task.taskDate),
+        end: new Date(task.taskDate),
+        allDay: true,
+        resource: task,
+      }));
+  }, [filteredTasks]);
+
   const handleComplete = async (taskId) => {
     try {
       await api.patch(`/api/tasks/${taskId}/complete`);
@@ -175,6 +215,10 @@ export default function GlobalTasks() {
       await api.delete(`/api/tasks/${taskId}`);
       setTasks((prev) => prev.filter((task) => task.id !== taskId));
     } catch (err) {
+      if (err?.response?.status === 400) {
+        alert("Δεν μπορεί να διαγραφεί το στοιχείο γιατί συνδέεται με άλλα δεδομένα (π.χ. καλλιέργειες).");
+        return;
+      }
       if (err?.response?.status === 403) {
         alert("Δεν επιτρέπεται η διαγραφή εργασίας για τον τρέχοντα χρήστη.");
         return;
@@ -290,7 +334,22 @@ export default function GlobalTasks() {
       </div>
       </Surface>
 
-      <SectionCard title="Φίλτρα Αναζήτησης" description="Περιορίστε τις εργασίες με βάση κατάσταση, τύπο ή κείμενο.">
+      <SectionCard
+        title="Φίλτρα Αναζήτησης"
+        description="Περιορίστε τις εργασίες με βάση κατάσταση, τύπο ή κείμενο."
+        side={viewMode === "calendar" ? (
+          <div className="inline-flex rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+            <Button
+              onClick={() => setSearchParams({}, { replace: true })}
+              variant={viewMode === "list" ? "primary" : "ghost"}
+              size="sm"
+              className="rounded-xl shadow-none"
+            >
+              List View
+            </Button>
+          </div>
+        ) : null}
+      >
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <FieldSelect
             value={statusFilter}
@@ -325,109 +384,141 @@ export default function GlobalTasks() {
         </div>
       </SectionCard>
 
-      <Surface className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px]">
-            <thead className="border-b border-slate-200 bg-slate-50/80">
-              <tr>
-                <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500">Εργασία</th>
-                <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500">Καλλιέργεια / Χωράφι</th>
-                <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500">Ημερομηνία</th>
-                <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500">Κατάσταση</th>
-                <th className="text-right px-5 py-3 text-xs uppercase tracking-wider text-slate-500">Ενέργειες</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredTasks.length === 0 && (
+      {viewMode === "calendar" ? (
+        <Surface className="overflow-hidden p-4 md:p-6">
+          <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h2 className="text-xl font-black text-slate-950">Ημερολογιακή Προβολή</h2>
+              <p className="text-sm text-slate-500">Οι εργασίες εμφανίζονται ως ολοήμερες καταχωρήσεις.</p>
+            </div>
+            <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+              {calendarEvents.length} εργασίες
+            </span>
+          </div>
+          <div className="h-[680px] rounded-2xl border border-slate-200 bg-white p-3 text-sm shadow-sm">
+            <Calendar
+              culture="el"
+              localizer={calendarLocalizer}
+              events={calendarEvents}
+              startAccessor="start"
+              endAccessor="end"
+              messages={calendarMessages}
+              popup
+              views={["month", "week", "day", "agenda"]}
+              eventPropGetter={(event) => ({
+                className:
+                  event.resource?.status === "COMPLETED"
+                    ? "border-0 bg-emerald-600 text-white"
+                    : "border-0 bg-amber-500 text-white",
+              })}
+            />
+          </div>
+        </Surface>
+      ) : (
+        <Surface className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px]">
+              <thead className="border-b border-slate-200 bg-slate-50/80">
                 <tr>
-                  <td colSpan="5" className="px-5 py-10">
-                    <EmptyState
-                      icon={Tractor}
-                      title="Δεν βρέθηκαν εργασίες"
-                      description="Αλλάξτε φίλτρα ή δημιουργήστε νέα εργασία από διαθέσιμο χωράφι."
-                      className="border-0 bg-transparent p-0 shadow-none"
-                    />
-                  </td>
+                  <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500">Εργασία</th>
+                  <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500">Καλλιέργεια / Χωράφι</th>
+                  <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500">Ημερομηνία</th>
+                  <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500">Κατάσταση</th>
+                  <th className="text-right px-5 py-3 text-xs uppercase tracking-wider text-slate-500">Ενέργειες</th>
                 </tr>
-              )}
-
-              {filteredTasks.map((task) => {
-                const Icon = getTaskIcon(task.taskType);
-                const cropInfo = cropLookup[task.cropId];
-                const fieldId = cropInfo?.fieldId;
-                const canNavigate = Boolean(fieldId && task.location?.coordinates);
-                const formattedDate = formatTaskDate(task.taskDate);
-
-                return (
-                  <tr key={task.id} className="transition-colors hover:bg-emerald-50/40">
-                    <td className="px-5 py-4">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 rounded-xl bg-emerald-100 text-emerald-700">
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-800 text-sm">{task.taskType || "Άγνωστος τύπος"}</p>
-                          <p className="text-xs text-slate-500 mt-0.5">{task.description || "Χωρίς περιγραφή"}</p>
-                        </div>
-                      </div>
-                    </td>
-
-                    <td className="px-5 py-4">
-                      <p className="text-sm font-semibold text-slate-800">
-                        {cropInfo?.cropName ? `Καλλιέργεια: ${cropInfo.cropName}` : `Καλλιέργεια #${task.cropId}`}
-                      </p>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        {cropInfo?.fieldName || "Χωράφι: μη διαθέσιμο"}
-                      </p>
-                    </td>
-
-                    <td className="px-5 py-4 text-sm text-slate-700">{formattedDate}</td>
-
-                    <td className="px-5 py-4">
-                      <StatusBadge status={task.status}>{STATUS_LABELS[task.status] || task.status}</StatusBadge>
-                    </td>
-
-                    <td className="px-5 py-4">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          onClick={() => handleComplete(task.id)}
-                          disabled={task.status === "COMPLETED"}
-                          variant="secondary"
-                          size="sm"
-                          className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Ολοκληρώθηκε
-                        </Button>
-
-                        <Button
-                          onClick={() => handleViewOnMap(task)}
-                          disabled={!canNavigate}
-                          variant="secondary"
-                          size="sm"
-                          className="border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
-                        >
-                          <MapPinned className="h-3.5 w-3.5" />
-                          Χάρτης
-                        </Button>
-                        <Button
-                          onClick={() => handleDeleteTask(task.id)}
-                          variant="secondary"
-                          size="sm"
-                          className="border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          Διαγραφή
-                        </Button>
-                      </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredTasks.length === 0 && (
+                  <tr>
+                    <td colSpan="5" className="px-5 py-10">
+                      <EmptyState
+                        icon={Tractor}
+                        title="Δεν βρέθηκαν εργασίες"
+                        description="Αλλάξτε φίλτρα ή δημιουργήστε νέα εργασία από διαθέσιμο χωράφι."
+                        className="border-0 bg-transparent p-0 shadow-none"
+                      />
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </Surface>
+                )}
+
+                {filteredTasks.map((task) => {
+                  const Icon = getTaskIcon(task.taskType);
+                  const cropInfo = cropLookup[task.cropId];
+                  const fieldId = cropInfo?.fieldId;
+                  const canNavigate = Boolean(fieldId && task.location?.coordinates);
+                  const formattedDate = formatTaskDate(task.taskDate);
+
+                  return (
+                    <tr key={task.id} className="transition-colors hover:bg-emerald-50/40">
+                      <td className="px-5 py-4">
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 rounded-xl bg-emerald-100 text-emerald-700">
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-800 text-sm">{task.taskType || "Άγνωστος τύπος"}</p>
+                            <p className="text-xs text-slate-500 mt-0.5">{task.description || "Χωρίς περιγραφή"}</p>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <p className="text-sm font-semibold text-slate-800">
+                          {cropInfo?.cropName ? `Καλλιέργεια: ${cropInfo.cropName}` : `Καλλιέργεια #${task.cropId}`}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {cropInfo?.fieldName || "Χωράφι: μη διαθέσιμο"}
+                        </p>
+                      </td>
+
+                      <td className="px-5 py-4 text-sm text-slate-700">{formattedDate}</td>
+
+                      <td className="px-5 py-4">
+                        <StatusBadge status={task.status}>{STATUS_LABELS[task.status] || task.status}</StatusBadge>
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            onClick={() => handleComplete(task.id)}
+                            disabled={task.status === "COMPLETED"}
+                            variant="secondary"
+                            size="sm"
+                            className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            Ολοκληρώθηκε
+                          </Button>
+
+                          <Button
+                            onClick={() => handleViewOnMap(task)}
+                            disabled={!canNavigate}
+                            variant="secondary"
+                            size="sm"
+                            className="border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                          >
+                            <MapPinned className="h-3.5 w-3.5" />
+                            Χάρτης
+                          </Button>
+                          <Button
+                            onClick={() => handleDeleteTask(task.id)}
+                            variant="secondary"
+                            size="sm"
+                            className="border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Διαγραφή
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Surface>
+      )}
 
       {showFieldPicker && (
         <ModalShell
@@ -441,14 +532,17 @@ export default function GlobalTasks() {
                 <p className="text-sm text-gray-500 text-center py-6">Δεν υπάρχουν διαθέσιμα χωράφια.</p>
               )}
               {fields.map((field) => (
-                <button
+                <Button
                   key={field.id}
                   onClick={() => handleStartNewTask(field.id)}
-                  className="w-full text-left px-4 py-3 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition"
+                  variant="secondary"
+                  className="w-full justify-start px-4 py-3"
                 >
-                  <p className="font-bold text-sm text-gray-800">{field.name}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{field.area} στρ.</p>
-                </button>
+                  <span className="text-left">
+                    <span className="block text-sm font-bold text-gray-800">{field.name}</span>
+                    <span className="mt-0.5 block text-xs text-gray-500">{field.area} στρ.</span>
+                  </span>
+                </Button>
               ))}
             </div>
         </ModalShell>
