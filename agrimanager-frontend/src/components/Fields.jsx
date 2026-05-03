@@ -79,14 +79,14 @@ export default function Fields() {
 
   // 2. Διαγραφή Χωραφιού
   const handleDelete = async (id) => {
-    if (window.confirm("Είσαι σίγουρος ότι θέλεις να διαγράψεις αυτό το χωράφι;")) {
+    if (window.confirm("⚠️ ΠΡΟΣΟΧΗ! Διαγράφοντας αυτό το χωράφι, θα διαγραφούν ΟΡΙΣΤΙΚΑ όλες οι καλλιέργειες και οι εργασίες που περιλαμβάνει. Θέλετε σίγουρα να προχωρήσετε;")) {
       try {
         await api.delete(`/api/fields/${id}`);
         setFields((prev) => prev.filter((field) => field.id !== id));
       } catch (err) {
         console.error("Σφάλμα κατά τη διαγραφή:", err);
         if (err?.response?.status === 400) {
-          alert("Δεν μπορεί να διαγραφεί το στοιχείο γιατί συνδέεται με άλλα δεδομένα (π.χ. καλλιέργειες).");
+          alert("Σφάλμα συστήματος: Η διαδοχική διαγραφή απέτυχε στο backend. Ελέγξτε τις ρυθμίσεις Cascade.");
           return;
         }
         alert("Αποτυχία διαγραφής.");
@@ -294,16 +294,6 @@ export default function Fields() {
               </div>
 
               <div className="flex justify-end gap-2 pt-4">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    setShowModal(false);
-                    setFormData({ id: null, name: "", area: "", boundary: [] });
-                  }}
-                >
-                  Ακύρωση
-                </Button>
                 <Button
                   type="submit"
                   disabled={formData.boundary.length === 0}

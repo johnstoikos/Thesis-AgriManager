@@ -291,7 +291,7 @@ export default function FieldCrops() {
   };
 
   const handleDeleteCrop = async (id) => {
-    if (window.confirm("Είστε σίγουροι ότι θέλετε να διαγράψετε αυτή την καλλιέργεια;")) {
+    if (window.confirm("⚠️ ΠΡΟΣΟΧΗ! Η διαγραφή της καλλιέργειας θα διαγράψει και όλο το ιστορικό εργασιών της. Θέλετε σίγουρα να προχωρήσετε;")) {
       try {
         await api.delete(`/api/crops/${id}`);
         setCrops((prev) => prev.filter((crop) => crop.id !== id));
@@ -299,7 +299,7 @@ export default function FieldCrops() {
       } catch (err) {
         console.error("Σφάλμα κατά τη διαγραφή καλλιέργειας:", err);
         if (err?.response?.status === 400) {
-          alert("Δεν μπορεί να διαγραφεί το στοιχείο γιατί συνδέεται με άλλα δεδομένα (π.χ. καλλιέργειες).");
+          alert("Σφάλμα συστήματος: Η διαδοχική διαγραφή απέτυχε στο backend. Ελέγξτε τις ρυθμίσεις Cascade.");
           return;
         }
         alert("Σφάλμα κατά τη διαγραφή.");
@@ -522,9 +522,6 @@ export default function FieldCrops() {
                 <input type="date" className="w-full p-3 border rounded-xl shadow-sm" value={formData.plantingDate || ""} onChange={e => setFormData({...formData, plantingDate: e.target.value})} />
                 <Button type="submit" disabled={formData.zoneBoundary.length === 0} className="w-full">
                   Αποθήκευση Ζώνης
-                </Button>
-                <Button type="button" onClick={handleCloseCropModal} variant="secondary" className="w-full">
-                  Ακύρωση
                 </Button>
               </form>
             </div>

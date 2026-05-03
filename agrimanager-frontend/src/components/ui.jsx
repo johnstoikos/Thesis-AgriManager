@@ -1,5 +1,5 @@
 import { createElement } from "react";
-import { AlertCircle, Inbox, X } from "lucide-react";
+import { AlertCircle, Inbox } from "lucide-react";
 
 function cn(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -195,20 +195,11 @@ export function ModalShell({ title, description, onClose, children, className = 
   return (
     <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm">
       <div className={cn("w-full overflow-hidden rounded-[28px] border border-white/40 bg-white shadow-2xl duration-300 animate-[modal-pop_0.22s_ease-out] dark:border-slate-700 dark:bg-slate-900", sizeClasses[size], className)}>
-        <div className="flex items-start justify-between border-b border-slate-100 px-6 py-5 dark:border-slate-800">
-          <div className="pr-4">
+        <div className="border-b border-slate-100 px-6 py-5 dark:border-slate-800">
+          <div>
             <h3 className="text-xl font-black text-slate-950 dark:text-slate-100">{title}</h3>
             {description && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p>}
           </div>
-          <Button
-            onClick={onClose}
-            variant="ghost"
-            size="sm"
-            className="h-10 w-10 rounded-xl p-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-100"
-            aria-label="Κλείσιμο"
-          >
-            <X className="h-5 w-5" />
-          </Button>
         </div>
         {children}
         <div className="flex justify-end border-t border-slate-100 px-6 py-4 dark:border-slate-800">
