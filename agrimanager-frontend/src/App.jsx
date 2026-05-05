@@ -8,15 +8,23 @@ import FieldCrops from "./components/FieldCrops";
 import GlobalTasks from "./components/GlobalTasks";
 import Analytics from "./components/Analytics";
 import Profile from "./components/Profile";
+import { AuthProvider } from "./context/AuthContext";
+import { useAuth } from "./context/auth-context";
 import { AppPreferencesProvider } from "./i18n";
-
-// Helper συνάρτηση για το Auth
-const getStoredToken = () => localStorage.getItem("jwt") || sessionStorage.getItem("jwt");
-const isLoggedIn = () => !!getStoredToken();
 
 // Προστατευμένη διαδρομή με ενσωματωμένο Layout (Navbar)
 function ProtectedRoute() {
-  if (!isLoggedIn()) {
+  const { authLoading, isAuthenticated } = useAuth();
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-lg font-black text-emerald-700">
+        Φόρτωση προφίλ...
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
@@ -26,28 +34,35 @@ function ProtectedRoute() {
 export default function App() {
   return (
     <AppPreferencesProvider>
-      <Router>
-       
-        <Routes>
-          {/* ΔΗΜΟΣΙΕΣ ΔΙΑΔΡΟΜΕΣ */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
+      <AuthProvider>
+        <Router>
+          <Routes>
+            {/* ΔΗΜΟΣΙΕΣ ΔΙΑΔΡΟΜΕΣ */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
 
-          {/* ΠΡΟΣΤΑΤΕΥΜΕΝΕΣ ΔΙΑΔΡΟΜΕΣ (Εδώ μέσα μπαίνουν όλα όσα θέλουν Navbar) */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/fields" element={<Fields />} /> 
-            <Route path="/fields/:fieldId" element={<FieldCrops />} />
-            <Route path="/fields/:fieldId/crops" element={<FieldCrops />} />
-            <Route path="/tasks" element={<GlobalTasks />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/profile" element={<Profile />} />
-          </Route>
+            {/* ΠΡΟΣΤΑΤΕΥΜΕΝΕΣ ΔΙΑΔΡΟΜΕΣ (Εδώ μέσα μπαίνουν όλα όσα θέλουν Navbar) */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/fields" element={<Fields />} />
+              <Route path="/fields/:fieldId" element={<FieldCrops />} />
+              <Route path="/fields/:fieldId/crops" element={<FieldCrops />} />
+              <Route path="/tasks" element={<GlobalTasks />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/profile" element={<Profile />} />
+            </Route>
 
-          {/* Redirects */}
-          <Route path="*" element={<Navigate to={isLoggedIn() ? "/dashboard" : "/login"} replace />} />
-        </Routes>
-      </Router>
+            {/* Redirects */}
+            <Route path="*" element={<AuthRedirect />} />
+          </Routes>
+        </Router>
+      </AuthProvider>
     </AppPreferencesProvider>
   );
+}
+
+function AuthRedirect() {
+  const { authLoading, isAuthenticated } = useAuth();
+  if (authLoading) return null;
+  return <Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />;
 }

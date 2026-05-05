@@ -1,21 +1,10 @@
 import { useState, useEffect } from "react";
 import { LayoutGrid, MapPinned, Sprout } from "lucide-react";
 import api from "../api/axios";
+import { useAuth } from "../context/auth-context";
 import { useAppPreferences } from "../i18n";
 import MapComponent from "./MapComponent";
 import { PageHeader, SectionCard, StatCard, Surface } from "./ui";
-
-function readStoredProfile() {
-  for (const key of ["profile", "user", "authUser", "currentUser"]) {
-    try {
-      const value = localStorage.getItem(key);
-      if (value) return JSON.parse(value);
-    } catch (err) {
-      console.warn("Αδυναμία ανάγνωσης profile context:", err);
-    }
-  }
-  return {};
-}
 
 function persistAssistantContext({ fields, tasks, weather }) {
   try {
@@ -30,10 +19,11 @@ function persistAssistantContext({ fields, tasks, weather }) {
 
 export default function Dashboard() {
   const { t } = useAppPreferences();
+  const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [advisorContext, setAdvisorContext] = useState({
     weather: null,
-    profile: readStoredProfile(),
+    profile: user || {},
     fields: [],
     tasks: [],
   });
@@ -82,7 +72,7 @@ export default function Dashboard() {
         if (!isMounted) return;
         const context = {
           weather: weatherResult.data,
-          profile: readStoredProfile(),
+          profile: user || {},
           fields,
           tasks,
         };
@@ -100,7 +90,7 @@ export default function Dashboard() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [user]);
 
   if (loading) return (
     <Surface className="flex min-h-[420px] items-center justify-center p-10">

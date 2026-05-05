@@ -4,18 +4,27 @@ import {
   BarChart3,
   Bell,
   CalendarDays,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  CloudRain,
+  Droplets,
   LayoutDashboard,
+  Leaf,
   LogOut,
   Map,
   Moon,
   Settings,
+  Shield,
   Sprout,
   Sun,
+  Tractor,
   UserCircle2,
+  Wind,
+  Wrench,
 } from "lucide-react";
 import api from "../api/axios";
+import { useAuth } from "../context/auth-context";
 import { useAppPreferences } from "../i18n";
 import { Button, Popover, Switch } from "./ui";
 
@@ -28,55 +37,6 @@ const formatDate = (value) => {
     month: "2-digit",
     day: "2-digit",
   });
-};
-
-const readAssistantContext = () => {
-  try {
-    const raw = window.localStorage.getItem("aiAssistantContext");
-    return raw ? JSON.parse(raw) : {};
-  } catch (err) {
-    console.warn("Αδυναμία ανάγνωσης ειδοποιήσεων AI:", err);
-    return {};
-  }
-};
-
-const readStoredProfile = () => {
-  for (const key of ["profile", "user", "authUser", "currentUser"]) {
-    try {
-      const raw = window.localStorage.getItem(key);
-      if (!raw) continue;
-      return JSON.parse(raw);
-    } catch (err) {
-      console.warn("Αδυναμία ανάγνωσης στοιχείων χρήστη:", err);
-    }
-  }
-
-  return {};
-};
-
-const buildAssistantAlerts = (context = {}) => {
-  const alerts = [];
-  const tasks = Array.isArray(context.tasks) ? context.tasks : [];
-
-  tasks.forEach((task) => {
-    const taskLabel = task?.taskType || task?.name || task?.title || "εργασία";
-    const dueDate = task?.dueDate || task?.deadline || task?.date || task?.due_date;
-    const formattedDate = formatDate(dueDate);
-    if (formattedDate) {
-      alerts.push(`Έχεις να κάνεις ${taskLabel} μέχρι την ${formattedDate}`);
-    }
-  });
-
-  const weatherCondition = context.weather?.condition || context.weather?.description || "";
-  const conditionText = String(weatherCondition).toLowerCase();
-  if (conditionText.includes("βροχ") || conditionText.includes("χαλάζ") || conditionText.includes("καταιγίδ")) {
-    const todayDate = formatDate(new Date().toISOString());
-    if (todayDate) {
-      alerts.push(`Έχεις να κάνεις έλεγχο του καιρού μέχρι την ${todayDate}`);
-    }
-  }
-
-  return alerts;
 };
 
 const navItems = [
@@ -109,43 +69,148 @@ function useOutsideClose(ref, onClose) {
   }, [onClose, ref]);
 }
 
+function getNotificationIcon(taskType = "") {
+  const type = String(taskType).toLowerCase();
+  if (type.includes("ποτ")) return Droplets;
+  if (type.includes("ψεκ")) return Wind;
+  if (type.includes("λιπ")) return Leaf;
+  if (type.includes("συγ")) return Sprout;
+  if (type.includes("κλαδ")) return Wrench;
+  if (type.includes("βροχ") || type.includes("καιρ")) return CloudRain;
+  if (type.includes("προστα") || type.includes("ασθεν")) return Shield;
+  return Tractor;
+}
+
+function getNotificationTone(taskType = "") {
+  const type = String(taskType).toLowerCase();
+  if (type.includes("ψεκ")) return "warning";
+  if (type.includes("ποτ")) return "info";
+  return "success";
+}
+
+const notificationToneClasses = {
+  info: {
+    card: "border-l-sky-500 bg-sky-50/80 dark:bg-sky-950/25",
+    icon: "bg-sky-100 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300",
+    meta: "text-sky-700 dark:text-sky-300",
+  },
+  warning: {
+    card: "border-l-amber-500 bg-amber-50/90 dark:bg-amber-950/20",
+    icon: "bg-amber-100 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300",
+    meta: "text-amber-700 dark:text-amber-300",
+  },
+  success: {
+    card: "border-l-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/20",
+    icon: "bg-emerald-100 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300",
+    meta: "text-emerald-700 dark:text-emerald-300",
+  },
+};
+
 function BellDropdown({ label }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [alerts] = useState(() => buildAssistantAlerts(readAssistantContext()));
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(false);
   const dropdownRef = useRef(null);
 
   useOutsideClose(dropdownRef, () => setIsOpen(false));
 
+  const fetchNotifications = async () => {
+    setLoading(true);
+    try {
+      const response = await api.get("/api/tasks/notifications");
+      setTasks(Array.isArray(response.data) ? response.data : []);
+    } catch (err) {
+      console.error("Σφάλμα φόρτωσης ειδοποιήσεων εργασιών:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const handleCheck = async (taskId) => {
+    try {
+      await api.patch(`/api/tasks/${taskId}/complete`);
+      setTasks((currentTasks) => currentTasks.filter((task) => task.id !== taskId));
+    } catch (err) {
+      console.error("Σφάλμα ολοκλήρωσης εργασίας από ειδοποίηση:", err);
+    }
+  };
+
   return (
     <div ref={dropdownRef} className="relative">
       <Button
-        onClick={() => setIsOpen((open) => !open)}
+        onClick={() => {
+          setIsOpen((open) => !open);
+          if (!isOpen) fetchNotifications();
+        }}
         variant="secondary"
         className="relative h-12 w-12 rounded-full p-3 text-slate-500 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300"
         aria-label={label}
       >
         <Bell className="h-6 w-6" />
-        {alerts.length > 0 && (
+        {tasks.length > 0 && (
           <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-black text-white">
-            {alerts.length}
+            {tasks.length}
           </span>
         )}
       </Button>
 
       {isOpen && (
-        <Popover className="w-[calc(100vw-2rem)] sm:w-80">
-          <div className="rounded-t-3xl border-b border-slate-200 px-4 py-3 text-sm font-semibold dark:border-slate-800">
-            AI Assistant
+        <Popover className="w-[calc(100vw-2rem)] sm:w-[420px] sm:max-w-[420px]">
+          <div className="rounded-t-3xl border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+            <p className="text-sm font-black text-slate-950 dark:text-slate-100">{label}</p>
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              {tasks.length ? `${tasks.length} επείγουσες εργασίες` : "Δεν υπάρχουν επείγουσες εργασίες"}
+            </p>
           </div>
-          <div className="max-h-72 space-y-2 overflow-y-auto p-4">
-            {alerts.length > 0 ? (
-              alerts.map((message, index) => (
-                <div key={index} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100">
-                  {message}
-                </div>
-              ))
+          <div className="max-h-96 space-y-3 overflow-y-auto p-4">
+            {loading ? (
+              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Loading...</p>
+            ) : tasks.length > 0 ? (
+              tasks.map((task) => {
+                const Icon = getNotificationIcon(task.taskType);
+                const tone = notificationToneClasses[getNotificationTone(task.taskType)];
+                return (
+                  <article
+                    key={task.id}
+                    className={`rounded-2xl border border-slate-200 border-l-4 p-4 shadow-sm dark:border-slate-800 ${tone.card}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${tone.icon}`}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-sm font-black text-slate-900 dark:text-slate-100">
+                            {task.taskType || "Task"}
+                          </h3>
+                          <span className={`text-[11px] font-black uppercase tracking-wide ${tone.meta}`}>
+                            {formatDate(task.taskDate) || "No date"}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                          {task.description || "Εκκρεμής εργασία που χρειάζεται έλεγχο."}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => handleCheck(task.id)}
+                        variant="success"
+                        size="sm"
+                        className="shrink-0 rounded-xl"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Check
+                      </Button>
+                    </div>
+                  </article>
+                );
+              })
             ) : (
-              <p className="text-sm text-slate-500">Δεν υπάρχουν ειδοποιήσεις αυτή τη στιγμή.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Δεν υπάρχουν ειδοποιήσεις αυτή τη στιγμή.</p>
             )}
           </div>
         </Popover>
@@ -457,31 +522,13 @@ function UserAvatar({ profile, className = "h-10 w-10", iconClassName = "h-6 w-6
 export default function AppShell() {
   const navigate = useNavigate();
   const { t } = useAppPreferences();
-  const [profile, setProfile] = useState(() => readStoredProfile());
+  const { clearAuth, user } = useAuth();
+  const profile = user || {};
 
-  useEffect(() => {
-    const syncProfile = (event) => {
-      setProfile(event.detail || readStoredProfile());
-    };
-    const syncStorageProfile = (event) => {
-      if (!event.key || ["profile", "user", "authUser", "currentUser"].includes(event.key)) {
-        setProfile(readStoredProfile());
-      }
-    };
-
-    window.addEventListener("profile-updated", syncProfile);
-    window.addEventListener("storage", syncStorageProfile);
-    return () => {
-      window.removeEventListener("profile-updated", syncProfile);
-      window.removeEventListener("storage", syncStorageProfile);
-    };
-  }, []);
-
-  const userName = profile.fullName || profile.name || t.shell.user;
+  const userName = profile.fullName || profile.name || profile.username || t.shell.user;
 
   const handleLogout = () => {
-    localStorage.clear();
-    sessionStorage.clear();
+    clearAuth();
     navigate("/login", { replace: true });
   };
 

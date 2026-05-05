@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import api from "../../api/axios";
+import { useAuth } from "../../context/auth-context";
 import { Button } from "../ui";
 
 function Layout({ children }) {
@@ -15,6 +16,7 @@ function Layout({ children }) {
 
 export default function Login() {
   const navigate = useNavigate();
+  const { loginWithToken } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -26,13 +28,10 @@ export default function Login() {
       const response = await api.post("/api/auth/login", { username, password });
       const { token } = response.data;
 
-      localStorage.removeItem("jwt");
-      sessionStorage.removeItem("jwt");
-
-      if (rememberMe) {
-        localStorage.setItem("jwt", token);
-      } else {
-        sessionStorage.setItem("jwt", token);
+      const profile = await loginWithToken(token, rememberMe);
+      if (!profile) {
+        setError("Η σύνδεση πέτυχε, αλλά δεν ήταν δυνατή η φόρτωση του προφίλ.");
+        return;
       }
 
       navigate("/dashboard", { replace: true });
@@ -44,7 +43,7 @@ export default function Login() {
 
   return (
     <Layout>
-      <h1 className="text-3xl font-bold text-green-600 mb-6 text-center">AgriManager 🚜</h1>
+      <h1 className="text-3xl font-bold text-green-600 mb-6 text-center">AgriManager</h1>
       <form onSubmit={handleLogin} className="space-y-4">
         <div>
           <label className="block text-gray-700">Username</label>

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Camera, CheckCircle2, KeyRound, Save, UserCircle2 } from "lucide-react";
 import {
   Button,
@@ -10,36 +10,21 @@ import {
   Surface,
 } from "./ui";
 import { useAppPreferences } from "../i18n";
-
-function getStoredUser() {
-  const candidates = ["user", "authUser", "currentUser", "profile"];
-
-  for (const key of candidates) {
-    try {
-      const value = localStorage.getItem(key);
-      if (!value) continue;
-      return JSON.parse(value);
-    } catch (err) {
-      console.warn("Αδυναμία ανάγνωσης στοιχείων χρήστη:", err);
-    }
-  }
-
-  return {};
-}
+import { useAuth } from "../context/auth-context";
 
 export default function Profile() {
   const { t } = useAppPreferences();
+  const { updateUser, user } = useAuth();
   const labels = t.profile || {};
-  const storedUser = useMemo(() => getStoredUser(), []);
   const fileInputRef = useRef(null);
   const [showSaved, setShowSaved] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [avatarPreview, setAvatarPreview] = useState(storedUser.profilePhoto || storedUser.avatarUrl || "");
+  const [avatarPreview, setAvatarPreview] = useState(user?.profilePhoto || user?.avatarUrl || "");
   const [formData, setFormData] = useState({
-    fullName: storedUser.fullName || storedUser.name || labels.defaultUser || "AgriManager User",
-    email: storedUser.email || storedUser.username || "user@agrimanager.local",
-    phone: storedUser.phone || "",
-    profilePhoto: storedUser.profilePhoto || storedUser.avatarUrl || "",
+    fullName: user?.fullName || user?.name || user?.username || labels.defaultUser || "AgriManager User",
+    email: user?.email || user?.username || "user@agrimanager.local",
+    phone: user?.phone || "",
+    profilePhoto: user?.profilePhoto || user?.avatarUrl || "",
   });
 
   const updateField = (field, value) => {
@@ -47,19 +32,26 @@ export default function Profile() {
     setShowSaved(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const profilePayload = {
       fullName: formData.fullName,
-      name: formData.fullName,
-      email: formData.email,
       phone: formData.phone,
       profilePhoto: avatarPreview,
-      avatarUrl: avatarPreview,
     };
 
-    localStorage.setItem("profile", JSON.stringify(profilePayload));
-    window.dispatchEvent(new CustomEvent("profile-updated", { detail: profilePayload }));
-    console.log("Profile saved:", profilePayload);
+    const updatedProfile = await updateUser(profilePayload);
+    if (!updatedProfile) {
+      alert(labels.saveError || "Profile could not be saved.");
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      fullName: updatedProfile.fullName || "",
+      phone: updatedProfile.phone || "",
+      profilePhoto: updatedProfile.profilePhoto || "",
+    }));
+    setAvatarPreview(updatedProfile.profilePhoto || "");
     setShowSaved(true);
     window.setTimeout(() => setShowSaved(false), 3000);
   };
