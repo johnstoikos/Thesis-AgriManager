@@ -15,6 +15,7 @@ export function Button({
 }) {
   const variantClasses = {
     primary: "bg-emerald-950 text-white shadow-md hover:-translate-y-0.5 hover:bg-emerald-900 hover:shadow-lg",
+    success: "bg-emerald-600 text-white shadow-md hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-lg",
     secondary: "bg-white text-slate-700 border border-slate-200 shadow-sm hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800",
     sky: "bg-sky-500 text-white shadow-md hover:-translate-y-0.5 hover:bg-sky-600 hover:shadow-lg",
     danger: "bg-rose-600 text-white shadow-md hover:-translate-y-0.5 hover:bg-rose-700 hover:shadow-lg",
@@ -53,6 +54,50 @@ export function Surface({ children, className = "" }) {
     >
       {children}
     </div>
+  );
+}
+
+export function Popover({ children, className = "", align = "right" }) {
+  const alignClasses = {
+    right: "right-0",
+    left: "left-0",
+  };
+
+  return (
+    <Surface
+      className={cn(
+        "absolute z-[1300] mt-2 w-[calc(100vw-2rem)] max-w-sm origin-top-right overflow-hidden p-0 animate-[popover-enter_0.16s_ease-out] sm:w-96",
+        alignClasses[align],
+        className
+      )}
+    >
+      {children}
+    </Surface>
+  );
+}
+
+export function Switch({ checked, onChange, className = "", disabled = false, "aria-label": ariaLabel }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel}
+      disabled={disabled}
+      onClick={() => onChange?.(!checked)}
+      className={cn(
+        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border border-transparent transition focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-slate-950",
+        checked ? "bg-emerald-600" : "bg-slate-300 dark:bg-slate-700",
+        className
+      )}
+    >
+      <span
+        className={cn(
+          "inline-block h-5 w-5 rounded-full bg-white shadow transition",
+          checked ? "translate-x-5" : "translate-x-0.5"
+        )}
+      />
+    </button>
   );
 }
 

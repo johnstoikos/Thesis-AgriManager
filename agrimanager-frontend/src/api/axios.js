@@ -4,14 +4,16 @@ const api = axios.create({
   baseURL: 'http://localhost:8080',
 });
 
+const getStoredToken = () => localStorage.getItem('jwt') || sessionStorage.getItem('jwt');
+
 api.interceptors.request.use(
   (config) => {
     // Αν το URL περιέχει "login", μη στέλνεις Authorization header
-    if (config.url.includes('/api/auth/login')) {
+    if (config.url?.includes('/api/auth/login')) {
       return config;
     }
 
-    const token = localStorage.getItem('jwt');
+    const token = getStoredToken();
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -19,4 +21,21 @@ api.interceptors.request.use(
   },
   (error) => Promise.reject(error)
 );
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.clear();
+      sessionStorage.clear();
+
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
 export default api; // ΑΥΤΗ Η ΓΡΑΜΜΗ ΕΙΝΑΙ Η ΚΡΙΣΙΜΗ

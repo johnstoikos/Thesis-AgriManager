@@ -27,20 +27,17 @@ import {
 import * as turf from "@turf/turf";
 import api from "../api/axios";
 import { Button, EmptyState, ErrorState, SectionCard, SkeletonLines, StatCard, Surface } from "./ui";
+import { useAppPreferences } from "../i18n";
 
 const CROP_COLORS = ["#059669", "#0f766e", "#84a98c", "#22c55e", "#14b8a6", "#64748b"];
-const TASK_COLORS = {
-  Εκκρεμείς: "#f59e0b",
-  Ολοκληρωμένες: "#10b981",
-  Άγνωστη: "#64748b",
-};
-const TASK_STATUS_LABELS = {
-  PENDING: "Εκκρεμείς",
-  COMPLETED: "Ολοκληρωμένες",
+const TASK_STATUS_COLORS = {
+  PENDING: "#f59e0b",
+  COMPLETED: "#10b981",
+  UNKNOWN: "#64748b",
 };
 
-function formatSquareMeters(value) {
-  return new Intl.NumberFormat("el-GR", {
+function formatSquareMeters(value, locale = "en-US") {
+  return new Intl.NumberFormat(locale, {
     maximumFractionDigits: 0,
   }).format(value);
 }
@@ -134,6 +131,8 @@ function GreekTooltip({ active, payload, label, valueSuffix = "" }) {
 }
 
 export default function Analytics() {
+  const { t } = useAppPreferences();
+  const labels = t.analytics || {};
   const [fields, setFields] = useState([]);
   const [crops, setCrops] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -173,18 +172,18 @@ export default function Analytics() {
         setTasks(allTasks);
       } catch (err) {
         console.error("Σφάλμα φόρτωσης analytics:", err);
-        setError("Αποτυχία φόρτωσης στατιστικών. Προσπαθήστε ξανά.");
+        setError(labels.loadError || "Failed to load analytics. Please try again.");
       } finally {
         setLoading(false);
       }
     };
 
     fetchAnalyticsData();
-  }, []);
+  }, [labels.loadError]);
 
   const cropData = useMemo(() => {
     const grouped = crops.reduce((acc, crop) => {
-      const name = crop.type || "Άγνωστη καλλιέργεια";
+      const name = crop.type || labels.unknownCrop || "Unknown crop";
       const area = getCropStremmata(crop);
       acc[name] = (acc[name] || 0) + area;
       return acc;
@@ -194,11 +193,11 @@ export default function Analytics() {
       .map(([name, value]) => ({ name, value: Number(value.toFixed(2)) }))
       .filter((entry) => entry.value > 0)
       .sort((a, b) => b.value - a.value);
-  }, [crops]);
+  }, [crops, labels.unknownCrop]);
 
   const cropCountData = useMemo(() => {
     const grouped = crops.reduce((acc, crop) => {
-      const name = crop.type || "Άγνωστη καλλιέργεια";
+      const name = crop.type || labels.unknownCrop || "Unknown crop";
       acc[name] = (acc[name] || 0) + 1;
       return acc;
     }, {});
@@ -206,22 +205,28 @@ export default function Analytics() {
     return Object.entries(grouped)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
-  }, [crops]);
+  }, [crops, labels.unknownCrop]);
 
   const cropChartData = cropData.length > 0 ? cropData : cropCountData;
   const cropChartUsesArea = cropData.length > 0;
 
   const taskData = useMemo(() => {
     const grouped = tasks.reduce((acc, task) => {
-      const name = TASK_STATUS_LABELS[task.status] || "Άγνωστη";
-      acc[name] = (acc[name] || 0) + 1;
+      const status = task.status || "UNKNOWN";
+      acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, {});
 
-    return ["Εκκρεμείς", "Ολοκληρωμένες", "Άγνωστη"]
-      .filter((name) => grouped[name])
-      .map((name) => ({ name, value: grouped[name] }));
-  }, [tasks]);
+    const statusLabels = {
+      PENDING: labels.pending || "Pending",
+      COMPLETED: labels.completedStatus || "Completed",
+      UNKNOWN: labels.unknown || "Unknown",
+    };
+
+    return ["PENDING", "COMPLETED", "UNKNOWN"]
+      .filter((status) => grouped[status])
+      .map((status) => ({ status, name: statusLabels[status], value: grouped[status] }));
+  }, [labels.completedStatus, labels.pending, labels.unknown, tasks]);
 
   const stats = useMemo(() => {
     const totalFieldSquareMeters = fields.reduce((sum, field) => sum + getFieldSquareMeters(field), 0);
@@ -358,7 +363,7 @@ export default function Analytics() {
             node.style.overflow = "visible";
           });
 
-          const chartColors = [...CROP_COLORS, ...Object.values(TASK_COLORS), "#0f172a", "#94a3b8"];
+          const chartColors = [...CROP_COLORS, ...Object.values(TASK_STATUS_COLORS), "#0f172a", "#94a3b8"];
           clonedArea.querySelectorAll("svg").forEach((svg) => {
             svg.style.backgroundColor = "transparent";
             svg.style.overflow = "visible";
@@ -418,7 +423,7 @@ export default function Analytics() {
       pdf.save("AgriManager_Analytics.pdf");
     } catch (err) {
       console.error("Σφάλμα εξαγωγής analytics PDF:", err);
-      alert("Αποτυχία εξαγωγής PDF.");
+      alert(labels.exportError || "PDF export failed.");
     } finally {
       exportArea.style.width = previousWidth;
       exportArea.style.minWidth = previousMinWidth;
@@ -433,7 +438,7 @@ export default function Analytics() {
   if (error) {
     return (
       <ErrorState
-        title="Δεν ήταν δυνατή η φόρτωση των analytics"
+        title={labels.loadErrorTitle || "Could not load analytics"}
         description={error}
       />
     );
@@ -445,27 +450,27 @@ export default function Analytics() {
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700">
-              Αναλυτικά στοιχεία
+              {labels.eyebrow || "Analytics"}
             </p>
             <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
-              Πίνακας Analytics
+              {labels.title || "Analytics Board"}
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-              Συγκεντρωτική εικόνα εκτάσεων, ενεργών ζωνών και εργασιών για {stats.totalFields} χωράφια.
+              {(labels.description || "A consolidated view across {count} fields.").replace("{count}", stats.totalFields)}
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:min-w-80">
             <Button onClick={handleExportPDF} variant="secondary" className="self-start sm:self-end">
               <Download className="h-4 w-4" />
-              Εξαγωγή σε PDF
+              {labels.exportPdf || "Export PDF"}
             </Button>
             <div className="grid grid-cols-2 gap-3 rounded-3xl border border-white/70 bg-emerald-950 p-4 text-white shadow-2xl shadow-emerald-950/10">
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-emerald-100/80">Εργασίες</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-emerald-100/80">{labels.tasks || "Tasks"}</p>
                 <p className="mt-1 text-3xl font-black">{stats.totalTasks}</p>
               </div>
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-emerald-100/80">Ολοκληρώθηκαν</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-emerald-100/80">{labels.completed || "Completed"}</p>
                 <p className="mt-1 text-3xl font-black">{stats.completedTasks}</p>
               </div>
             </div>
@@ -486,30 +491,30 @@ export default function Analytics() {
             <>
               <StatCard
                 icon={Layers3}
-                title="Συνολική Έκταση"
-                value={`${formatSquareMeters(stats.totalFieldSquareMeters)} m²`}
-                helper="Άθροισμα έκτασης όλων των χωραφιών"
+                title={labels.totalArea || "Total Area"}
+                value={`${formatSquareMeters(stats.totalFieldSquareMeters, labels.squareMetersLocale)} m²`}
+                helper={labels.totalAreaHelper || "Sum of all field areas"}
                 tone="emerald"
               />
               <StatCard
                 icon={Sprout}
-                title="Ενεργές Ζώνες"
+                title={labels.activeZones || "Active Zones"}
                 value={stats.activeZones}
-                helper="Καταγεγραμμένες καλλιέργειες"
+                helper={labels.activeZonesHelper || "Registered crop zones"}
                 tone="sky"
               />
               <StatCard
                 icon={CheckCircle2}
-                title="Ποσοστό Ολοκλήρωσης"
+                title={labels.completionRate || "Completion Rate"}
                 value={`${stats.completionPercentage}%`}
-                helper="Ολοκληρωμένες προς σύνολο εργασιών"
+                helper={labels.completionRateHelper || "Completed tasks over all tasks"}
                 tone="emerald"
               />
               <StatCard
                 icon={AlertTriangle}
-                title="Εκκρεμότητες"
+                title={labels.pendingTasks || "Pending"}
                 value={stats.pendingTasks}
-                helper="Εργασίες που χρειάζονται ενέργεια"
+                helper={labels.pendingTasksHelper || "Tasks that need action"}
                 tone="amber"
               />
             </>
@@ -518,13 +523,13 @@ export default function Analytics() {
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <SectionCard
-            title="Κατανομή Καλλιεργειών"
+            title={labels.cropDistribution || "Crop Distribution"}
             description={
               cropChartUsesArea
-                ? "Ομαδοποίηση ανά τύπο καλλιέργειας και συνολική έκταση σε στρέμματα."
-                : "Ομαδοποίηση ανά τύπο καλλιέργειας με βάση το πλήθος ζωνών, επειδή δεν υπάρχει διαθέσιμη έκταση ζώνης."
+                ? labels.cropDistributionAreaDescription || "Grouped by crop type and total area in stremmata."
+                : labels.cropDistributionCountDescription || "Grouped by crop type by zone count because zone area is unavailable."
             }
-            badge="Καλλιέργειες"
+            badge={labels.cropsBadge || "Crops"}
             side={<BarChart3 className="h-6 w-6 text-emerald-700" />}
           >
             {loading ? (
@@ -532,8 +537,8 @@ export default function Analytics() {
             ) : cropChartData.length === 0 ? (
               <ChartEmptyState
                 icon={Sprout}
-                title="Δεν υπάρχουν δεδομένα καλλιεργειών"
-                description="Μόλις προστεθούν ζώνες καλλιεργειών, η κατανομή θα εμφανιστεί εδώ."
+                title={labels.noCropData || "No crop data"}
+                description={labels.noCropDataDescription || "Once crop zones are added, the distribution will appear here."}
               />
             ) : (
               <div className="h-[340px]">
@@ -567,9 +572,9 @@ export default function Analytics() {
           </SectionCard>
 
           <SectionCard
-            title="Ανάλυση Εργασιών"
-            description="Σύγκριση κατάστασης εργασιών με άμεση εικόνα εκκρεμοτήτων και ολοκλήρωσης."
-            badge="Εργασίες"
+            title={labels.taskAnalysis || "Task Analysis"}
+            description={labels.taskAnalysisDescription || "Compare task status with a quick view of pending and completed work."}
+            badge={labels.tasks || "Tasks"}
             side={<Activity className="h-6 w-6 text-amber-600" />}
           >
             {loading ? (
@@ -577,8 +582,8 @@ export default function Analytics() {
             ) : taskData.length === 0 ? (
               <ChartEmptyState
                 icon={ClipboardList}
-                title="Δεν υπάρχουν δεδομένα εργασιών"
-                description="Οι εργασίες θα εμφανιστούν εδώ όταν συνδεθούν με καλλιέργειες."
+                title={labels.noTaskData || "No task data"}
+                description={labels.noTaskDataDescription || "Tasks will appear here when they are linked with crops."}
               />
             ) : (
               <div className="h-[340px]">
@@ -599,12 +604,12 @@ export default function Analytics() {
                     />
                     <Tooltip content={<GreekTooltip />} />
                     <Legend
-                      formatter={() => <span className="text-sm font-semibold text-slate-600">Πλήθος εργασιών</span>}
+                      formatter={() => <span className="text-sm font-semibold text-slate-600">{labels.taskCount || "Task count"}</span>}
                       iconType="circle"
                     />
-                    <Bar dataKey="value" name="Πλήθος εργασιών" radius={[14, 14, 6, 6]}>
+                    <Bar dataKey="value" name={labels.taskCount || "Task count"} radius={[14, 14, 6, 6]}>
                       {taskData.map((entry) => (
-                        <Cell key={entry.name} fill={TASK_COLORS[entry.name] || TASK_COLORS.Άγνωστη} />
+                        <Cell key={entry.name} fill={TASK_STATUS_COLORS[entry.status] || TASK_STATUS_COLORS.UNKNOWN} />
                       ))}
                     </Bar>
                   </BarChart>

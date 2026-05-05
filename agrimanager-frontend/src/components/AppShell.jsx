@@ -1,19 +1,23 @@
-import { createElement, useEffect, useRef, useState } from "react";
+import { createElement, useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   BarChart3,
   Bell,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   LayoutDashboard,
   LogOut,
   Map,
   Moon,
+  Settings,
   Sprout,
   Sun,
   UserCircle2,
 } from "lucide-react";
+import api from "../api/axios";
 import { useAppPreferences } from "../i18n";
-import { Button } from "./ui";
+import { Button, Popover, Switch } from "./ui";
 
 const formatDate = (value) => {
   if (!value) return null;
@@ -34,6 +38,20 @@ const readAssistantContext = () => {
     console.warn("Αδυναμία ανάγνωσης ειδοποιήσεων AI:", err);
     return {};
   }
+};
+
+const readStoredProfile = () => {
+  for (const key of ["profile", "user", "authUser", "currentUser"]) {
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (!raw) continue;
+      return JSON.parse(raw);
+    } catch (err) {
+      console.warn("Αδυναμία ανάγνωσης στοιχείων χρήστη:", err);
+    }
+  }
+
+  return {};
 };
 
 const buildAssistantAlerts = (context = {}) => {
@@ -69,30 +87,44 @@ const navItems = [
   { to: "/profile", labelKey: "profile", icon: UserCircle2 },
 ];
 
-function BellDropdown() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [alerts] = useState(() => buildAssistantAlerts(readAssistantContext()));
-  const dropdownRef = useRef(null);
+const dateKey = (date) => {
+  const current = new Date(date);
+  if (Number.isNaN(current.getTime())) return "";
+  return [
+    current.getFullYear(),
+    String(current.getMonth() + 1).padStart(2, "0"),
+    String(current.getDate()).padStart(2, "0"),
+  ].join("-");
+};
 
+function useOutsideClose(ref, onClose) {
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
+      if (ref.current && !ref.current.contains(event.target)) {
+        onClose();
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [onClose, ref]);
+}
+
+function BellDropdown({ label }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [alerts] = useState(() => buildAssistantAlerts(readAssistantContext()));
+  const dropdownRef = useRef(null);
+
+  useOutsideClose(dropdownRef, () => setIsOpen(false));
 
   return (
     <div ref={dropdownRef} className="relative">
       <Button
         onClick={() => setIsOpen((open) => !open)}
         variant="secondary"
-        className="relative h-11 w-11 rounded-2xl p-0 text-slate-500 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300"
-        aria-label="Notifications"
+        className="relative h-12 w-12 rounded-full p-3 text-slate-500 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300"
+        aria-label={label}
       >
-        <Bell className="h-5 w-5" />
+        <Bell className="h-6 w-6" />
         {alerts.length > 0 && (
           <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-black text-white">
             {alerts.length}
@@ -101,14 +133,14 @@ function BellDropdown() {
       </Button>
 
       {isOpen && (
-        <div className="absolute right-0 z-20 mt-2 w-80 rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-950">
+        <Popover className="w-[calc(100vw-2rem)] sm:w-80">
           <div className="rounded-t-3xl border-b border-slate-200 px-4 py-3 text-sm font-semibold dark:border-slate-800">
             AI Assistant
           </div>
           <div className="max-h-72 space-y-2 overflow-y-auto p-4">
             {alerts.length > 0 ? (
               alerts.map((message, index) => (
-                <div key={index} className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100">
+                <div key={index} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100">
                   {message}
                 </div>
               ))
@@ -116,18 +148,340 @@ function BellDropdown() {
               <p className="text-sm text-slate-500">Δεν υπάρχουν ειδοποιήσεις αυτή τη στιγμή.</p>
             )}
           </div>
-        </div>
+        </Popover>
       )}
     </div>
   );
 }
 
+function SettingsPopover({ onLogout }) {
+  const { language, setLanguage, theme, toggleTheme, t } = useAppPreferences();
+  const [isOpen, setIsOpen] = useState(false);
+  const popoverRef = useRef(null);
+
+  useOutsideClose(popoverRef, () => setIsOpen(false));
+
+  return (
+    <div ref={popoverRef} className="relative">
+      <Button
+        onClick={() => setIsOpen((open) => !open)}
+        variant="secondary"
+        className="h-12 w-12 rounded-full p-3 text-slate-500 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300"
+        aria-label={t.shell.settings}
+      >
+        <Settings className="h-6 w-6" />
+      </Button>
+
+      {isOpen && (
+        <Popover>
+          <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+            <p className="text-sm font-black text-slate-950 dark:text-slate-100">{t.shell.settings}</p>
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t.shell.appearance}</p>
+          </div>
+
+          <div className="space-y-4 p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                  {theme === "dark" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+                </div>
+                <div>
+                  <p className="text-sm font-black text-slate-900 dark:text-slate-100">{t.shell.darkMode}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{theme === "dark" ? "Dark" : "Light"}</p>
+                </div>
+              </div>
+              <Switch checked={theme === "dark"} onChange={toggleTheme} aria-label={t.shell.darkMode} />
+            </div>
+
+            <div>
+              <p className="mb-2 text-xs font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                {t.shell.language}
+              </p>
+              <div className="grid grid-cols-2 rounded-2xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-950">
+                {["el", "en"].map((code) => (
+                  <Button
+                    key={code}
+                    onClick={() => setLanguage(code)}
+                    variant="ghost"
+                    size="sm"
+                    className={[
+                      "h-10 rounded-xl shadow-none",
+                      language === code
+                        ? "bg-emerald-950 text-white hover:bg-emerald-950 dark:bg-emerald-500 dark:text-slate-950 dark:hover:bg-emerald-500"
+                        : "text-slate-600 dark:text-slate-300",
+                    ].join(" ")}
+                  >
+                    {code.toUpperCase()}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-200 p-4 dark:border-slate-800">
+            <Button onClick={onLogout} variant="danger" className="w-full">
+              <LogOut className="h-4 w-4" />
+              {t.shell.logout}
+            </Button>
+          </div>
+        </Popover>
+      )}
+    </div>
+  );
+}
+
+function CalendarPopover() {
+  const { language, t } = useAppPreferences();
+  const [isOpen, setIsOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [tasks, setTasks] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [visibleMonth, setVisibleMonth] = useState(() => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
+  const popoverRef = useRef(null);
+
+  useOutsideClose(popoverRef, () => setIsOpen(false));
+
+  useEffect(() => {
+    if (!isOpen || loaded) return;
+
+    let isMounted = true;
+    const fetchTasks = async () => {
+      setLoading(true);
+      try {
+        const fieldsRes = await api.get("/api/fields");
+        const fields = Array.isArray(fieldsRes.data) ? fieldsRes.data : [];
+        const cropsByFieldResults = await Promise.allSettled(
+          fields.map((field) => api.get(`/api/crops/field/${field.id}`))
+        );
+
+        const crops = [];
+        const cropLookup = {};
+        cropsByFieldResults.forEach((result, index) => {
+          if (result.status !== "fulfilled") return;
+          const field = fields[index];
+          const fieldCrops = Array.isArray(result.value?.data) ? result.value.data : [];
+          fieldCrops.forEach((crop) => {
+            crops.push(crop);
+            cropLookup[crop.id] = {
+              cropName: crop.type || `Crop #${crop.id}`,
+              fieldName: field.name || `Field #${field.id}`,
+            };
+          });
+        });
+
+        const tasksByCropResults = await Promise.allSettled(
+          crops.map((crop) => api.get(`/api/tasks/crop/${crop.id}`))
+        );
+        const mergedTasks = [];
+        tasksByCropResults.forEach((result) => {
+          if (result.status !== "fulfilled") return;
+          const cropTasks = Array.isArray(result.value?.data) ? result.value.data : [];
+          cropTasks.forEach((task) => mergedTasks.push({ ...task, cropInfo: cropLookup[task.cropId] }));
+        });
+
+        if (isMounted) {
+          setTasks(mergedTasks);
+          setLoaded(true);
+        }
+      } catch (err) {
+        console.error("Σφάλμα φόρτωσης mini calendar:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchTasks();
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, loaded]);
+
+  const upcomingTasks = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return tasks
+      .filter((task) => task.taskDate && new Date(task.taskDate) >= today)
+      .sort((a, b) => new Date(a.taskDate) - new Date(b.taskDate))
+      .slice(0, 5);
+  }, [tasks]);
+
+  const taskDates = useMemo(() => new Set(tasks.map((task) => dateKey(task.taskDate)).filter(Boolean)), [tasks]);
+  const monthDays = useMemo(() => {
+    const year = visibleMonth.getFullYear();
+    const month = visibleMonth.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(year, month, 1).getDay();
+    const mondayOffset = (firstDay + 6) % 7;
+    return [
+      ...Array.from({ length: mondayOffset }, () => null),
+      ...Array.from({ length: daysInMonth }, (_, index) => new Date(year, month, index + 1)),
+    ];
+  }, [visibleMonth]);
+
+  const formatterLocale = language === "el" ? "el-GR" : "en-US";
+  const goToPreviousMonth = () => {
+    setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1));
+  };
+  const goToNextMonth = () => {
+    setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1));
+  };
+
+  return (
+    <div ref={popoverRef} className="relative">
+      <Button
+        onClick={() => setIsOpen((open) => !open)}
+        variant="secondary"
+        className="h-12 w-12 rounded-full p-3 text-slate-500 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300"
+        aria-label={t.shell.calendar}
+      >
+        <CalendarDays className="h-6 w-6" />
+      </Button>
+
+      {isOpen && (
+        <Popover className="sm:w-[420px] sm:max-w-[420px]">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+            <Button
+              type="button"
+              onClick={goToPreviousMonth}
+              variant="ghost"
+              size="sm"
+              className="h-9 w-9 rounded-full p-0"
+              aria-label={t.tasks?.previous || "Previous"}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <div className="min-w-0 text-center">
+              <p className="text-sm font-black text-slate-950 dark:text-slate-100">{t.shell.calendar}</p>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                {visibleMonth.toLocaleDateString(formatterLocale, { month: "long", year: "numeric" })}
+              </p>
+            </div>
+            <Button
+              type="button"
+              onClick={goToNextMonth}
+              variant="ghost"
+              size="sm"
+              className="h-9 w-9 rounded-full p-0"
+              aria-label={t.tasks?.next || "Next"}
+            >
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+          </div>
+
+          <div className="p-4">
+            <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-black uppercase text-slate-400">
+              {["M", "T", "W", "T", "F", "S", "S"].map((day, index) => (
+                <span key={`${day}-${index}`}>{day}</span>
+              ))}
+            </div>
+            <div className="mt-2 grid grid-cols-7 gap-1">
+              {monthDays.map((day, index) => {
+                const isToday = day && dateKey(day) === dateKey(new Date());
+                const hasTask = day && taskDates.has(dateKey(day));
+                return (
+                  <div
+                    key={day ? dateKey(day) : `blank-${index}`}
+                    className={[
+                      "relative flex aspect-square items-center justify-center rounded-xl text-xs font-bold",
+                      day ? "text-slate-700 dark:text-slate-200" : "",
+                      isToday ? "bg-emerald-950 text-white dark:bg-emerald-500 dark:text-slate-950" : "bg-slate-50 dark:bg-slate-900",
+                    ].join(" ")}
+                  >
+                    {day ? day.getDate() : ""}
+                    {hasTask && <span className="absolute bottom-1 h-1.5 w-1.5 rounded-full bg-amber-500" />}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-800">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                {t.shell.upcomingTasks}
+              </p>
+              <div className="mt-3 max-h-56 space-y-2 overflow-y-auto">
+                {loading ? (
+                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Loading...</p>
+                ) : upcomingTasks.length > 0 ? (
+                  upcomingTasks.map((task) => (
+                    <div key={task.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-black text-slate-900 dark:text-slate-100">
+                            {task.taskType || "Task"}
+                          </p>
+                          <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                            {task.cropInfo?.fieldName || task.cropInfo?.cropName || ""}
+                          </p>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] font-black text-emerald-700 ring-1 ring-slate-200 dark:bg-slate-950 dark:text-emerald-300 dark:ring-slate-700">
+                          {formatDate(task.taskDate)}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{t.shell.noUpcomingTasks}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </Popover>
+      )}
+    </div>
+  );
+}
+
+function UserAvatar({ profile, className = "h-10 w-10", iconClassName = "h-6 w-6" }) {
+  const avatar = profile?.profilePhoto || profile?.avatarUrl || "";
+  const name = profile?.fullName || profile?.name || "AgriManager User";
+
+  return (
+    <span className={[
+      "inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-emerald-100 text-emerald-800 ring-1 ring-white/20",
+      className,
+    ].join(" ")}
+    >
+      {avatar ? (
+        <img src={avatar} alt={name} className="h-full w-full rounded-full object-cover" decoding="async" />
+      ) : (
+        <UserCircle2 className={iconClassName} />
+      )}
+    </span>
+  );
+}
+
 export default function AppShell() {
   const navigate = useNavigate();
-  const { language, setLanguage, theme, toggleTheme, t } = useAppPreferences();
+  const { t } = useAppPreferences();
+  const [profile, setProfile] = useState(() => readStoredProfile());
+
+  useEffect(() => {
+    const syncProfile = (event) => {
+      setProfile(event.detail || readStoredProfile());
+    };
+    const syncStorageProfile = (event) => {
+      if (!event.key || ["profile", "user", "authUser", "currentUser"].includes(event.key)) {
+        setProfile(readStoredProfile());
+      }
+    };
+
+    window.addEventListener("profile-updated", syncProfile);
+    window.addEventListener("storage", syncStorageProfile);
+    return () => {
+      window.removeEventListener("profile-updated", syncProfile);
+      window.removeEventListener("storage", syncStorageProfile);
+    };
+  }, []);
+
+  const userName = profile.fullName || profile.name || t.shell.user;
 
   const handleLogout = () => {
-    localStorage.removeItem("jwt");
+    localStorage.clear();
+    sessionStorage.clear();
     navigate("/login", { replace: true });
   };
 
@@ -165,22 +519,10 @@ export default function AppShell() {
         </nav>
 
         <div className="mt-auto rounded-3xl border border-white/10 bg-white/10 p-4 backdrop-blur-md">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-100/70">{t.shell.account}</p>
-          <div className="mt-3 flex items-center gap-3">
-            <UserCircle2 className="h-9 w-9 text-emerald-100" />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-black">{t.shell.user}</p>
-              <p className="text-xs text-emerald-100/70">{t.shell.activeSession}</p>
-            </div>
+          <div className="flex items-center gap-3">
+            <UserAvatar profile={profile} className="h-11 w-11" iconClassName="h-8 w-8" />
+            <p className="min-w-0 truncate text-sm font-black">{userName}</p>
           </div>
-          <Button
-            onClick={handleLogout}
-            variant="ghost"
-            className="mt-4 w-full rounded-2xl bg-white/10 text-white hover:bg-white/20"
-          >
-            <LogOut className="h-4 w-4" />
-            {t.shell.logout}
-          </Button>
         </div>
       </aside>
 
@@ -192,45 +534,11 @@ export default function AppShell() {
               AgriManager
             </NavLink>
 
-            <div className="inline-flex rounded-2xl border border-slate-200 bg-white/80 p-1 shadow-sm dark:border-slate-700 dark:bg-slate-900/80">
-              {["el", "en"].map((code) => (
-                <Button
-                  key={code}
-                  onClick={() => setLanguage(code)}
-                  variant="ghost"
-                  size="sm"
-                  className={[
-                    "h-9 min-w-10 rounded-xl px-2 text-xs font-black transition",
-                    language === code
-                      ? "bg-emerald-950 text-white dark:bg-emerald-500 dark:text-slate-950"
-                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100",
-                  ].join(" ")}
-                >
-                  {code.toUpperCase()}
-                </Button>
-              ))}
+            <div className="ml-auto flex min-w-0 items-center gap-2">
+              <BellDropdown label={t.shell.notifications} />
+              <CalendarPopover />
+              <SettingsPopover onLogout={handleLogout} />
             </div>
-
-            <Button
-              onClick={toggleTheme}
-              variant="secondary"
-              className="h-11 w-11 rounded-2xl p-0 text-slate-500 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300"
-              aria-label="Toggle theme"
-            >
-              {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            </Button>
-
-            <BellDropdown />
-
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => navigate("/tasks?view=calendar")}
-              className="h-11 rounded-2xl px-3"
-            >
-              <CalendarDays className="h-4 w-4" />
-              <span className="hidden sm:inline">Calendar</span>
-            </Button>
           </div>
           <nav className="mx-auto mt-3 flex max-w-7xl gap-2 overflow-x-auto lg:hidden">
             {navItems.map((item) => (

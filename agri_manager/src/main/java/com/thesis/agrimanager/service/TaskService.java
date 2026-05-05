@@ -67,4 +67,18 @@ public class TaskService {
 
         return convertToDTO(taskRepository.save(task));
     }
+
+    public void deleteTask(Long taskId, String username) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Η εργασία δεν βρέθηκε"));
+
+        // Έλεγχος ιδιοκτησίας: Μόνο ο ιδιοκτήτης του χωραφιού μπορεί να σβήσει την εργασία
+        String ownerUsername = task.getCrop().getField().getOwner().getUsername();
+
+        if (!ownerUsername.equals(username)) {
+            throw new RuntimeException("Δεν έχετε δικαίωμα να διαγράψετε αυτή την εργασία!");
+        }
+
+        taskRepository.delete(task);
+    }
 }

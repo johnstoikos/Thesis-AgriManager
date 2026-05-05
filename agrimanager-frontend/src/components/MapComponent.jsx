@@ -24,7 +24,7 @@ const yellowIcon = new L.Icon({
 });
 
 function getTaskMarkerMeta(taskType = "") {
-  const type = taskType.toLowerCase();
+  const type = taskType ? String(taskType).toLowerCase() : "default";
   if (type.includes("ποτ")) return { color: "#2563eb", label: "Π" };
   if (type.includes("λιπ")) return { color: "#eab308", label: "Λ" };
   if (type.includes("ψεκ")) return { color: "#7c3aed", label: "Ψ" };

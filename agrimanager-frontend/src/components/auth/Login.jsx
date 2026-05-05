@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import api from "../../api/axios";
 import { Button } from "../ui";
@@ -14,16 +14,28 @@ function Layout({ children }) {
 }
 
 export default function Login() {
+  const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
 
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
       const response = await api.post("/api/auth/login", { username, password });
-      localStorage.setItem("jwt", response.data.token);
-      window.location.href = "/dashboard";
+      const { token } = response.data;
+
+      localStorage.removeItem("jwt");
+      sessionStorage.removeItem("jwt");
+
+      if (rememberMe) {
+        localStorage.setItem("jwt", token);
+      } else {
+        sessionStorage.setItem("jwt", token);
+      }
+
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       console.error("Σφάλμα σύνδεσης:", err);
       setError("Λάθος στοιχεία ή πρόβλημα σύνδεσης");
@@ -54,6 +66,15 @@ export default function Login() {
             required
           />
         </div>
+        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+          />
+          Remember Me
+        </label>
         {error && <p className="text-red-500 text-sm">{error}</p>}
         <Button
           type="submit" 

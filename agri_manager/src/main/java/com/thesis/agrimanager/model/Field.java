@@ -56,7 +56,7 @@ public class Field {
     public void setArea(Double area) { this.area = area; }
 
     @OneToMany(mappedBy = "field", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Crop> crops = new ArrayList<>();
+    private List<Crop> crops;
 
     // Getter και Setter
     public List<Crop> getCrops() { return crops; }

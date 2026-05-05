@@ -4,8 +4,11 @@ import api from "../api/axios";
 import MapComponent from "./MapComponent";
 import * as turf from '@turf/turf';
 import { Button, FieldInput, FieldLabel, ModalShell, Surface } from "./ui";
+import { useAppPreferences } from "../i18n";
 
 export default function Fields() {
+  const { t } = useAppPreferences();
+  const labels = t.fields || {};
   const [fields, setFields] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -79,17 +82,17 @@ export default function Fields() {
 
   // 2. Διαγραφή Χωραφιού
   const handleDelete = async (id) => {
-    if (window.confirm("⚠️ ΠΡΟΣΟΧΗ! Διαγράφοντας αυτό το χωράφι, θα διαγραφούν ΟΡΙΣΤΙΚΑ όλες οι καλλιέργειες και οι εργασίες που περιλαμβάνει. Θέλετε σίγουρα να προχωρήσετε;")) {
+    if (window.confirm(labels.deleteConfirm || "Are you sure you want to delete this field?")) {
       try {
         await api.delete(`/api/fields/${id}`);
         setFields((prev) => prev.filter((field) => field.id !== id));
       } catch (err) {
         console.error("Σφάλμα κατά τη διαγραφή:", err);
         if (err?.response?.status === 400) {
-          alert("Σφάλμα συστήματος: Η διαδοχική διαγραφή απέτυχε στο backend. Ελέγξτε τις ρυθμίσεις Cascade.");
+          alert(labels.cascadeError || "Delete failed.");
           return;
         }
-        alert("Αποτυχία διαγραφής.");
+        alert(labels.deleteError || "Delete failed.");
       }
     }
   };
@@ -120,10 +123,10 @@ export default function Fields() {
       setShowModal(false); 
       setFormData({ id: null, name: "", area: "", boundary: [] }); 
       fetchFields(); 
-      alert(formData.id ? "Το χωράφι ενημερώθηκε!" : "Το χωράφι προστέθηκε!");
+      alert(formData.id ? labels.updated || "Field updated." : labels.created || "Field added.");
     } catch (err) {
       console.error("Σφάλμα αποθήκευσης:", err.response?.data);
-      alert("Κάτι πήγε στραβά στην αποθήκευση.");
+      alert(labels.saveError || "Something went wrong while saving.");
     }
   };
 
@@ -164,9 +167,9 @@ export default function Fields() {
       <Surface className="p-6 md:p-7">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700">Διαχείριση αγρών</p>
-            <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950">Τα Χωράφια μου</h2>
-            <p className="mt-2 text-sm text-slate-500">Προβολή, επεξεργασία και σύνδεση χωραφιών με καλλιέργειες.</p>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700">{labels.eyebrow || "Field management"}</p>
+            <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950">{labels.title || "My Fields"}</h2>
+            <p className="mt-2 text-sm text-slate-500">{labels.description || "View and manage fields."}</p>
           </div>
           <Button
           onClick={() => {
@@ -174,31 +177,31 @@ export default function Fields() {
             setShowModal(true);
           }}
         >
-          + Προσθήκη Χωραφιού
+          + {labels.addField || "Add Field"}
           </Button>
         </div>
       </Surface>
 
       <Surface className="overflow-hidden">
         {loading ? (
-          <div className="px-6 py-10 text-center text-sm font-bold text-green-700">Φόρτωση χωραφιών...</div>
+          <div className="px-6 py-10 text-center text-sm font-bold text-green-700">{labels.loading || "Loading fields..."}</div>
         ) : (
         <table className="w-full text-left">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Όνομα</th>
-              <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Στρέμματα</th>
-              <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Ενέργειες</th>
+              <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">{labels.name || "Name"}</th>
+              <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">{labels.area || "Area"}</th>
+              <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">{labels.actions || "Actions"}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {fields.length === 0 ? (
-              <tr><td colSpan="3" className="px-6 py-4 text-center text-gray-500">Δεν βρέθηκαν χωράφια.</td></tr>
+              <tr><td colSpan="3" className="px-6 py-4 text-center text-gray-500">{labels.noFields || "No fields found."}</td></tr>
             ) : (
               fields.map(field => (
                 <tr key={field.id}>
                   <td className="px-6 py-4 font-medium">{field.name}</td>
-                  <td className="px-6 py-4">{field.area} στρ.</td>
+                  <td className="px-6 py-4">{field.area} {labels.stremmataShort || "strem."}</td>
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap gap-2">
                     <Button
@@ -206,7 +209,7 @@ export default function Fields() {
                       variant="secondary"
                       size="sm"
                     >
-                      Επεξεργασία
+                      {labels.edit || "Edit"}
                     </Button>
                     <Button
                       onClick={() => navigate(`/fields/${field.id}/crops`)}
@@ -214,14 +217,14 @@ export default function Fields() {
                       size="sm"
                       className="border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
                     >
-                      Καλλιέργειες
+                      {labels.crops || "Crops"}
                     </Button>
                     <Button
                       onClick={() => handleDelete(field.id)}
                       variant="danger"
                       size="sm"
                     >
-                      Διαγραφή
+                      {labels.delete || "Delete"}
                     </Button>
                     </div>
                   </td>
@@ -235,8 +238,8 @@ export default function Fields() {
 
       {showModal && (
         <ModalShell
-          title={formData.id ? "Επεξεργασία Χωραφιού" : "Νέο Χωράφι"}
-          description="Συμπληρώστε τα στοιχεία και σχεδιάστε το όριο του χωραφιού στον χάρτη."
+          title={formData.id ? labels.editField || "Edit Field" : labels.newField || "New Field"}
+          description={labels.modalDescription || "Fill in the details and draw the field boundary on the map."}
           onClose={() => {
             setShowModal(false);
             setFormData({ id: null, name: "", area: "", boundary: [] });
@@ -247,7 +250,7 @@ export default function Fields() {
           <form onSubmit={handleSubmit} className="min-h-0 overflow-y-auto p-6">
             <div className="grid grid-cols-1 gap-5">
               <div>
-                <FieldLabel>Όνομα</FieldLabel>
+                <FieldLabel>{labels.name || "Name"}</FieldLabel>
                 <FieldInput
                   type="text" required
                   value={formData.name}
@@ -256,18 +259,18 @@ export default function Fields() {
               </div>
 
               <div>
-                <FieldLabel>Έκταση (Στρέμματα)</FieldLabel>
+                <FieldLabel>{labels.areaLabel || "Area (Stremmata)"}</FieldLabel>
                 <FieldInput
                   type="number" step="0.01" required
                   className="bg-slate-50 font-bold text-emerald-700"
                   value={formData.area || ""}
                   onChange={(e) => setFormData({...formData, area: e.target.value})}
-                  placeholder="Υπολογίζεται αυτόματα..."
+                  placeholder={labels.autoAreaPlaceholder || "Calculated automatically..."}
                 />
               </div>
 
               <div>
-                <FieldLabel>Σχεδίαση ή Προβολή στο Χάρτη</FieldLabel>
+                <FieldLabel>{labels.mapLabel || "Draw or View on Map"}</FieldLabel>
                 <div className="h-[520px] overflow-hidden rounded-2xl border border-slate-200">
                   <MapComponent
                     allFields={fields}
@@ -284,7 +287,7 @@ export default function Fields() {
               </div>
 
               <div>
-                <FieldLabel>Ή Επικόλληση Συντεταγμένων (lng, lat ανά γραμμή)</FieldLabel>
+                <FieldLabel>{labels.coordsLabel || "Or Paste Coordinates (lng, lat per line)"}</FieldLabel>
                 <textarea 
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-mono text-slate-900 outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-300/60"
                   rows="3"
@@ -298,7 +301,7 @@ export default function Fields() {
                   type="submit"
                   disabled={formData.boundary.length === 0}
                 >
-                  {formData.id ? "Ενημέρωση" : "Αποθήκευση"}
+                  {formData.id ? labels.update || "Update" : labels.save || "Save"}
                 </Button>
               </div>
             </div>

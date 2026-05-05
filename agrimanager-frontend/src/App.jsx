@@ -11,10 +11,11 @@ import Profile from "./components/Profile";
 import { AppPreferencesProvider } from "./i18n";
 
 // Helper συνάρτηση για το Auth
-const isLoggedIn = () => !!localStorage.getItem("jwt");
+const getStoredToken = () => localStorage.getItem("jwt") || sessionStorage.getItem("jwt");
+const isLoggedIn = () => !!getStoredToken();
 
 // Προστατευμένη διαδρομή με ενσωματωμένο Layout (Navbar)
-function PrivateRoute() {
+function ProtectedRoute() {
   if (!isLoggedIn()) {
     return <Navigate to="/login" replace />;
   }
@@ -33,7 +34,7 @@ export default function App() {
           <Route path="/signup" element={<Signup />} />
 
           {/* ΠΡΟΣΤΑΤΕΥΜΕΝΕΣ ΔΙΑΔΡΟΜΕΣ (Εδώ μέσα μπαίνουν όλα όσα θέλουν Navbar) */}
-          <Route element={<PrivateRoute />}>
+          <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/fields" element={<Fields />} /> 
             <Route path="/fields/:fieldId" element={<FieldCrops />} />

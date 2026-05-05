@@ -5,19 +5,20 @@ import api from "../api/axios";
 import MapComponent from "./MapComponent";
 import * as turf from "@turf/turf";
 import { Button, ModalShell } from "./ui";
+import { useAppPreferences } from "../i18n";
 
-function WikiInfoModal({ crop, data, loading, error, onClose }) {
+function WikiInfoModal({ crop, data, loading, error, onClose, labels }) {
   return (
     <ModalShell
-      title={`Πληροφορίες Wikipedia: ${crop?.variety || crop?.type || "Καλλιέργεια"}`}
-      description="Σύντομη εγκυκλοπαιδική σύνοψη από την ελληνική Wikipedia."
+      title={`${labels.wikiTitle || "Wikipedia Info"}: ${crop?.variety || crop?.type || labels.wikiCropFallback || "Crop"}`}
+      description={labels.wikiDescription || "Short encyclopedic summary from Greek Wikipedia."}
       onClose={onClose}
       size="md"
     >
       <div className="max-h-[70vh] overflow-y-auto p-6">
         {loading ? (
           <div className="rounded-2xl border border-slate-100 bg-slate-50 p-6 text-sm font-bold text-slate-500">
-            Φόρτωση πληροφοριών...
+            {labels.wikiLoading || "Loading information..."}
           </div>
         ) : error ? (
           <div className="rounded-2xl border border-rose-100 bg-rose-50 p-6 text-sm font-bold text-rose-700">
@@ -35,7 +36,7 @@ function WikiInfoModal({ crop, data, loading, error, onClose }) {
             <div>
               <h4 className="text-2xl font-black text-slate-950">{data.title}</h4>
               <p className="mt-3 text-sm leading-7 text-slate-600">
-                {data.extract || "Δεν υπάρχει διαθέσιμη σύνοψη."}
+                {data.extract || labels.wikiNoSummary || "No summary available."}
               </p>
             </div>
             {data.content_urls?.desktop?.page && (
@@ -46,7 +47,7 @@ function WikiInfoModal({ crop, data, loading, error, onClose }) {
                 className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md"
               >
                 <ExternalLink className="h-4 w-4" />
-                Διαβάστε περισσότερα στο Wikipedia
+                {labels.wikiReadMore || "Read more on Wikipedia"}
               </a>
             )}
           </div>
@@ -57,6 +58,8 @@ function WikiInfoModal({ crop, data, loading, error, onClose }) {
 }
 
 export default function FieldCrops() {
+  const { t } = useAppPreferences();
+  const labels = t.cropsPage || {};
   const { fieldId } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -88,12 +91,20 @@ export default function FieldCrops() {
   const [openedTaskId, setOpenedTaskId] = useState(null);
   
   // Στοιχεία φόρμας εργασίας (η θέση αποθηκεύεται στο pendingLocation)
-  const [taskFormData, setTaskFormData] = useState({ taskType: "Πότισμα", description: "" });
+  const [taskFormData, setTaskFormData] = useState({ taskType: "Πότισμα", taskDate: "", description: "" });
 
   const TASK_STATUS_LABELS = {
-    PENDING: "ΕΚΚΡΕΜΕΙ",
-    COMPLETED: "ΟΛΟΚΛΗΡΩΘΗΚΕ",
+    PENDING: labels.pending || "PENDING",
+    COMPLETED: labels.completed || "COMPLETED",
   };
+  const TASK_TYPE_OPTIONS = [
+    { value: "Πότισμα", label: labels.water || "Watering" },
+    { value: "Λίπανση", label: labels.fertilize || "Fertilization" },
+    { value: "Ψεκασμός", label: labels.spray || "Spraying" },
+    { value: "Συγκομιδή", label: labels.harvest || "Harvest" },
+    { value: "Κλάδεμα", label: labels.prune || "Pruning" },
+    { value: "Άλλο", label: labels.other || "Other" },
+  ];
 
   const fetchData = useCallback(async () => {
     try {
@@ -130,16 +141,16 @@ export default function FieldCrops() {
       console.error("Σφάλμα κατά τη φόρτωση καιρού:", err);
       setWeatherData(null);
       if (err?.response?.status === 403) {
-        setWeatherError("Δεν έχετε δικαίωμα πρόσβασης στα δεδομένα καιρού για αυτό το χωράφι.");
+        setWeatherError(labels.weatherForbidden || "You do not have access to weather data for this field.");
       } else if (err?.response?.status === 404) {
-        setWeatherError("Δεν βρέθηκαν δεδομένα καιρού για το επιλεγμένο χωράφι.");
+        setWeatherError(labels.weatherNotFound || "No weather data found for the selected field.");
       } else {
-        setWeatherError("Αποτυχία φόρτωσης δεδομένων καιρού.");
+        setWeatherError(labels.weatherLoadError || "Failed to load weather data.");
       }
     } finally {
       setWeatherLoading(false);
     }
-  }, [fieldId]);
+  }, [fieldId, labels.weatherForbidden, labels.weatherLoadError, labels.weatherNotFound]);
 
   useEffect(() => {
     fetchData();
@@ -220,7 +231,7 @@ export default function FieldCrops() {
       fetchData();
     } catch (err) {
       console.error("Σφάλμα κατά την αποθήκευση καλλιέργειας:", err);
-      alert("Σφάλμα κατά την αποθήκευση της καλλιέργειας.");
+      alert(labels.saveCropError || "Failed to save crop.");
     }
   };
 
@@ -233,7 +244,7 @@ export default function FieldCrops() {
     fetchTasks(crop.id);
     setIsAddingTask(startAdding);
     setPendingLocation(null);
-    setTaskFormData({ taskType: "Πότισμα", description: "" });
+    setTaskFormData({ taskType: "Πότισμα", taskDate: "", description: "" });
     setShowTaskModal(true);
   };
 
@@ -248,16 +259,21 @@ export default function FieldCrops() {
 
   const handleSaveTask = async (e) => {
     e.preventDefault();
-    if (!pendingLocation) return alert("Παρακαλώ επιλέξτε ένα σημείο στον χάρτη κάνοντας κλικ!");
+    const [longitude, latitude] = Array.isArray(pendingLocation) ? pendingLocation : [];
+
+    if (!Number.isFinite(Number(longitude)) || !Number.isFinite(Number(latitude))) {
+      alert("Παρακαλώ επιλέξτε σημείο στο χάρτη");
+      return;
+    }
 
     // Έλεγχος Turf: Πρέπει το σημείο να είναι εντός του πολυγώνου της καλλιέργειας
     try {
-      const point = turf.point(pendingLocation);
+      const point = turf.point([Number(longitude), Number(latitude)]);
       const polygon = turf.polygon(selectedCrop.zoneBoundary.coordinates);
       const isInside = turf.booleanPointInPolygon(point, polygon);
       
       if (!isInside) {
-        alert("❌ Η πινέζα πρέπει να είναι μέσα στο όριο της καλλιέργειας!");
+        alert(labels.pinInsideAlert || "The pin must be inside the crop boundary.");
         return; 
       }
     } catch (err) {
@@ -265,19 +281,29 @@ export default function FieldCrops() {
     }
 
     try {
-      await api.post("/api/tasks", {
-        ...taskFormData,
-        cropId: selectedCrop.id,
+      const newTask = { date: taskFormData.taskDate };
+      const formattedDate = newTask.date
+        ? new Date(newTask.date).toISOString().split("T")[0]
+        : new Date().toISOString().split("T")[0];
+      const taskData = {
+        taskType: taskFormData.taskType,
+        description: taskFormData.description,
+        taskDate: formattedDate,
         status: "PENDING",
-        location: { type: "Point", coordinates: pendingLocation }
-      });
+        longitude: Number(longitude),
+        latitude: Number(latitude),
+        cropId: selectedCrop.id,
+      };
+
+      console.log("FINAL PAYLOAD:", taskData);
+      await api.post("/api/tasks", taskData);
       setIsAddingTask(false);
       setPendingLocation(null);
-      setTaskFormData({ taskType: "Πότισμα", description: "" });
+      setTaskFormData({ taskType: "Πότισμα", taskDate: "", description: "" });
       fetchTasks(selectedCrop.id);
     } catch (err) {
       console.error("Σφάλμα κατά την αποθήκευση εργασίας:", err);
-      alert("Σφάλμα κατά την αποθήκευση της εργασίας.");
+      alert(labels.saveTaskError || "Failed to save task.");
     }
   };
 
@@ -291,7 +317,7 @@ export default function FieldCrops() {
   };
 
   const handleDeleteCrop = async (id) => {
-    if (window.confirm("⚠️ ΠΡΟΣΟΧΗ! Η διαγραφή της καλλιέργειας θα διαγράψει και όλο το ιστορικό εργασιών της. Θέλετε σίγουρα να προχωρήσετε;")) {
+    if (window.confirm(labels.deleteCropConfirm || "Are you sure you want to delete this crop?")) {
       try {
         await api.delete(`/api/crops/${id}`);
         setCrops((prev) => prev.filter((crop) => crop.id !== id));
@@ -299,10 +325,10 @@ export default function FieldCrops() {
       } catch (err) {
         console.error("Σφάλμα κατά τη διαγραφή καλλιέργειας:", err);
         if (err?.response?.status === 400) {
-          alert("Σφάλμα συστήματος: Η διαδοχική διαγραφή απέτυχε στο backend. Ελέγξτε τις ρυθμίσεις Cascade.");
+          alert(labels.cascadeError || "Delete failed.");
           return;
         }
-        alert("Σφάλμα κατά τη διαγραφή.");
+        alert(labels.deleteError || "Delete failed.");
       }
     }
   };
@@ -337,14 +363,14 @@ export default function FieldCrops() {
       const typeResult = varietyResult || (await fetchWikiSummary(crop.type));
 
       if (!typeResult) {
-        setWikiError("Δεν βρέθηκαν πληροφορίες για αυτή την καλλιέργεια.");
+        setWikiError(labels.wikiNoInfo || "No information found for this crop.");
         return;
       }
 
       setWikiData(typeResult);
     } catch (err) {
       console.error("Σφάλμα φόρτωσης Wikipedia:", err);
-      setWikiError("Δεν βρέθηκαν πληροφορίες για αυτή την καλλιέργεια.");
+      setWikiError(labels.wikiNoInfo || "No information found for this crop.");
     } finally {
       setWikiLoading(false);
     }
@@ -367,9 +393,9 @@ export default function FieldCrops() {
       <div className="mb-6 rounded-3xl border border-white/50 bg-white/70 backdrop-blur-xl shadow-[0_18px_40px_rgba(15,23,42,0.08)] p-5 md:p-6">
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-sky-600 font-black">Μετεωρολογικά Δεδομένα</p>
-            <h3 className="text-2xl font-black text-gray-900 mt-1">Καιρικό Widget Αγρού</h3>
-            <p className="text-sm text-gray-500 mt-1">Ζωντανή εικόνα συνθηκών για λήψη αγροτικών αποφάσεων.</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-sky-600 font-black">{labels.weatherEyebrow || "Weather Data"}</p>
+            <h3 className="text-2xl font-black text-gray-900 mt-1">{labels.weatherTitle || "Field Weather Widget"}</h3>
+            <p className="text-sm text-gray-500 mt-1">{labels.weatherDescription || "Live conditions for agricultural decisions."}</p>
           </div>
           <Button
             onClick={fetchWeatherData}
@@ -377,12 +403,12 @@ export default function FieldCrops() {
             size="sm"
             className="self-start border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
           >
-            Ανανέωση Καιρού
+            {labels.refreshWeather || "Refresh Weather"}
           </Button>
         </div>
 
         {weatherLoading ? (
-          <div className="mt-5 text-sm font-semibold text-gray-500">Φόρτωση δεδομένων καιρού...</div>
+          <div className="mt-5 text-sm font-semibold text-gray-500">{labels.weatherLoading || "Loading weather data..."}</div>
         ) : weatherError ? (
           <div className="mt-5 text-sm font-semibold text-red-600">{weatherError}</div>
         ) : (
@@ -391,7 +417,7 @@ export default function FieldCrops() {
               <div className="rounded-2xl bg-white/80 border border-sky-100 p-4 shadow-sm">
                 <div className="flex items-center gap-2 text-gray-600 text-xs font-bold uppercase tracking-wide">
                   <Thermometer className="h-4 w-4 text-orange-500" />
-                  Θερμοκρασία
+                  {labels.temperature || "Temperature"}
                 </div>
                 <p className="text-2xl font-black text-gray-900 mt-2">{temperatureValue ?? "--"}°C</p>
               </div>
@@ -399,7 +425,7 @@ export default function FieldCrops() {
               <div className="rounded-2xl bg-white/80 border border-cyan-100 p-4 shadow-sm">
                 <div className="flex items-center gap-2 text-gray-600 text-xs font-bold uppercase tracking-wide">
                   <Droplets className="h-4 w-4 text-cyan-500" />
-                  Υγρασία
+                  {labels.humidity || "Humidity"}
                 </div>
                 <p className="text-2xl font-black text-gray-900 mt-2">{humidityValue ?? "--"}%</p>
               </div>
@@ -407,7 +433,7 @@ export default function FieldCrops() {
               <div className="rounded-2xl bg-white/80 border border-indigo-100 p-4 shadow-sm">
                 <div className="flex items-center gap-2 text-gray-600 text-xs font-bold uppercase tracking-wide">
                   <Wind className="h-4 w-4 text-indigo-500" />
-                  Ταχύτητα Ανέμου
+                  {labels.windSpeed || "Wind Speed"}
                 </div>
                 <p className="text-2xl font-black text-gray-900 mt-2">{windSpeedValue ?? "--"} km/h</p>
               </div>
@@ -415,20 +441,20 @@ export default function FieldCrops() {
               <div className="rounded-2xl bg-white/80 border border-amber-100 p-4 shadow-sm">
                 <div className="flex items-center gap-2 text-gray-600 text-xs font-bold uppercase tracking-wide">
                   <CloudSun className="h-4 w-4 text-amber-500" />
-                  Περιγραφή
+                  {labels.description || "Description"}
                 </div>
-                <p className="text-lg font-black text-gray-900 mt-2">{weatherDescription || "Μη διαθέσιμη"}</p>
+                <p className="text-lg font-black text-gray-900 mt-2">{weatherDescription || labels.unavailable || "Unavailable"}</p>
               </div>
             </div>
 
             <div className="mt-4 rounded-2xl border border-gray-200 bg-white/80 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] font-black text-gray-500 mb-2">Έξυπνη Συμβουλή (DSS)</p>
+              <p className="text-xs uppercase tracking-[0.2em] font-black text-gray-500 mb-2">{labels.smartAdvice || "Smart Advice (DSS)"}</p>
               {isWindHigh ? (
-                <p className="text-sm font-bold text-red-600">⚠️ Προσοχή: Υψηλή ταχύτητα ανέμου. Ο ψεκασμός δεν συνιστάται.</p>
+                <p className="text-sm font-bold text-red-600">{labels.windWarning || "Warning: high wind speed. Spraying is not recommended."}</p>
               ) : hasRainWarning ? (
-                <p className="text-sm font-bold text-amber-600">🌧️ Αναμένεται βροχή. Αποφύγετε το πότισμα ή τη λίπανση.</p>
+                <p className="text-sm font-bold text-amber-600">{labels.rainWarning || "Rain is expected. Avoid watering or fertilizing."}</p>
               ) : (
-                <p className="text-sm font-bold text-emerald-600">✅ Οι συνθήκες είναι ιδανικές για αγροτικές εργασίες.</p>
+                <p className="text-sm font-bold text-emerald-600">{labels.idealConditions || "Conditions are ideal for agricultural tasks."}</p>
               )}
             </div>
           </>
@@ -439,41 +465,41 @@ export default function FieldCrops() {
       <div className="flex justify-between items-end mb-8 border-b pb-6">
         <div>
           <Button onClick={() => navigate("/fields")} variant="ghost" size="sm" className="mb-1 px-0 text-blue-600 hover:bg-transparent hover:underline">
-            ← ΕΠΙΣΤΡΟΦΗ ΣΤΑ ΧΩΡΑΦΙΑ
+            &larr; {labels.returnToFields || "Return to Fields"}
           </Button>
           <h2 className="text-4xl font-black text-gray-900 uppercase tracking-tighter">
-            {field?.name} <span className="text-lg font-normal text-gray-400 ml-2">{field?.area} στρ.</span>
+            {field?.name} <span className="text-lg font-normal text-gray-400 ml-2">{field?.area} {labels.stremmataShort || "strem."}</span>
           </h2>
         </div>
         <Button
           onClick={() => handleOpenCropModal()} 
           size="lg"
         >
-          + Νέα Καλλιέργεια
+          + {labels.newCrop || "New Crop"}
         </Button>
       </div>
 
       {/* ΚΥΡΙΟΣ ΠΙΝΑΚΑΣ ΚΑΛΛΙΕΡΓΕΙΩΝ */}
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center font-bold text-green-700 uppercase tracking-widest">Φόρτωση Δεδομένων...</div>
+          <div className="p-12 text-center font-bold text-green-700 uppercase tracking-widest">{labels.loadingData || "Loading Data..."}</div>
         ) : (
           <table className="w-full text-left">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase">Καλλιέργεια / Ποικιλία</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase">Έκταση</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase text-center">Κάλυψη</th>
-                <th className="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase">Ενέργειες</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase">{labels.cropVariety || "Crop / Variety"}</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase">{labels.area || "Area"}</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase text-center">{labels.coverage || "Coverage"}</th>
+                <th className="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase">{labels.actions || "Actions"}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {crops.map(crop => (
                 <tr key={crop.id} className="hover:bg-green-50/30 transition">
                   <td className="px-6 py-4 font-bold text-gray-800">
-                    {crop.type} <span className="block font-normal text-gray-400 text-xs uppercase">{crop.variety || "Γενική"}</span>
+                    {crop.type} <span className="block font-normal text-gray-400 text-xs uppercase">{crop.variety || labels.general || "General"}</span>
                   </td>
-                  <td className="px-6 py-4 font-mono text-sm">{crop.zoneArea?.toFixed(2)} στρ.</td>
+                  <td className="px-6 py-4 font-mono text-sm">{crop.zoneArea?.toFixed(2)} {labels.stremmataShort || "strem."}</td>
                   <td className="px-6 py-4 text-center">
                     <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-[10px] font-bold">
                       {crop.coveragePercentage?.toFixed(1)}%
@@ -488,13 +514,13 @@ export default function FieldCrops() {
                         className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
                       >
                         <BookOpen className="h-3.5 w-3.5" />
-                        Πληροφορίες (Wiki)
+                        {labels.wikiInfo || "Wiki Info"}
                       </Button>
                       <Button onClick={() => handleOpenCropModal(crop)} variant="secondary" size="sm">
-                        Επεξεργασία
+                        {labels.edit || "Edit"}
                       </Button>
                       <Button onClick={() => handleDeleteCrop(crop.id)} variant="danger" size="sm">
-                        Διαγραφή
+                        {labels.delete || "Delete"}
                       </Button>
                     </div>
                   </td>
@@ -508,8 +534,8 @@ export default function FieldCrops() {
       {/* MODAL 1: ΔΙΑΧΕΙΡΙΣΗ ΚΑΛΛΙΕΡΓΕΙΑΣ (ΠΟΛΥΓΩΝΟ) */}
       {showModal && (
         <ModalShell
-          title={formData.id ? "Διόρθωση Ζώνης" : "Νέα Ζώνη"}
-          description="Συμπληρώστε τα στοιχεία της καλλιέργειας και ορίστε το πολύγωνο στον χάρτη."
+          title={formData.id ? labels.editZone || "Edit Zone" : labels.newZone || "New Zone"}
+          description={labels.zoneDescription || "Fill in the crop details and define the polygon on the map."}
           onClose={handleCloseCropModal}
           size="xl"
           className="max-h-[92vh] flex flex-col"
@@ -517,11 +543,11 @@ export default function FieldCrops() {
           <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden md:grid-cols-[360px_1fr]">
             <div className="overflow-y-auto border-r border-slate-100 bg-slate-50 p-6">
               <form onSubmit={handleSubmitCrop} className="space-y-5">
-                <input type="text" required placeholder="Τύπος (π.χ. Ελιές)" className="w-full p-3 border rounded-xl shadow-sm" value={formData.type || ""} onChange={e => setFormData({...formData, type: e.target.value})} />
-                <input type="text" placeholder="Ποικιλία" className="w-full p-3 border rounded-xl shadow-sm" value={formData.variety || ""} onChange={e => setFormData({...formData, variety: e.target.value})} />
+                <input type="text" required placeholder={labels.cropTypePlaceholder || "Type (e.g. Olives)"} className="w-full p-3 border rounded-xl shadow-sm" value={formData.type || ""} onChange={e => setFormData({...formData, type: e.target.value})} />
+                <input type="text" placeholder={labels.varietyPlaceholder || "Variety"} className="w-full p-3 border rounded-xl shadow-sm" value={formData.variety || ""} onChange={e => setFormData({...formData, variety: e.target.value})} />
                 <input type="date" className="w-full p-3 border rounded-xl shadow-sm" value={formData.plantingDate || ""} onChange={e => setFormData({...formData, plantingDate: e.target.value})} />
                 <Button type="submit" disabled={formData.zoneBoundary.length === 0} className="w-full">
-                  Αποθήκευση Ζώνης
+                  {labels.saveZone || "Save Zone"}
                 </Button>
               </form>
             </div>
@@ -540,8 +566,8 @@ export default function FieldCrops() {
       {/* MODAL 2: ΔΙΑΧΕΙΡΙΣΗ ΕΡΓΑΣΙΩΝ (ΣΗΜΕΙΟ) */}
       {showTaskModal && selectedCrop && (
         <ModalShell
-          title={`Εργασίες: ${selectedCrop.type}`}
-          description={isAddingTask ? "Επιλέξτε σημείο μέσα στο όριο της ζώνης." : "Διαχείριση ιστορικού και νέων εργασιών."}
+          title={`${labels.tasksTitle || "Tasks"}: ${selectedCrop.type}`}
+          description={isAddingTask ? labels.selectPointDescription || "Select a point inside the zone boundary." : labels.manageTasksDescription || "Manage task history and new tasks."}
           onClose={handleCloseTaskModal}
           size="xl"
           className="max-h-[92vh] flex flex-col"
@@ -551,35 +577,41 @@ export default function FieldCrops() {
 
               {!isAddingTask ? (
                 <Button onClick={() => { setIsAddingTask(true); setPendingLocation(null); }} className="mb-6 w-full">
-                  + Νέα Καταχώρηση στο Χάρτη
+                  + {labels.newMapEntry || "New Map Entry"}
                 </Button>
               ) : (
                 <form onSubmit={handleSaveTask} className="bg-blue-50 p-5 rounded-2xl mb-6 border border-blue-200 animate-in zoom-in-95 shadow-sm">
-                   <p className="text-[9px] font-black text-blue-600 mb-3 uppercase tracking-widest animate-pulse">🎯 Κάντε κλικ μέσα στο πράσινο όριο της ζώνης</p>
+                   <p className="text-[9px] font-black text-blue-600 mb-3 uppercase tracking-widest animate-pulse">{labels.clickInsideZone || "Click inside the green zone boundary"}</p>
                    <select className="w-full p-3 border rounded-xl mb-3 text-sm font-bold bg-white outline-none" value={taskFormData.taskType} onChange={e => setTaskFormData({...taskFormData, taskType: e.target.value})}>
-                     <option>Πότισμα</option>
-                     <option>Λίπανση</option>
-                     <option>Ψεκασμός</option>
-                     <option>Συγκομιδή</option>
-                     <option>Κλάδεμα</option>
-                     <option>Άλλο</option>
+                     {TASK_TYPE_OPTIONS.map((option) => (
+                       <option key={option.value} value={option.value}>{option.label}</option>
+                     ))}
                    </select>
-                   <textarea placeholder="Περιγραφή εργασίας..." className="w-full p-3 border rounded-xl mb-4 text-sm bg-white h-24 resize-none focus:ring-2 focus:ring-blue-400 outline-none" value={taskFormData.description || ""} onChange={e => setTaskFormData({...taskFormData, description: e.target.value})} />
+                   <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-blue-700">
+                     {labels.taskDate || "Date"}
+                   </label>
+                   <input
+                     type="date"
+                     className="mb-3 w-full rounded-xl border bg-white p-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-400"
+                     value={taskFormData.taskDate || ""}
+                     onChange={e => setTaskFormData({...taskFormData, taskDate: e.target.value})}
+                   />
+                   <textarea placeholder={labels.taskDescriptionPlaceholder || "Task description..."} className="w-full p-3 border rounded-xl mb-4 text-sm bg-white h-24 resize-none focus:ring-2 focus:ring-blue-400 outline-none" value={taskFormData.description || ""} onChange={e => setTaskFormData({...taskFormData, description: e.target.value})} />
                    <div className="flex gap-2">
-                     <Button type="submit" disabled={!pendingLocation} className="flex-1" size="sm">Αποθήκευση</Button>
-                     <Button type="button" onClick={() => { setIsAddingTask(false); setPendingLocation(null); }} variant="secondary" className="flex-1" size="sm">Άκυρο</Button>
+                     <Button type="submit" disabled={!pendingLocation} className="flex-1" size="sm">{labels.save || "Save"}</Button>
+                     <Button type="button" onClick={() => { setIsAddingTask(false); setPendingLocation(null); }} variant="secondary" className="flex-1" size="sm">{labels.cancel || "Cancel"}</Button>
                    </div>
                 </form>
               )}
 
               <div className="space-y-3">
-                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Ιστορικό Εργασιών</span>
-                {tasks.length === 0 && <p className="text-xs text-gray-400 italic text-center py-4 bg-white rounded-xl border border-dashed">Δεν υπάρχουν εργασίες.</p>}
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block mb-1">{labels.taskHistory || "Task History"}</span>
+                {tasks.length === 0 && <p className="text-xs text-gray-400 italic text-center py-4 bg-white rounded-xl border border-dashed">{labels.noTasks || "No tasks."}</p>}
                 {tasks.map(t => (
                   <div key={t.id} className="bg-white p-4 rounded-2xl border flex justify-between items-center shadow-sm hover:shadow-md transition-shadow">
                     <div>
                       <div className="text-xs font-bold text-gray-800 uppercase tracking-tight">{t.taskType}</div>
-                      <div className="text-[10px] text-gray-400 mt-0.5 line-clamp-1 italic">{t.description || "Χωρίς περιγραφή"}</div>
+                      <div className="text-[10px] text-gray-400 mt-0.5 line-clamp-1 italic">{t.description || labels.noDescription || "No description"}</div>
                     </div>
                     <Button
                       disabled={t.status === 'COMPLETED'} 
@@ -612,8 +644,8 @@ export default function FieldCrops() {
 
       {showCropPickerModal && (
         <ModalShell
-          title="Επιλογή Καλλιέργειας"
-          description="Διαλέξτε καλλιέργεια για να καταχωρήσετε νέα εργασία."
+          title={labels.selectCrop || "Select Crop"}
+          description={labels.selectCropDescription || "Choose a crop to register a new task."}
           onClose={() => {
             setShowCropPickerModal(false);
             clearNewTaskQuery();
@@ -622,7 +654,7 @@ export default function FieldCrops() {
         >
             <div className="p-4 max-h-[360px] overflow-y-auto space-y-2">
               {crops.length === 0 && (
-                <p className="text-sm text-gray-500 text-center py-6">Δεν υπάρχουν καλλιέργειες στο χωράφι.</p>
+                <p className="text-sm text-gray-500 text-center py-6">{labels.noCropsInField || "No crops in this field."}</p>
               )}
               {crops.map((crop) => (
                 <Button
@@ -636,7 +668,7 @@ export default function FieldCrops() {
                 >
                   <span className="text-left">
                     <span className="block text-sm font-bold text-gray-800">{crop.type}</span>
-                    <span className="mt-0.5 block text-xs text-gray-500">{crop.variety || "Γενική ποικιλία"}</span>
+                    <span className="mt-0.5 block text-xs text-gray-500">{crop.variety || labels.generalVariety || "General variety"}</span>
                   </span>
                 </Button>
               ))}
@@ -650,6 +682,7 @@ export default function FieldCrops() {
           data={wikiData}
           loading={wikiLoading}
           error={wikiError}
+          labels={labels}
           onClose={() => setWikiModalOpen(false)}
         />
       )}

@@ -3,7 +3,8 @@ import { Button } from "./ui";
 
 export default function Navbar() {
   const handleLogout = () => {
-    localStorage.removeItem("jwt");
+    localStorage.clear();
+    sessionStorage.clear();
     window.location.href = "/login";
   };
 
