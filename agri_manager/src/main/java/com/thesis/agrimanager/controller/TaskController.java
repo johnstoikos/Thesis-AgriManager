@@ -2,6 +2,7 @@ package com.thesis.agrimanager.controller;
 
 import com.thesis.agrimanager.dto.TaskDTO;
 import com.thesis.agrimanager.service.TaskService;
+import java.security.Principal;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -25,13 +26,18 @@ public class TaskController {
         return taskService.getTasksByCrop(cropId);
     }
 
+    @GetMapping("/notifications")
+    public List<TaskDTO> getNotifications(Principal principal) {
+        return taskService.getUrgentTasks(principal.getName());
+    }
+
     @PatchMapping("/{id}/complete")
     public TaskDTO completeTask(@PathVariable Long id) {
         return taskService.completeTask(id);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTask(@PathVariable Long id, java.security.Principal principal) {
+    public ResponseEntity<Void> deleteTask(@PathVariable Long id, Principal principal) {
         taskService.deleteTask(id, principal.getName());
         return ResponseEntity.noContent().build();
     }

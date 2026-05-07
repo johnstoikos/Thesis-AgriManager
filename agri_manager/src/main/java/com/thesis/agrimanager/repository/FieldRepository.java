@@ -12,6 +12,8 @@ public interface FieldRepository extends JpaRepository<Field, Long> {
     // Για το getAllFields()
     List<Field> findByOwnerUsername(String username);
 
+    long countByOwnerUsername(String username);
+
     // Για το getFieldsByUsername()
     List<Field> findByOwnerId(Long ownerId);
 

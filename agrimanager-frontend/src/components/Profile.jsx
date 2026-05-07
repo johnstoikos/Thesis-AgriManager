@@ -33,12 +33,18 @@ export default function Profile() {
   };
 
   const handleSave = async () => {
+    if (!/^\d{10}$/.test(formData.phone)) {
+      alert("Το τηλέφωνο πρέπει να αποτελείται από ακριβώς 10 ψηφία");
+      return;
+    }
+
     const profilePayload = {
       fullName: formData.fullName,
       phone: formData.phone,
       profilePhoto: avatarPreview,
     };
 
+    console.log("Profile Save Payload:", profilePayload);
     const updatedProfile = await updateUser(profilePayload);
     if (!updatedProfile) {
       alert(labels.saveError || "Profile could not be saved.");
@@ -89,7 +95,7 @@ export default function Profile() {
       />
 
       {showSaved && (
-        <Surface className="flex items-center gap-3 border-emerald-200 bg-emerald-50/80 p-4 text-emerald-800">
+        <Surface className="flex items-center gap-3 border-emerald-200 bg-emerald-50/80 p-4 text-emerald-800 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-300">
           <CheckCircle2 className="h-5 w-5" />
           <p className="text-sm font-bold">{labels.saved || "Changes saved successfully."}</p>
         </Surface>
@@ -102,11 +108,11 @@ export default function Profile() {
           badge={labels.account || "Account"}
         >
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[220px_1fr]">
-            <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/60 p-5 text-center">
+            <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/60 p-5 text-center dark:border-emerald-400/30 dark:bg-emerald-500/10">
               <Button
                 onClick={() => fileInputRef.current?.click()}
                 variant="ghost"
-                className="mx-auto flex h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-white p-0 text-emerald-700 shadow-inner ring-1 ring-emerald-100 transition hover:ring-4 hover:ring-emerald-200"
+                className="mx-auto flex h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-white p-0 text-emerald-700 shadow-inner ring-1 ring-emerald-100 transition hover:ring-4 hover:ring-emerald-200 dark:bg-slate-800 dark:text-emerald-300 dark:ring-slate-700 dark:hover:ring-emerald-500/30"
                 aria-label={labels.choosePhoto || "Choose profile photo"}
               >
                 {avatarPreview ? (
@@ -131,7 +137,7 @@ export default function Profile() {
                 <Camera className="h-4 w-4" />
                 {labels.photo || "Photo"}
               </Button>
-              <p className="mt-3 text-xs leading-5 text-slate-500">{labels.photoHint || "Click the avatar for an instant preview."}</p>
+              <p className="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">{labels.photoHint || "Click the avatar for an instant preview."}</p>
             </div>
 
             <div className="grid grid-cols-1 gap-4">
@@ -145,14 +151,17 @@ export default function Profile() {
               </div>
               <div>
                 <FieldLabel>{labels.email || "Email"}</FieldLabel>
-                <FieldInput value={formData.email} disabled className="bg-slate-100 text-slate-500" />
+                <FieldInput value={formData.email} disabled />
               </div>
               <div>
                 <FieldLabel>{labels.phone || "Phone"}</FieldLabel>
                 <FieldInput
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
                   value={formData.phone}
                   placeholder={labels.phonePlaceholder || "e.g. 69XXXXXXXX"}
-                  onChange={(e) => updateField("phone", e.target.value)}
+                  onChange={(e) => updateField("phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
                 />
               </div>
             </div>
@@ -164,14 +173,14 @@ export default function Profile() {
           description={labels.securityDescription || "Manage access and account protection settings."}
           badge={labels.protection || "Protection"}
         >
-          <div className="rounded-3xl border border-slate-100 bg-white/70 p-5">
+          <div className="rounded-3xl border border-slate-100 bg-white/70 p-5 dark:border-slate-800 dark:bg-slate-900/80">
             <div className="flex items-start gap-4">
-              <div className="rounded-2xl bg-emerald-100 p-3 text-emerald-700">
+              <div className="rounded-2xl bg-emerald-100 p-3 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300">
                 <KeyRound className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="font-black text-slate-950">{labels.password || "Password"}</h3>
-                <p className="mt-1 text-sm leading-6 text-slate-500">
+                <h3 className="font-black text-slate-950 dark:text-white">{labels.password || "Password"}</h3>
+                <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
                   {labels.passwordDescription || "Change your password regularly for stronger security."}
                 </p>
               </div>

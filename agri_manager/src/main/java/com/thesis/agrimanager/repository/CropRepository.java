@@ -7,4 +7,6 @@ import java.util.List;
 public interface CropRepository extends JpaRepository<Crop, Long> {
     // Βρίσκει όλες τις καλλιέργειες ενός συγκεκριμένου χωραφιού
     List<Crop> findByFieldId(Long fieldId);
+
+    long countByFieldOwnerUsername(String username);
 }

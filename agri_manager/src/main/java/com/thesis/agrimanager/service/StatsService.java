@@ -18,17 +18,16 @@ public class StatsService {
         this.taskRepository = taskRepository;
     }
 
-    public DashboardDTO getDashboardStats() {
-        long fields = fieldRepository.count();
-        long crops = cropRepository.count();
+    public DashboardDTO getDashboardStats(String username) {
+        long fields = fieldRepository.countByOwnerUsername(username);
+        long crops = cropRepository.countByFieldOwnerUsername(username);
 
-        // Φιλτράρουμε τα tasks που έχουν status "PENDING"
-        long tasks = taskRepository.findAll().stream()
-                .filter(t -> "PENDING".equals(t.getStatus()))
-                .count();
+        // Φιλτράρουμε τα tasks που έχουν status "PENDING" για τον συνδεδεμένο χρήστη
+        long tasks = taskRepository.countByStatusAndCropFieldOwnerUsername("PENDING", username);
 
-        // Υπολογίζουμε το σύνολο των εκταρίων/στρεμμάτων
-        double totalArea = fieldRepository.findAll().stream()
+        // Υπολογίζουμε το σύνολο των εκταρίων/στρεμμάτων για τον συνδεδεμένο χρήστη
+        double totalArea = fieldRepository.findByOwnerUsername(username).stream()
+                .filter(f -> f.getArea() != null)
                 .mapToDouble(f -> f.getArea())
                 .sum();
 

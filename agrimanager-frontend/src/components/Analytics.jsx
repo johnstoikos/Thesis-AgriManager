@@ -82,13 +82,13 @@ function getCropStremmata(crop) {
 
 function ChartSkeleton() {
   return (
-    <div className="flex h-[340px] flex-col justify-between rounded-3xl border border-slate-100 bg-slate-50/70 p-6">
+    <div className="flex h-[340px] flex-col justify-between rounded-3xl border border-slate-100 bg-slate-50/70 p-6 dark:border-slate-800 dark:bg-slate-900">
       <SkeletonLines lines={2} />
       <div className="flex items-end gap-3">
         {[45, 70, 55, 86, 62, 76].map((height, index) => (
           <div
             key={index}
-            className="flex-1 animate-pulse rounded-t-2xl bg-slate-200/90"
+            className="flex-1 animate-pulse rounded-t-2xl bg-slate-200/90 dark:bg-slate-700"
             style={{ height: `${height}%` }}
           />
         ))}
@@ -99,7 +99,7 @@ function ChartSkeleton() {
 
 function ChartEmptyState({ icon, title, description }) {
   return (
-    <div className="flex h-[340px] items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50/70 p-6">
+    <div className="flex h-[340px] items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50/70 p-6 dark:border-slate-800 dark:bg-slate-900">
       <EmptyState
         icon={icon}
         title={title}
@@ -114,10 +114,10 @@ function GreekTooltip({ active, payload, label, valueSuffix = "" }) {
   if (!active || !payload?.length) return null;
 
   return (
-    <div className="rounded-2xl border border-white/70 bg-white/95 px-4 py-3 text-sm shadow-xl backdrop-blur-xl">
-      <p className="font-black text-slate-950">{label || payload[0].name}</p>
+    <div className="rounded-2xl border border-white/70 bg-white/95 px-4 py-3 text-sm shadow-xl backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/95">
+      <p className="font-black text-slate-950 dark:text-white">{label || payload[0].name}</p>
       {payload.map((entry) => (
-        <div key={entry.dataKey || entry.name} className="mt-1 flex items-center gap-2 text-slate-600">
+        <div key={entry.dataKey || entry.name} className="mt-1 flex items-center gap-2 text-slate-600 dark:text-slate-300">
           <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
           <span className="font-semibold">{entry.name}:</span>
           <span>
@@ -131,7 +131,7 @@ function GreekTooltip({ active, payload, label, valueSuffix = "" }) {
 }
 
 export default function Analytics() {
-  const { t } = useAppPreferences();
+  const { isDarkMode, t } = useAppPreferences();
   const labels = t.analytics || {};
   const [fields, setFields] = useState([]);
   const [crops, setCrops] = useState([]);
@@ -446,16 +446,16 @@ export default function Analytics() {
 
   return (
     <div className="space-y-7">
-      <Surface className="overflow-hidden p-6 md:p-7">
+      <Surface className="overflow-hidden p-6 dark:bg-slate-950 md:p-7">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700 dark:text-emerald-300">
               {labels.eyebrow || "Analytics"}
             </p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
+            <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 dark:text-white md:text-4xl">
               {labels.title || "Analytics Board"}
             </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-400">
               {(labels.description || "A consolidated view across {count} fields.").replace("{count}", stats.totalFields)}
             </p>
           </div>
@@ -478,12 +478,12 @@ export default function Analytics() {
         </div>
       </Surface>
 
-      <div id="pdf-export-area" className="space-y-6 bg-slate-50 text-slate-950 print:bg-[#f8fafc] print:text-[#0f172a]">
+      <div id="pdf-export-area" className="space-y-6 bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-100 print:bg-[#f8fafc] print:text-[#0f172a]">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {loading ? (
             Array.from({ length: 4 }).map((_, index) => (
               <Surface key={index} className="p-5">
-                <div className="h-11 w-11 animate-pulse rounded-2xl bg-slate-200" />
+                <div className="h-11 w-11 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-700" />
                 <SkeletonLines lines={3} className="mt-5" />
               </Surface>
             ))
@@ -530,7 +530,7 @@ export default function Analytics() {
                 : labels.cropDistributionCountDescription || "Grouped by crop type by zone count because zone area is unavailable."
             }
             badge={labels.cropsBadge || "Crops"}
-            side={<BarChart3 className="h-6 w-6 text-emerald-700" />}
+            side={<BarChart3 className="h-6 w-6 text-emerald-700 dark:text-emerald-300" />}
           >
             {loading ? (
               <ChartSkeleton />
@@ -541,7 +541,7 @@ export default function Analytics() {
                 description={labels.noCropDataDescription || "Once crop zones are added, the distribution will appear here."}
               />
             ) : (
-              <div className="h-[340px]">
+              <div className="h-[340px] rounded-3xl bg-transparent dark:bg-slate-900">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -562,7 +562,7 @@ export default function Analytics() {
                     </Pie>
                     <Tooltip content={<GreekTooltip valueSuffix={cropChartUsesArea ? " στρ." : " ζώνες"} />} />
                     <Legend
-                      formatter={(value) => <span className="text-sm font-semibold text-slate-600">{value}</span>}
+                      formatter={(value) => <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">{value}</span>}
                       iconType="circle"
                     />
                   </PieChart>
@@ -575,7 +575,7 @@ export default function Analytics() {
             title={labels.taskAnalysis || "Task Analysis"}
             description={labels.taskAnalysisDescription || "Compare task status with a quick view of pending and completed work."}
             badge={labels.tasks || "Tasks"}
-            side={<Activity className="h-6 w-6 text-amber-600" />}
+            side={<Activity className="h-6 w-6 text-amber-600 dark:text-amber-300" />}
           >
             {loading ? (
               <ChartSkeleton />
@@ -586,25 +586,25 @@ export default function Analytics() {
                 description={labels.noTaskDataDescription || "Tasks will appear here when they are linked with crops."}
               />
             ) : (
-              <div className="h-[340px]">
+              <div className="h-[340px] rounded-3xl bg-transparent dark:bg-slate-900">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={taskData} margin={{ top: 12, right: 16, left: 0, bottom: 8 }}>
-                    <CartesianGrid stroke="#e2e8f0" strokeDasharray="4 6" vertical={false} />
+                    <CartesianGrid stroke={isDarkMode ? "#334155" : "#e2e8f0"} strokeDasharray="4 6" vertical={false} />
                     <XAxis
                       dataKey="name"
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fill: "#475569", fontSize: 12, fontWeight: 700 }}
+                      tick={{ fill: isDarkMode ? "#cbd5e1" : "#475569", fontSize: 12, fontWeight: 700 }}
                     />
                     <YAxis
                       allowDecimals={false}
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fill: "#64748b", fontSize: 12 }}
+                      tick={{ fill: isDarkMode ? "#94a3b8" : "#64748b", fontSize: 12 }}
                     />
                     <Tooltip content={<GreekTooltip />} />
                     <Legend
-                      formatter={() => <span className="text-sm font-semibold text-slate-600">{labels.taskCount || "Task count"}</span>}
+                      formatter={() => <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">{labels.taskCount || "Task count"}</span>}
                       iconType="circle"
                     />
                     <Bar dataKey="value" name={labels.taskCount || "Task count"} radius={[14, 14, 6, 6]}>

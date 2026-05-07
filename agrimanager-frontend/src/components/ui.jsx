@@ -144,8 +144,8 @@ export function StatCard({ icon: Icon, title, value, tone = "emerald", helper })
 
 export function StatusBadge({ status, children }) {
   const tones = {
-    PENDING: "bg-amber-100 text-amber-700 ring-amber-200",
-    COMPLETED: "bg-emerald-100 text-emerald-700 ring-emerald-200",
+    PENDING: "bg-amber-100 text-amber-700 ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-400/30",
+    COMPLETED: "bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-400/30",
     default: "bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700",
   };
 
@@ -259,14 +259,14 @@ export function ModalShell({ title, description, onClose, children, className = 
 
 
 export function FieldLabel({ children }) {
-  return <label className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-300">{children}</label>;
+  return <label className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">{children}</label>;
 }
 
 export function FieldInput({ className = "", ...props }) {
   return (
     <input
       className={cn(
-        "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-300 focus:ring-2 focus:ring-emerald-300/60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/30",
+        "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-300 focus:ring-2 focus:ring-emerald-300/60 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-400 dark:disabled:bg-slate-900 dark:disabled:text-slate-500 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/30",
         className
       )}
       {...props}
@@ -278,7 +278,7 @@ export function FieldTextarea({ className = "", ...props }) {
   return (
     <textarea
       className={cn(
-        "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-300 focus:ring-2 focus:ring-emerald-300/60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/30",
+        "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-300 focus:ring-2 focus:ring-emerald-300/60 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-400 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/30",
         className
       )}
       {...props}
@@ -290,7 +290,7 @@ export function FieldSelect({ className = "", children, ...props }) {
   return (
     <select
       className={cn(
-        "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-300/60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/30",
+        "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-300/60 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-emerald-500 dark:focus:ring-emerald-500/30",
         className
       )}
       {...props}

@@ -1,5 +1,5 @@
 import { createElement, useEffect, useMemo, useRef, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import {
   BarChart3,
   Bell,
@@ -11,13 +11,11 @@ import {
   Droplets,
   LayoutDashboard,
   Leaf,
-  LogOut,
   Map,
   Moon,
-  Settings,
+  Settings as SettingsIcon,
   Shield,
   Sprout,
-  Sun,
   Tractor,
   UserCircle2,
   Wind,
@@ -25,8 +23,9 @@ import {
 } from "lucide-react";
 import api from "../api/axios";
 import { useAuth } from "../context/auth-context";
+import { useTheme } from "../context/ThemeContext";
 import { useAppPreferences } from "../i18n";
-import { Button, Popover, Switch } from "./ui";
+import { Button, Popover } from "./ui";
 
 const formatDate = (value) => {
   if (!value) return null;
@@ -219,79 +218,21 @@ function BellDropdown({ label }) {
   );
 }
 
-function SettingsPopover({ onLogout }) {
-  const { language, setLanguage, theme, toggleTheme, t } = useAppPreferences();
-  const [isOpen, setIsOpen] = useState(false);
-  const popoverRef = useRef(null);
-
-  useOutsideClose(popoverRef, () => setIsOpen(false));
+function ThemeToggleButton() {
+  const { theme, toggleTheme } = useTheme();
+  const { t } = useAppPreferences();
+  const isDark = theme === "dark";
 
   return (
-    <div ref={popoverRef} className="relative">
-      <Button
-        onClick={() => setIsOpen((open) => !open)}
-        variant="secondary"
-        className="h-12 w-12 rounded-full p-3 text-slate-500 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300"
-        aria-label={t.shell.settings}
-      >
-        <Settings className="h-6 w-6" />
-      </Button>
-
-      {isOpen && (
-        <Popover>
-          <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-            <p className="text-sm font-black text-slate-950 dark:text-slate-100">{t.shell.settings}</p>
-            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t.shell.appearance}</p>
-          </div>
-
-          <div className="space-y-4 p-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                  {theme === "dark" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
-                </div>
-                <div>
-                  <p className="text-sm font-black text-slate-900 dark:text-slate-100">{t.shell.darkMode}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{theme === "dark" ? "Dark" : "Light"}</p>
-                </div>
-              </div>
-              <Switch checked={theme === "dark"} onChange={toggleTheme} aria-label={t.shell.darkMode} />
-            </div>
-
-            <div>
-              <p className="mb-2 text-xs font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                {t.shell.language}
-              </p>
-              <div className="grid grid-cols-2 rounded-2xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-950">
-                {["el", "en"].map((code) => (
-                  <Button
-                    key={code}
-                    onClick={() => setLanguage(code)}
-                    variant="ghost"
-                    size="sm"
-                    className={[
-                      "h-10 rounded-xl shadow-none",
-                      language === code
-                        ? "bg-emerald-950 text-white hover:bg-emerald-950 dark:bg-emerald-500 dark:text-slate-950 dark:hover:bg-emerald-500"
-                        : "text-slate-600 dark:text-slate-300",
-                    ].join(" ")}
-                  >
-                    {code.toUpperCase()}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-200 p-4 dark:border-slate-800">
-            <Button onClick={onLogout} variant="danger" className="w-full">
-              <LogOut className="h-4 w-4" />
-              {t.shell.logout}
-            </Button>
-          </div>
-        </Popover>
-      )}
-    </div>
+    <Button
+      onClick={toggleTheme}
+      variant="secondary"
+      className="h-12 w-12 rounded-full p-3 text-slate-500 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300"
+      aria-label={t.shell.darkMode}
+      title={t.shell.darkMode}
+    >
+      {isDark ? <Moon className="h-6 w-6" /> : <SettingsIcon className="h-6 w-6" />}
+    </Button>
   );
 }
 
@@ -520,17 +461,11 @@ function UserAvatar({ profile, className = "h-10 w-10", iconClassName = "h-6 w-6
 }
 
 export default function AppShell() {
-  const navigate = useNavigate();
   const { t } = useAppPreferences();
-  const { clearAuth, user } = useAuth();
+  const { user } = useAuth();
   const profile = user || {};
 
   const userName = profile.fullName || profile.name || profile.username || t.shell.user;
-
-  const handleLogout = () => {
-    clearAuth();
-    navigate("/login", { replace: true });
-  };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950 transition-colors dark:bg-slate-950 dark:text-slate-100">
@@ -584,7 +519,7 @@ export default function AppShell() {
             <div className="ml-auto flex min-w-0 items-center gap-2">
               <BellDropdown label={t.shell.notifications} />
               <CalendarPopover />
-              <SettingsPopover onLogout={handleLogout} />
+              <ThemeToggleButton />
             </div>
           </div>
           <nav className="mx-auto mt-3 flex max-w-7xl gap-2 overflow-x-auto lg:hidden">

@@ -349,11 +349,11 @@ export default function GlobalTasks() {
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700">{labels.eyebrow || "Task calendar"}</p>
-          <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">{labels.title || "Tasks Dashboard"}</h1>
-          <p className="mt-2 text-sm text-slate-500">{labels.description || "A consolidated view of all crop tasks."}</p>
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 dark:text-white md:text-4xl">{labels.title || "Tasks Dashboard"}</h1>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{labels.description || "A consolidated view of all crop tasks."}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-700">
+          <span className="rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
             {labels.total || "Total"}: {filteredTasks.length}
           </span>
           <Button onClick={exportToPDF} variant="secondary" size="sm">
@@ -372,7 +372,7 @@ export default function GlobalTasks() {
         title={labels.filtersTitle || "Search Filters"}
         description={labels.filtersDescription || "Narrow tasks by status, type, or text."}
         side={viewMode === "calendar" ? (
-          <div className="inline-flex rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+          <div className="inline-flex rounded-2xl border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <Button
               onClick={() => setSearchParams({}, { replace: true })}
               variant={viewMode === "list" ? "primary" : "ghost"}
@@ -422,14 +422,14 @@ export default function GlobalTasks() {
         <Surface className="overflow-hidden p-4 md:p-6">
           <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
             <div>
-              <h2 className="text-xl font-black text-slate-950">{labels.calendarView || "Calendar View"}</h2>
-              <p className="text-sm text-slate-500">{labels.calendarDescription || "Tasks are displayed as all-day entries."}</p>
+              <h2 className="text-xl font-black text-slate-950 dark:text-white">{labels.calendarView || "Calendar View"}</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{labels.calendarDescription || "Tasks are displayed as all-day entries."}</p>
             </div>
-            <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+            <span className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               {calendarEvents.length} {labels.tasksUnit || labels.task || "tasks"}
             </span>
           </div>
-          <div className="h-[680px] rounded-2xl border border-slate-200 bg-white p-3 text-sm shadow-sm">
+          <div className="h-[680px] rounded-2xl border border-slate-200 bg-white p-3 text-sm shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100">
             <Calendar
               culture={language === "el" ? "el" : "en"}
               localizer={calendarLocalizer}
@@ -442,8 +442,8 @@ export default function GlobalTasks() {
               eventPropGetter={(event) => ({
                 className:
                   event.resource?.status === "COMPLETED"
-                    ? "border-0 bg-emerald-600 text-white"
-                    : "border-0 bg-amber-500 text-white",
+                    ? "border-0 bg-emerald-700 text-white dark:bg-emerald-600"
+                    : "border-0 bg-amber-600 text-white dark:bg-amber-500 dark:text-slate-950",
               })}
             />
           </div>
@@ -452,16 +452,16 @@ export default function GlobalTasks() {
         <Surface className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px]">
-              <thead className="border-b border-slate-200 bg-slate-50/80">
+              <thead className="border-b border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900">
                 <tr>
-                  <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500">{labels.task || "Task"}</th>
-                  <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500">{labels.cropField || "Crop / Field"}</th>
-                  <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500">{labels.date || "Date"}</th>
-                  <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500">{labels.status || "Status"}</th>
-                  <th className="text-right px-5 py-3 text-xs uppercase tracking-wider text-slate-500">{labels.actions || "Actions"}</th>
+                  <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.task || "Task"}</th>
+                  <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.cropField || "Crop / Field"}</th>
+                  <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.date || "Date"}</th>
+                  <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.status || "Status"}</th>
+                  <th className="text-right px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.actions || "Actions"}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filteredTasks.length === 0 && (
                   <tr>
                     <td colSpan="5" className="px-5 py-10">
@@ -483,29 +483,29 @@ export default function GlobalTasks() {
                   const formattedDate = formatTaskDate(task.taskDate, labels.noDate || "No date", language === "el" ? "el-GR" : "en-US");
 
                   return (
-                    <tr key={task.id} className="transition-colors hover:bg-emerald-50/40">
+                    <tr key={task.id} className="transition-colors hover:bg-emerald-50/40 dark:hover:bg-emerald-500/5">
                       <td className="px-5 py-4">
                         <div className="flex items-start gap-3">
-                          <div className="p-2 rounded-xl bg-emerald-100 text-emerald-700">
+                          <div className="p-2 rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
                             <Icon className="h-4 w-4" />
                           </div>
                           <div>
-                            <p className="font-bold text-slate-800 text-sm">{task.taskType || labels.unknownTaskType || "Unknown type"}</p>
-                            <p className="text-xs text-slate-500 mt-0.5">{task.description || labels.noDescription || "No description"}</p>
+                            <p className="font-bold text-slate-800 text-sm dark:text-slate-100">{task.taskType || labels.unknownTaskType || "Unknown type"}</p>
+                            <p className="text-xs text-slate-500 mt-0.5 dark:text-slate-400">{task.description || labels.noDescription || "No description"}</p>
                           </div>
                         </div>
                       </td>
 
                       <td className="px-5 py-4">
-                        <p className="text-sm font-semibold text-slate-800">
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                           {cropInfo?.cropName ? `${labels.crop || "Crop"}: ${cropInfo.cropName}` : `${labels.crop || "Crop"} #${task.cropId}`}
                         </p>
-                        <p className="text-xs text-slate-500 mt-0.5">
+                        <p className="text-xs text-slate-500 mt-0.5 dark:text-slate-400">
                           {cropInfo?.fieldName || labels.fieldUnavailable || "Field: unavailable"}
                         </p>
                       </td>
 
-                      <td className="px-5 py-4 text-sm text-slate-700">{formattedDate}</td>
+                      <td className="px-5 py-4 text-sm text-slate-700 dark:text-slate-300">{formattedDate}</td>
 
                       <td className="px-5 py-4">
                         <StatusBadge status={task.status}>{statusLabels[task.status] || task.status}</StatusBadge>
@@ -528,7 +528,7 @@ export default function GlobalTasks() {
                             disabled={!canNavigate}
                             variant="secondary"
                             size="sm"
-                            className="border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                            className="border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-400/30 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20"
                           >
                             <MapPinned className="h-3.5 w-3.5" />
                             {labels.map || "Map"}
@@ -561,7 +561,7 @@ export default function GlobalTasks() {
         >
             <div className="p-4 max-h-[360px] overflow-y-auto space-y-2">
               {fields.length === 0 && (
-                <p className="text-sm text-gray-500 text-center py-6">{labels.noAvailableFields || "No available fields."}</p>
+                <p className="text-sm text-gray-500 text-center py-6 dark:text-slate-400">{labels.noAvailableFields || "No available fields."}</p>
               )}
               {fields.map((field) => (
                 <Button
@@ -571,8 +571,8 @@ export default function GlobalTasks() {
                   className="w-full justify-start px-4 py-3"
                 >
                   <span className="text-left">
-                    <span className="block text-sm font-bold text-gray-800">{field.name}</span>
-                    <span className="mt-0.5 block text-xs text-gray-500">{field.area} {t.fields?.stremmataShort || "strem."}</span>
+                    <span className="block text-sm font-bold text-gray-800 dark:text-slate-100">{field.name}</span>
+                    <span className="mt-0.5 block text-xs text-gray-500 dark:text-slate-400">{field.area} {t.fields?.stremmataShort || "strem."}</span>
                   </span>
                 </Button>
               ))}

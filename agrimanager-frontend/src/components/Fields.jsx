@@ -167,9 +167,9 @@ export default function Fields() {
       <Surface className="p-6 md:p-7">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700">{labels.eyebrow || "Field management"}</p>
-            <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950">{labels.title || "My Fields"}</h2>
-            <p className="mt-2 text-sm text-slate-500">{labels.description || "View and manage fields."}</p>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700 dark:text-emerald-300">{labels.eyebrow || "Field management"}</p>
+            <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950 dark:text-white">{labels.title || "My Fields"}</h2>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{labels.description || "View and manage fields."}</p>
           </div>
           <Button
           onClick={() => {
@@ -184,24 +184,24 @@ export default function Fields() {
 
       <Surface className="overflow-hidden">
         {loading ? (
-          <div className="px-6 py-10 text-center text-sm font-bold text-green-700">{labels.loading || "Loading fields..."}</div>
+          <div className="px-6 py-10 text-center text-sm font-bold text-green-700 dark:text-emerald-300">{labels.loading || "Loading fields..."}</div>
         ) : (
         <table className="w-full text-left">
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className="bg-gray-50 border-b border-gray-200 dark:border-slate-800 dark:bg-slate-900">
             <tr>
-              <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">{labels.name || "Name"}</th>
-              <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">{labels.area || "Area"}</th>
-              <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">{labels.actions || "Actions"}</th>
+              <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase dark:text-slate-400">{labels.name || "Name"}</th>
+              <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase dark:text-slate-400">{labels.area || "Area"}</th>
+              <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase dark:text-slate-400">{labels.actions || "Actions"}</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-gray-200 dark:divide-slate-800">
             {fields.length === 0 ? (
-              <tr><td colSpan="3" className="px-6 py-4 text-center text-gray-500">{labels.noFields || "No fields found."}</td></tr>
+              <tr><td colSpan="3" className="px-6 py-4 text-center text-gray-500 dark:text-slate-400">{labels.noFields || "No fields found."}</td></tr>
             ) : (
               fields.map(field => (
-                <tr key={field.id}>
-                  <td className="px-6 py-4 font-medium">{field.name}</td>
-                  <td className="px-6 py-4">{field.area} {labels.stremmataShort || "strem."}</td>
+                <tr key={field.id} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-500/5">
+                  <td className="px-6 py-4 font-medium text-slate-900 dark:text-slate-100">{field.name}</td>
+                  <td className="px-6 py-4 text-slate-700 dark:text-slate-300">{field.area} {labels.stremmataShort || "strem."}</td>
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap gap-2">
                     <Button
@@ -215,7 +215,7 @@ export default function Fields() {
                       onClick={() => navigate(`/fields/${field.id}/crops`)}
                       variant="secondary"
                       size="sm"
-                      className="border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
+                      className="border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 dark:border-sky-400/30 dark:bg-sky-500/10 dark:text-sky-300 dark:hover:bg-sky-500/20"
                     >
                       {labels.crops || "Crops"}
                     </Button>
@@ -262,7 +262,7 @@ export default function Fields() {
                 <FieldLabel>{labels.areaLabel || "Area (Stremmata)"}</FieldLabel>
                 <FieldInput
                   type="number" step="0.01" required
-                  className="bg-slate-50 font-bold text-emerald-700"
+                  className="bg-slate-50 font-bold text-emerald-700 dark:bg-slate-800 dark:text-emerald-300"
                   value={formData.area || ""}
                   onChange={(e) => setFormData({...formData, area: e.target.value})}
                   placeholder={labels.autoAreaPlaceholder || "Calculated automatically..."}
@@ -271,7 +271,7 @@ export default function Fields() {
 
               <div>
                 <FieldLabel>{labels.mapLabel || "Draw or View on Map"}</FieldLabel>
-                <div className="h-[520px] overflow-hidden rounded-2xl border border-slate-200">
+                <div className="h-[520px] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
                   <MapComponent
                     allFields={fields}
                     boundary={formData.boundary}
@@ -289,7 +289,7 @@ export default function Fields() {
               <div>
                 <FieldLabel>{labels.coordsLabel || "Or Paste Coordinates (lng, lat per line)"}</FieldLabel>
                 <textarea 
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-mono text-slate-900 outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-300/60"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-mono text-slate-900 outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-300/60 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/30"
                   rows="3"
                   placeholder="21.7346, 38.2466&#10;21.7350, 38.2470..."
                   onChange={(e) => handleManualCoordsChange(e.target.value)}

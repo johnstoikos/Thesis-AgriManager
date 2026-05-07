@@ -9,6 +9,7 @@ import GlobalTasks from "./components/GlobalTasks";
 import Analytics from "./components/Analytics";
 import Profile from "./components/Profile";
 import { AuthProvider } from "./context/AuthContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import { useAuth } from "./context/auth-context";
 import { AppPreferencesProvider } from "./i18n";
 
@@ -18,7 +19,7 @@ function ProtectedRoute() {
 
   if (authLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-lg font-black text-emerald-700">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-lg font-black text-emerald-700 dark:bg-slate-950 dark:text-emerald-300">
         Φόρτωση προφίλ...
       </div>
     );
@@ -33,31 +34,33 @@ function ProtectedRoute() {
 
 export default function App() {
   return (
-    <AppPreferencesProvider>
-      <AuthProvider>
-        <Router>
-          <Routes>
-            {/* ΔΗΜΟΣΙΕΣ ΔΙΑΔΡΟΜΕΣ */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
+    <ThemeProvider>
+      <AppPreferencesProvider>
+        <AuthProvider>
+          <Router>
+            <Routes>
+              {/* ΔΗΜΟΣΙΕΣ ΔΙΑΔΡΟΜΕΣ */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
 
-            {/* ΠΡΟΣΤΑΤΕΥΜΕΝΕΣ ΔΙΑΔΡΟΜΕΣ (Εδώ μέσα μπαίνουν όλα όσα θέλουν Navbar) */}
-            <Route element={<ProtectedRoute />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/fields" element={<Fields />} />
-              <Route path="/fields/:fieldId" element={<FieldCrops />} />
-              <Route path="/fields/:fieldId/crops" element={<FieldCrops />} />
-              <Route path="/tasks" element={<GlobalTasks />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/profile" element={<Profile />} />
-            </Route>
+              {/* ΠΡΟΣΤΑΤΕΥΜΕΝΕΣ ΔΙΑΔΡΟΜΕΣ (Εδώ μέσα μπαίνουν όλα όσα θέλουν Navbar) */}
+              <Route element={<ProtectedRoute />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/fields" element={<Fields />} />
+                <Route path="/fields/:fieldId" element={<FieldCrops />} />
+                <Route path="/fields/:fieldId/crops" element={<FieldCrops />} />
+                <Route path="/tasks" element={<GlobalTasks />} />
+                <Route path="/analytics" element={<Analytics />} />
+                <Route path="/profile" element={<Profile />} />
+              </Route>
 
-            {/* Redirects */}
-            <Route path="*" element={<AuthRedirect />} />
-          </Routes>
-        </Router>
-      </AuthProvider>
-    </AppPreferencesProvider>
+              {/* Redirects */}
+              <Route path="*" element={<AuthRedirect />} />
+            </Routes>
+          </Router>
+        </AuthProvider>
+      </AppPreferencesProvider>
+    </ThemeProvider>
   );
 }
 

@@ -17,11 +17,11 @@ function WikiInfoModal({ crop, data, loading, error, onClose, labels }) {
     >
       <div className="max-h-[70vh] overflow-y-auto p-6">
         {loading ? (
-          <div className="rounded-2xl border border-slate-100 bg-slate-50 p-6 text-sm font-bold text-slate-500">
+          <div className="rounded-2xl border border-slate-100 bg-slate-50 p-6 text-sm font-bold text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
             {labels.wikiLoading || "Loading information..."}
           </div>
         ) : error ? (
-          <div className="rounded-2xl border border-rose-100 bg-rose-50 p-6 text-sm font-bold text-rose-700">
+          <div className="rounded-2xl border border-rose-100 bg-rose-50 p-6 text-sm font-bold text-rose-700 dark:border-rose-400/30 dark:bg-rose-500/10 dark:text-rose-300">
             {error}
           </div>
         ) : data ? (
@@ -34,8 +34,8 @@ function WikiInfoModal({ crop, data, loading, error, onClose, labels }) {
               />
             )}
             <div>
-              <h4 className="text-2xl font-black text-slate-950">{data.title}</h4>
-              <p className="mt-3 text-sm leading-7 text-slate-600">
+              <h4 className="text-2xl font-black text-slate-950 dark:text-white">{data.title}</h4>
+              <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-200">
                 {data.extract || labels.wikiNoSummary || "No summary available."}
               </p>
             </div>
@@ -44,7 +44,7 @@ function WikiInfoModal({ crop, data, loading, error, onClose, labels }) {
                 href={data.content_urls.desktop.page}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 <ExternalLink className="h-4 w-4" />
                 {labels.wikiReadMore || "Read more on Wikipedia"}
@@ -390,65 +390,65 @@ export default function FieldCrops() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto font-sans">
-      <div className="mb-6 rounded-3xl border border-white/50 bg-white/70 backdrop-blur-xl shadow-[0_18px_40px_rgba(15,23,42,0.08)] p-5 md:p-6">
+      <div className="mb-6 rounded-3xl border border-white/50 bg-white/70 backdrop-blur-xl shadow-[0_18px_40px_rgba(15,23,42,0.08)] p-5 dark:border-slate-800 dark:bg-slate-900/75 md:p-6">
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-sky-600 font-black">{labels.weatherEyebrow || "Weather Data"}</p>
-            <h3 className="text-2xl font-black text-gray-900 mt-1">{labels.weatherTitle || "Field Weather Widget"}</h3>
-            <p className="text-sm text-gray-500 mt-1">{labels.weatherDescription || "Live conditions for agricultural decisions."}</p>
+            <h3 className="text-2xl font-black text-gray-900 mt-1 dark:text-white">{labels.weatherTitle || "Field Weather Widget"}</h3>
+            <p className="text-sm text-gray-500 mt-1 dark:text-slate-400">{labels.weatherDescription || "Live conditions for agricultural decisions."}</p>
           </div>
           <Button
             onClick={fetchWeatherData}
             variant="secondary"
             size="sm"
-            className="self-start border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
+            className="self-start border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 dark:border-sky-400/30 dark:bg-sky-500/10 dark:text-sky-300 dark:hover:bg-sky-500/20"
           >
             {labels.refreshWeather || "Refresh Weather"}
           </Button>
         </div>
 
         {weatherLoading ? (
-          <div className="mt-5 text-sm font-semibold text-gray-500">{labels.weatherLoading || "Loading weather data..."}</div>
+          <div className="mt-5 text-sm font-semibold text-gray-500 dark:text-slate-400">{labels.weatherLoading || "Loading weather data..."}</div>
         ) : weatherError ? (
           <div className="mt-5 text-sm font-semibold text-red-600">{weatherError}</div>
         ) : (
           <>
             <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-              <div className="rounded-2xl bg-white/80 border border-sky-100 p-4 shadow-sm">
-                <div className="flex items-center gap-2 text-gray-600 text-xs font-bold uppercase tracking-wide">
+              <div className="rounded-2xl bg-white/80 border border-sky-100 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-center gap-2 text-gray-600 text-xs font-bold uppercase tracking-wide dark:text-slate-400">
                   <Thermometer className="h-4 w-4 text-orange-500" />
                   {labels.temperature || "Temperature"}
                 </div>
-                <p className="text-2xl font-black text-gray-900 mt-2">{temperatureValue ?? "--"}°C</p>
+                <p className="text-2xl font-black text-gray-900 mt-2 dark:text-white">{temperatureValue ?? "--"}°C</p>
               </div>
 
-              <div className="rounded-2xl bg-white/80 border border-cyan-100 p-4 shadow-sm">
-                <div className="flex items-center gap-2 text-gray-600 text-xs font-bold uppercase tracking-wide">
+              <div className="rounded-2xl bg-white/80 border border-cyan-100 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-center gap-2 text-gray-600 text-xs font-bold uppercase tracking-wide dark:text-slate-400">
                   <Droplets className="h-4 w-4 text-cyan-500" />
                   {labels.humidity || "Humidity"}
                 </div>
-                <p className="text-2xl font-black text-gray-900 mt-2">{humidityValue ?? "--"}%</p>
+                <p className="text-2xl font-black text-gray-900 mt-2 dark:text-white">{humidityValue ?? "--"}%</p>
               </div>
 
-              <div className="rounded-2xl bg-white/80 border border-indigo-100 p-4 shadow-sm">
-                <div className="flex items-center gap-2 text-gray-600 text-xs font-bold uppercase tracking-wide">
+              <div className="rounded-2xl bg-white/80 border border-indigo-100 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-center gap-2 text-gray-600 text-xs font-bold uppercase tracking-wide dark:text-slate-400">
                   <Wind className="h-4 w-4 text-indigo-500" />
                   {labels.windSpeed || "Wind Speed"}
                 </div>
-                <p className="text-2xl font-black text-gray-900 mt-2">{windSpeedValue ?? "--"} km/h</p>
+                <p className="text-2xl font-black text-gray-900 mt-2 dark:text-white">{windSpeedValue ?? "--"} km/h</p>
               </div>
 
-              <div className="rounded-2xl bg-white/80 border border-amber-100 p-4 shadow-sm">
-                <div className="flex items-center gap-2 text-gray-600 text-xs font-bold uppercase tracking-wide">
+              <div className="rounded-2xl bg-white/80 border border-amber-100 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-center gap-2 text-gray-600 text-xs font-bold uppercase tracking-wide dark:text-slate-400">
                   <CloudSun className="h-4 w-4 text-amber-500" />
                   {labels.description || "Description"}
                 </div>
-                <p className="text-lg font-black text-gray-900 mt-2">{weatherDescription || labels.unavailable || "Unavailable"}</p>
+                <p className="text-lg font-black text-gray-900 mt-2 dark:text-white">{weatherDescription || labels.unavailable || "Unavailable"}</p>
               </div>
             </div>
 
-            <div className="mt-4 rounded-2xl border border-gray-200 bg-white/80 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] font-black text-gray-500 mb-2">{labels.smartAdvice || "Smart Advice (DSS)"}</p>
+            <div className="mt-4 rounded-2xl border border-gray-200 bg-white/80 p-4 dark:border-slate-800 dark:bg-slate-900">
+              <p className="text-xs uppercase tracking-[0.2em] font-black text-gray-500 mb-2 dark:text-slate-400">{labels.smartAdvice || "Smart Advice (DSS)"}</p>
               {isWindHigh ? (
                 <p className="text-sm font-bold text-red-600">{labels.windWarning || "Warning: high wind speed. Spraying is not recommended."}</p>
               ) : hasRainWarning ? (
@@ -462,13 +462,13 @@ export default function FieldCrops() {
       </div>
 
       {/* ΚΕΦΑΛΙΔΑ ΣΕΛΙΔΑΣ */}
-      <div className="flex justify-between items-end mb-8 border-b pb-6">
+      <div className="flex justify-between items-end mb-8 border-b border-slate-200 pb-6 dark:border-slate-800">
         <div>
           <Button onClick={() => navigate("/fields")} variant="ghost" size="sm" className="mb-1 px-0 text-blue-600 hover:bg-transparent hover:underline">
             &larr; {labels.returnToFields || "Return to Fields"}
           </Button>
-          <h2 className="text-4xl font-black text-gray-900 uppercase tracking-tighter">
-            {field?.name} <span className="text-lg font-normal text-gray-400 ml-2">{field?.area} {labels.stremmataShort || "strem."}</span>
+          <h2 className="text-4xl font-black text-gray-900 uppercase tracking-tighter dark:text-white">
+            {field?.name} <span className="text-lg font-normal text-gray-400 ml-2 dark:text-slate-400">{field?.area} {labels.stremmataShort || "strem."}</span>
           </h2>
         </div>
         <Button
@@ -480,26 +480,26 @@ export default function FieldCrops() {
       </div>
 
       {/* ΚΥΡΙΟΣ ΠΙΝΑΚΑΣ ΚΑΛΛΙΕΡΓΕΙΩΝ */}
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden dark:border-slate-800 dark:bg-slate-900">
         {loading ? (
           <div className="p-12 text-center font-bold text-green-700 uppercase tracking-widest">{labels.loadingData || "Loading Data..."}</div>
         ) : (
           <table className="w-full text-left">
-            <thead className="bg-gray-50 border-b">
+            <thead className="bg-gray-50 border-b dark:border-slate-800 dark:bg-slate-950">
               <tr>
-                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase">{labels.cropVariety || "Crop / Variety"}</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase">{labels.area || "Area"}</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase text-center">{labels.coverage || "Coverage"}</th>
-                <th className="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase">{labels.actions || "Actions"}</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase dark:text-slate-400">{labels.cropVariety || "Crop / Variety"}</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase dark:text-slate-400">{labels.area || "Area"}</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase text-center dark:text-slate-400">{labels.coverage || "Coverage"}</th>
+                <th className="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase dark:text-slate-400">{labels.actions || "Actions"}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-slate-800">
               {crops.map(crop => (
-                <tr key={crop.id} className="hover:bg-green-50/30 transition">
-                  <td className="px-6 py-4 font-bold text-gray-800">
-                    {crop.type} <span className="block font-normal text-gray-400 text-xs uppercase">{crop.variety || labels.general || "General"}</span>
+                <tr key={crop.id} className="hover:bg-green-50/30 transition dark:hover:bg-emerald-500/5">
+                  <td className="px-6 py-4 font-bold text-gray-800 dark:text-slate-100">
+                    {crop.type} <span className="block font-normal text-gray-400 text-xs uppercase dark:text-slate-500">{crop.variety || labels.general || "General"}</span>
                   </td>
-                  <td className="px-6 py-4 font-mono text-sm">{crop.zoneArea?.toFixed(2)} {labels.stremmataShort || "strem."}</td>
+                  <td className="px-6 py-4 font-mono text-sm text-slate-700 dark:text-slate-300">{crop.zoneArea?.toFixed(2)} {labels.stremmataShort || "strem."}</td>
                   <td className="px-6 py-4 text-center">
                     <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-[10px] font-bold">
                       {crop.coveragePercentage?.toFixed(1)}%
@@ -511,7 +511,7 @@ export default function FieldCrops() {
                         onClick={() => handleOpenWikiInfo(crop)}
                         variant="secondary"
                         size="sm"
-                        className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                        className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
                       >
                         <BookOpen className="h-3.5 w-3.5" />
                         {labels.wikiInfo || "Wiki Info"}
@@ -541,17 +541,17 @@ export default function FieldCrops() {
           className="max-h-[92vh] flex flex-col"
         >
           <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden md:grid-cols-[360px_1fr]">
-            <div className="overflow-y-auto border-r border-slate-100 bg-slate-50 p-6">
+            <div className="overflow-y-auto border-r border-slate-100 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-900">
               <form onSubmit={handleSubmitCrop} className="space-y-5">
-                <input type="text" required placeholder={labels.cropTypePlaceholder || "Type (e.g. Olives)"} className="w-full p-3 border rounded-xl shadow-sm" value={formData.type || ""} onChange={e => setFormData({...formData, type: e.target.value})} />
-                <input type="text" placeholder={labels.varietyPlaceholder || "Variety"} className="w-full p-3 border rounded-xl shadow-sm" value={formData.variety || ""} onChange={e => setFormData({...formData, variety: e.target.value})} />
-                <input type="date" className="w-full p-3 border rounded-xl shadow-sm" value={formData.plantingDate || ""} onChange={e => setFormData({...formData, plantingDate: e.target.value})} />
+                <input type="text" required placeholder={labels.cropTypePlaceholder || "Type (e.g. Olives)"} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900 shadow-sm placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-400" value={formData.type || ""} onChange={e => setFormData({...formData, type: e.target.value})} />
+                <input type="text" placeholder={labels.varietyPlaceholder || "Variety"} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900 shadow-sm placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-400" value={formData.variety || ""} onChange={e => setFormData({...formData, variety: e.target.value})} />
+                <input type="date" className="w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white" value={formData.plantingDate || ""} onChange={e => setFormData({...formData, plantingDate: e.target.value})} />
                 <Button type="submit" disabled={formData.zoneBoundary.length === 0} className="w-full">
                   {labels.saveZone || "Save Zone"}
                 </Button>
               </form>
             </div>
-            <div className="relative min-h-[520px] bg-slate-100">
+            <div className="relative min-h-[520px] bg-slate-100 dark:bg-slate-950">
               <MapComponent 
                 parentBoundary={field?.boundary?.coordinates[0]} 
                 boundary={formData.zoneBoundary} 
@@ -573,30 +573,30 @@ export default function FieldCrops() {
           className="max-h-[92vh] flex flex-col"
         >
           <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden md:grid-cols-[380px_1fr]">
-            <div className="overflow-y-auto border-r border-slate-100 bg-slate-50 p-6">
+            <div className="overflow-y-auto border-r border-slate-100 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-900">
 
               {!isAddingTask ? (
                 <Button onClick={() => { setIsAddingTask(true); setPendingLocation(null); }} className="mb-6 w-full">
                   + {labels.newMapEntry || "New Map Entry"}
                 </Button>
               ) : (
-                <form onSubmit={handleSaveTask} className="bg-blue-50 p-5 rounded-2xl mb-6 border border-blue-200 animate-in zoom-in-95 shadow-sm">
-                   <p className="text-[9px] font-black text-blue-600 mb-3 uppercase tracking-widest animate-pulse">{labels.clickInsideZone || "Click inside the green zone boundary"}</p>
-                   <select className="w-full p-3 border rounded-xl mb-3 text-sm font-bold bg-white outline-none" value={taskFormData.taskType} onChange={e => setTaskFormData({...taskFormData, taskType: e.target.value})}>
+                <form onSubmit={handleSaveTask} className="bg-blue-50 p-5 rounded-2xl mb-6 border border-blue-200 animate-in zoom-in-95 shadow-sm dark:border-blue-400/30 dark:bg-blue-500/10">
+                   <p className="text-[9px] font-black text-blue-600 mb-3 uppercase tracking-widest animate-pulse dark:text-blue-300">{labels.clickInsideZone || "Click inside the green zone boundary"}</p>
+                   <select className="w-full p-3 border rounded-xl mb-3 text-sm font-bold bg-white text-slate-900 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white" value={taskFormData.taskType} onChange={e => setTaskFormData({...taskFormData, taskType: e.target.value})}>
                      {TASK_TYPE_OPTIONS.map((option) => (
                        <option key={option.value} value={option.value}>{option.label}</option>
                      ))}
                    </select>
-                   <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-blue-700">
+                   <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-blue-700 dark:text-slate-200">
                      {labels.taskDate || "Date"}
                    </label>
                    <input
                      type="date"
-                     className="mb-3 w-full rounded-xl border bg-white p-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-400"
+                     className="mb-3 w-full rounded-xl border bg-white p-3 text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                      value={taskFormData.taskDate || ""}
                      onChange={e => setTaskFormData({...taskFormData, taskDate: e.target.value})}
                    />
-                   <textarea placeholder={labels.taskDescriptionPlaceholder || "Task description..."} className="w-full p-3 border rounded-xl mb-4 text-sm bg-white h-24 resize-none focus:ring-2 focus:ring-blue-400 outline-none" value={taskFormData.description || ""} onChange={e => setTaskFormData({...taskFormData, description: e.target.value})} />
+                   <textarea placeholder={labels.taskDescriptionPlaceholder || "Task description..."} className="w-full p-3 border rounded-xl mb-4 text-sm bg-white h-24 resize-none text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-blue-400 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-400" value={taskFormData.description || ""} onChange={e => setTaskFormData({...taskFormData, description: e.target.value})} />
                    <div className="flex gap-2">
                      <Button type="submit" disabled={!pendingLocation} className="flex-1" size="sm">{labels.save || "Save"}</Button>
                      <Button type="button" onClick={() => { setIsAddingTask(false); setPendingLocation(null); }} variant="secondary" className="flex-1" size="sm">{labels.cancel || "Cancel"}</Button>
@@ -605,20 +605,20 @@ export default function FieldCrops() {
               )}
 
               <div className="space-y-3">
-                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block mb-1">{labels.taskHistory || "Task History"}</span>
-                {tasks.length === 0 && <p className="text-xs text-gray-400 italic text-center py-4 bg-white rounded-xl border border-dashed">{labels.noTasks || "No tasks."}</p>}
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block mb-1 dark:text-slate-400">{labels.taskHistory || "Task History"}</span>
+                {tasks.length === 0 && <p className="text-xs text-gray-400 italic text-center py-4 bg-white rounded-xl border border-dashed dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">{labels.noTasks || "No tasks."}</p>}
                 {tasks.map(t => (
-                  <div key={t.id} className="bg-white p-4 rounded-2xl border flex justify-between items-center shadow-sm hover:shadow-md transition-shadow">
+                  <div key={t.id} className="bg-white p-4 rounded-2xl border flex justify-between items-center shadow-sm hover:shadow-md transition-shadow dark:border-slate-800 dark:bg-slate-800">
                     <div>
-                      <div className="text-xs font-bold text-gray-800 uppercase tracking-tight">{t.taskType}</div>
-                      <div className="text-[10px] text-gray-400 mt-0.5 line-clamp-1 italic">{t.description || labels.noDescription || "No description"}</div>
+                      <div className="text-xs font-bold text-gray-800 uppercase tracking-tight dark:text-slate-100">{t.taskType}</div>
+                      <div className="text-[10px] text-gray-400 mt-0.5 line-clamp-1 italic dark:text-slate-400">{t.description || labels.noDescription || "No description"}</div>
                     </div>
                     <Button
                       disabled={t.status === 'COMPLETED'} 
                       onClick={() => handleCompleteTask(t.id)} 
                       variant="secondary"
                       size="sm"
-                      className={t.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}
+                      className={t.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' : 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:hover:bg-amber-500/25'}
                     >
                       {TASK_STATUS_LABELS[t.status] || t.status}
                     </Button>
@@ -627,7 +627,7 @@ export default function FieldCrops() {
               </div>
             </div>
 
-            <div className="relative min-h-[560px] bg-slate-100">
+            <div className="relative min-h-[560px] bg-slate-100 dark:bg-slate-950">
               <MapComponent 
                 parentBoundary={field?.boundary?.coordinates[0]} 
                 existingCrops={[selectedCrop]} // Δείχνουμε μόνο την τρέχουσα ζώνη για καθαρότητα
@@ -654,7 +654,7 @@ export default function FieldCrops() {
         >
             <div className="p-4 max-h-[360px] overflow-y-auto space-y-2">
               {crops.length === 0 && (
-                <p className="text-sm text-gray-500 text-center py-6">{labels.noCropsInField || "No crops in this field."}</p>
+                <p className="text-sm text-gray-500 text-center py-6 dark:text-slate-400">{labels.noCropsInField || "No crops in this field."}</p>
               )}
               {crops.map((crop) => (
                 <Button
@@ -667,8 +667,8 @@ export default function FieldCrops() {
                   className="w-full justify-start px-4 py-3"
                 >
                   <span className="text-left">
-                    <span className="block text-sm font-bold text-gray-800">{crop.type}</span>
-                    <span className="mt-0.5 block text-xs text-gray-500">{crop.variety || labels.generalVariety || "General variety"}</span>
+                    <span className="block text-sm font-bold text-gray-800 dark:text-slate-100">{crop.type}</span>
+                    <span className="mt-0.5 block text-xs text-gray-500 dark:text-slate-400">{crop.variety || labels.generalVariety || "General variety"}</span>
                   </span>
                 </Button>
               ))}

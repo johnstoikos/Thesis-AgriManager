@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useTheme } from "./context/ThemeContext";
 
 export const translations = {
   el: {
@@ -551,16 +552,9 @@ export const translations = {
 };
 
 export const LanguageContext = createContext(null);
-export const ThemeContext = createContext(null);
 
 export function AppPreferencesProvider({ children }) {
   const [language, setLanguage] = useState(() => localStorage.getItem("agrimanager-language") || "el");
-  const [theme, setTheme] = useState(() => localStorage.getItem("agrimanager-theme") || "light");
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-    localStorage.setItem("agrimanager-theme", theme);
-  }, [theme]);
 
   useEffect(() => {
     document.documentElement.lang = language;
@@ -577,27 +571,13 @@ export function AppPreferencesProvider({ children }) {
     [language]
   );
 
-  const themeValue = useMemo(
-    () => ({
-      theme,
-      setTheme,
-      isDarkMode: theme === "dark",
-      toggleTheme: () => setTheme((current) => (current === "dark" ? "light" : "dark")),
-    }),
-    [theme]
-  );
-
-  return (
-    <LanguageContext.Provider value={languageValue}>
-      <ThemeContext.Provider value={themeValue}>{children}</ThemeContext.Provider>
-    </LanguageContext.Provider>
-  );
+  return <LanguageContext.Provider value={languageValue}>{children}</LanguageContext.Provider>;
 }
 
 export function useAppPreferences() {
   const languageContext = useContext(LanguageContext);
-  const themeContext = useContext(ThemeContext);
-  if (!languageContext || !themeContext) {
+  const themeContext = useTheme();
+  if (!languageContext) {
     throw new Error("useAppPreferences must be used inside AppPreferencesProvider");
   }
   return { ...languageContext, ...themeContext };
@@ -607,14 +587,6 @@ export function useLanguage() {
   const context = useContext(LanguageContext);
   if (!context) {
     throw new Error("useLanguage must be used inside AppPreferencesProvider");
-  }
-  return context;
-}
-
-export function useTheme() {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error("useTheme must be used inside AppPreferencesProvider");
   }
   return context;
 }

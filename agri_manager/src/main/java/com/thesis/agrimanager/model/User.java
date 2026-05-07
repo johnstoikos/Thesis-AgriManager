@@ -23,6 +23,11 @@ public class User {
 
     private String fullName;
 
+    private String phone;
+
+    @Column(columnDefinition = "text")
+    private String profilePhoto;
+
     // Εδώ ορίζουμε αν είναι απλός αγρότης ή Admin
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
@@ -53,6 +58,14 @@ public class User {
         return password;
     }
 
+    public String getPhone() {
+        return phone;
+    }
+
+    public String getProfilePhoto() {
+        return profilePhoto;
+    }
+
     public void setId(Long id) {
         this.id = id;
     }
@@ -71,6 +84,14 @@ public class User {
 
     public void setFullName(String fullName) {
         this.fullName = fullName;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public void setProfilePhoto(String profilePhoto) {
+        this.profilePhoto = profilePhoto;
     }
 
     public void setRoles(Set<String> roles) {

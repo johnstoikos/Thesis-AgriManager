@@ -186,7 +186,10 @@ export default function MapComponent({
         zoom={13} 
         style={{ height: '100%', width: '100%', minHeight: '500px' }}
       >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution="&copy; OpenStreetMap contributors"
+        />
         
         <MapResizer />
         <MapEvents boundary={boundary} parentBoundary={parentBoundary} focusedLocation={focusedLocation} />

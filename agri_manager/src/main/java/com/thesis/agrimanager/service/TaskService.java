@@ -6,6 +6,7 @@ import com.thesis.agrimanager.model.Task;
 import com.thesis.agrimanager.repository.CropRepository;
 import com.thesis.agrimanager.repository.TaskRepository;
 import org.springframework.stereotype.Service;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -41,6 +42,12 @@ public class TaskService {
 
     public List<TaskDTO> getTasksByCrop(Long cropId) {
         return taskRepository.findByCropId(cropId).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<TaskDTO> getUrgentTasks(String username) {
+        return taskRepository.findPendingUrgentTasks(username, LocalDate.now()).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }

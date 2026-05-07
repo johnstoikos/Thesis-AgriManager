@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import api from "../api/axios";
+import axios from "../api/axios";
 import { AuthContext } from "./auth-context";
 
 const getStoredToken = () => localStorage.getItem("jwt") || sessionStorage.getItem("jwt");
@@ -36,7 +36,7 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      const response = await api.get("/api/users/profile", {
+      const response = await axios.get("/api/users/profile", {
         headers: {
           Authorization: `Bearer ${currentToken}`,
         },
@@ -103,12 +103,14 @@ export function AuthProvider({ children }) {
       }
 
       try {
-        const response = await api.put("/api/users/profile", profileData, {
+        console.log("Update Payload:", profileData);
+        const response = await axios.put("/api/users/profile", profileData, {
           headers: {
             Authorization: `Bearer ${currentToken}`,
           },
         });
         const updatedProfile = response.data || null;
+        console.log("Update Success:", response.data);
         setUser(updatedProfile);
         if (updatedProfile) persistUserProfile(updatedProfile);
         return updatedProfile;

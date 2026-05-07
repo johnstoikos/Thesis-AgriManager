@@ -1,6 +1,7 @@
 package com.thesis.agrimanager.service;
 
 import com.thesis.agrimanager.dto.LoginDTO;
+import com.thesis.agrimanager.dto.UserProfileDTO;
 import com.thesis.agrimanager.dto.UserRegistrationDTO;
 import com.thesis.agrimanager.model.User;
 import com.thesis.agrimanager.repository.UserRepository;
@@ -54,5 +55,29 @@ public class UserService {
     public User getUserByUsername(String username) {
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Ο χρήστης " + username + " δεν βρέθηκε!"));
+    }
+
+    public UserProfileDTO updateUserProfile(String username, UserProfileDTO dto) {
+        User user = getUserByUsername(username);
+
+        System.out.println("Updating user profile for " + username + " with phone: " + dto.getPhone());
+        user.setFullName(dto.getFullName());
+        user.setPhone(dto.getPhone());
+        user.setProfilePhoto(dto.getProfilePhoto());
+
+        User savedUser = userRepository.save(user);
+        System.out.println("Saved user phone: " + savedUser.getPhone());
+        return toProfileDTO(savedUser);
+    }
+
+    public UserProfileDTO toProfileDTO(User user) {
+        return new UserProfileDTO(
+                user.getId(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getFullName(),
+                user.getPhone(),
+                user.getProfilePhoto()
+        );
     }
 }

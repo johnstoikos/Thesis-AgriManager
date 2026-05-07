@@ -35,6 +35,34 @@ select {
   font: inherit;
 }
 
+body,
+button,
+input,
+textarea,
+select,
+a,
+div,
+section,
+article,
+header,
+aside,
+main,
+table,
+thead,
+tbody,
+tr,
+td,
+th,
+span,
+p,
+h1,
+h2,
+h3 {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+  transition-duration: 180ms;
+  transition-timing-function: ease;
+}
+
 .animate-in {
   animation-fill-mode: both;
 }
@@ -69,6 +97,64 @@ select {
 .task-div-marker {
   background: transparent;
   border: 0;
+}
+
+.dark .rbc-calendar,
+.dark .rbc-time-view,
+.dark .rbc-month-view,
+.dark .rbc-agenda-view {
+  color: #e2e8f0;
+  background: #0f172a;
+}
+
+.dark .rbc-toolbar button {
+  color: #e2e8f0;
+  border-color: #334155;
+  background: #1e293b;
+}
+
+.dark .rbc-toolbar button:hover,
+.dark .rbc-toolbar button:focus,
+.dark .rbc-toolbar button.rbc-active {
+  color: #ffffff;
+  border-color: #10b981;
+  background: #065f46;
+}
+
+.dark .rbc-month-row,
+.dark .rbc-header,
+.dark .rbc-day-bg,
+.dark .rbc-time-header,
+.dark .rbc-time-content,
+.dark .rbc-timeslot-group,
+.dark .rbc-agenda-table,
+.dark .rbc-agenda-table tbody > tr > td,
+.dark .rbc-agenda-table thead > tr > th {
+  border-color: #1e293b;
+}
+
+.dark .rbc-off-range-bg {
+  background: #020617;
+}
+
+.dark .rbc-today {
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.dark .rbc-off-range {
+  color: #64748b;
+}
+
+.dark .rbc-show-more {
+  color: #6ee7b7;
+  background: transparent;
+}
+
+.dark .leaflet-control,
+.dark .leaflet-popup-content-wrapper,
+.dark .leaflet-popup-tip {
+  color: #e2e8f0;
+  background: #0f172a;
 }
 
 @keyframes app-fade-in {
