@@ -48,7 +48,7 @@ export function Surface({ children, className = "" }) {
   return (
     <div
       className={cn(
-        "rounded-3xl border border-white/60 bg-white/70 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/75 dark:shadow-[0_18px_45px_rgba(0,0,0,0.28)]",
+        "box-border w-full max-w-full rounded-3xl border border-white/60 bg-white/70 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/75 dark:shadow-[0_18px_45px_rgba(0,0,0,0.28)]",
         className
       )}
     >
@@ -212,9 +212,9 @@ export function SkeletonLines({ lines = 3, className = "" }) {
 
 export function SectionCard({ title, description, badge, side, children, className = "" }) {
   return (
-    <Surface className={cn("p-5 md:p-6", className)}>
+    <Surface className={cn("box-border p-5 md:p-6", className)}>
       <div className="flex flex-col gap-4 border-b border-slate-100 pb-4 dark:border-slate-800 md:flex-row md:items-start md:justify-between">
-        <div>
+        <div className="min-w-0">
           {badge && (
             <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
               {badge}

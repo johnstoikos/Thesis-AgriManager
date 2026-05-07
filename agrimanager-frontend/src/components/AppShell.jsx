@@ -11,11 +11,14 @@ import {
   Droplets,
   LayoutDashboard,
   Leaf,
+  Languages,
+  LogOut,
   Map,
   Moon,
   Settings as SettingsIcon,
   Shield,
   Sprout,
+  Sun,
   Tractor,
   UserCircle2,
   Wind,
@@ -25,7 +28,7 @@ import api from "../api/axios";
 import { useAuth } from "../context/auth-context";
 import { useTheme } from "../context/ThemeContext";
 import { useAppPreferences } from "../i18n";
-import { Button, Popover } from "./ui";
+import { Button, Popover, Switch } from "./ui";
 
 const formatDate = (value) => {
   if (!value) return null;
@@ -45,6 +48,9 @@ const navItems = [
   { to: "/analytics", labelKey: "analytics", icon: BarChart3 },
   { to: "/profile", labelKey: "profile", icon: UserCircle2 },
 ];
+
+const iconButtonClass =
+  "h-10 w-10 rounded-full p-2.5 text-slate-500 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300 sm:h-12 sm:w-12 sm:p-3";
 
 const dateKey = (date) => {
   const current = new Date(date);
@@ -146,10 +152,10 @@ function BellDropdown({ label }) {
           if (!isOpen) fetchNotifications();
         }}
         variant="secondary"
-        className="relative h-12 w-12 rounded-full p-3 text-slate-500 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300"
+        className={`relative ${iconButtonClass}`}
         aria-label={label}
       >
-        <Bell className="h-6 w-6" />
+        <Bell className="h-5 w-5 sm:h-6 sm:w-6" />
         {tasks.length > 0 && (
           <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-black text-white">
             {tasks.length}
@@ -218,21 +224,93 @@ function BellDropdown({ label }) {
   );
 }
 
-function ThemeToggleButton() {
+function SettingsDropdown() {
   const { theme, toggleTheme } = useTheme();
-  const { t } = useAppPreferences();
+  const { language, setLanguage, t } = useAppPreferences();
+  const { clearAuth } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
   const isDark = theme === "dark";
 
+  useOutsideClose(dropdownRef, () => setIsOpen(false));
+
+  const handleLogout = () => {
+    clearAuth();
+    window.location.href = "/login";
+  };
+
   return (
-    <Button
-      onClick={toggleTheme}
-      variant="secondary"
-      className="h-12 w-12 rounded-full p-3 text-slate-500 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300"
-      aria-label={t.shell.darkMode}
-      title={t.shell.darkMode}
-    >
-      {isDark ? <Moon className="h-6 w-6" /> : <SettingsIcon className="h-6 w-6" />}
-    </Button>
+    <div ref={dropdownRef} className="relative">
+      <Button
+        onClick={() => setIsOpen((open) => !open)}
+        variant="secondary"
+        className={iconButtonClass}
+        aria-label={t.shell.settings}
+        aria-expanded={isOpen}
+        title={t.shell.settings}
+      >
+        <SettingsIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+      </Button>
+
+      {isOpen && (
+        <Popover className="w-72 max-w-[calc(100vw-1.5rem)] rounded-2xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+          <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+            <p className="text-sm font-black text-slate-950 dark:text-slate-100">{t.shell.settings}</p>
+          </div>
+
+          <div className="space-y-3 p-3">
+            <div className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5">
+              <span className="flex min-w-0 items-center gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                  {isDark ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+                </span>
+                <span>
+                  <span className="block text-sm font-black text-slate-900 dark:text-slate-100">{t.shell.appearance}</span>
+                  <span className="block text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    {isDark ? "Dark" : "Light"}
+                  </span>
+                </span>
+              </span>
+              <Switch checked={isDark} onChange={toggleTheme} aria-label={t.shell.darkMode} />
+            </div>
+
+            <div className="rounded-xl px-3 py-2.5">
+              <div className="mb-2 flex items-center gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                  <Languages className="h-5 w-5" />
+                </span>
+                <span className="text-sm font-black text-slate-900 dark:text-slate-100">{t.shell.language}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { code: "el", label: "Ελληνικά" },
+                  { code: "en", label: "English" },
+                ].map((option) => (
+                  <button
+                    key={option.code}
+                    type="button"
+                    onClick={() => setLanguage(option.code)}
+                    className={[
+                      "rounded-lg px-3 py-2 text-sm font-black transition",
+                      language === option.code
+                        ? "bg-emerald-950 text-white dark:bg-emerald-500 dark:text-slate-950"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700",
+                    ].join(" ")}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <Button type="button" onClick={handleLogout} variant="danger" className="w-full justify-center rounded-xl">
+              <LogOut className="h-4 w-4" />
+              {t.shell.logout}
+            </Button>
+          </div>
+        </Popover>
+      )}
+    </div>
   );
 }
 
@@ -341,10 +419,10 @@ function CalendarPopover() {
       <Button
         onClick={() => setIsOpen((open) => !open)}
         variant="secondary"
-        className="h-12 w-12 rounded-full p-3 text-slate-500 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300"
+        className={iconButtonClass}
         aria-label={t.shell.calendar}
       >
-        <CalendarDays className="h-6 w-6" />
+        <CalendarDays className="h-5 w-5 sm:h-6 sm:w-6" />
       </Button>
 
       {isOpen && (
@@ -509,30 +587,30 @@ export default function AppShell() {
       </aside>
 
       <div className="lg:pl-72">
-        <header className="sticky top-0 z-[1000] border-b border-white/60 bg-white/70 px-4 py-4 shadow-sm backdrop-blur-md transition-colors dark:border-slate-800 dark:bg-slate-950/75 md:px-6">
-          <div className="mx-auto flex max-w-7xl items-center gap-3">
-            <NavLink to="/dashboard" className="flex items-center gap-2 font-black text-emerald-800 dark:text-emerald-300 lg:hidden">
+        <header className="sticky top-0 z-[1000] border-b border-white/60 bg-white/70 px-3 py-3 shadow-sm backdrop-blur-md transition-colors dark:border-slate-800 dark:bg-slate-950 sm:px-4 md:px-6">
+          <div className="mx-auto flex max-w-7xl items-center gap-2 sm:gap-3">
+            <NavLink to="/dashboard" className="flex min-w-0 shrink items-center gap-2 font-black text-emerald-800 dark:text-emerald-300 lg:hidden">
               <Sprout className="h-6 w-6" />
-              AgriManager
+              <span className="hidden sm:inline">AgriManager</span>
             </NavLink>
 
-            <div className="ml-auto flex min-w-0 items-center gap-2">
+            <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2">
               <BellDropdown label={t.shell.notifications} />
               <CalendarPopover />
-              <ThemeToggleButton />
+              <SettingsDropdown />
             </div>
           </div>
-          <nav className="mx-auto mt-3 flex max-w-7xl gap-2 overflow-x-auto lg:hidden">
+          <nav className="mx-auto mt-3 flex max-w-7xl gap-3 overflow-x-auto px-1 pb-1 lg:hidden">
             {navItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
                   [
-                    "inline-flex shrink-0 items-center gap-2 rounded-2xl px-3 py-2 text-xs font-black transition",
+                    "inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-2xl px-4 py-2.5 text-xs font-black transition",
                     isActive
-                      ? "bg-emerald-950 text-white"
-                      : "bg-white/80 text-slate-600 ring-1 ring-slate-200",
+                      ? "bg-emerald-950 text-white dark:bg-emerald-500 dark:text-slate-950"
+                      : "bg-white/80 text-slate-600 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-800",
                   ].join(" ")
                 }
               >

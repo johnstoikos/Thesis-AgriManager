@@ -270,7 +270,7 @@ export default function Analytics() {
       await new Promise((resolve) => requestAnimationFrame(resolve));
 
       const canvas = await html2canvas(exportArea, {
-        backgroundColor: "#ffffff",
+        backgroundColor: null,
         logging: false,
         scale: 2,
         useCORS: true,
@@ -279,6 +279,7 @@ export default function Analytics() {
         onclone: (clonedDocument) => {
           const clonedArea = clonedDocument.getElementById("pdf-export-area");
           if (!clonedArea) return;
+          const problematicColorPattern = /(oklab|oklch)/i;
 
           const fallbackForProperty = (propertyName) => {
             const name = propertyName.toLowerCase();
@@ -293,7 +294,7 @@ export default function Analytics() {
 
             Array.from(styles).forEach((propertyName) => {
               const value = styles.getPropertyValue(propertyName);
-              if (!value || !value.toLowerCase().includes("oklch")) return;
+              if (!value || !problematicColorPattern.test(value)) return;
 
               try {
                 element.style.setProperty(
@@ -305,6 +306,23 @@ export default function Analytics() {
                 // Some browser-generated shorthand properties cannot be set directly.
               }
             });
+          };
+
+          const sanitizeComputedColors = (element) => {
+            const styles = clonedDocument.defaultView?.getComputedStyle(element);
+            if (!styles) return;
+
+            if (problematicColorPattern.test(styles.color)) {
+              element.style.color = "#1e293b";
+            }
+
+            if (problematicColorPattern.test(styles.backgroundColor)) {
+              element.style.backgroundColor = "#ffffff";
+            }
+
+            if (problematicColorPattern.test(styles.borderColor)) {
+              element.style.borderColor = "#e2e8f0";
+            }
           };
 
           clonedDocument.documentElement.style.backgroundColor = "#ffffff";
@@ -321,6 +339,7 @@ export default function Analytics() {
           clonedDocument.querySelectorAll("*").forEach((node) => {
             sanitizeStyleDeclaration(node, node.style);
             sanitizeStyleDeclaration(node, clonedDocument.defaultView?.getComputedStyle(node));
+            sanitizeComputedColors(node);
           });
 
           const existingTitle = clonedDocument.querySelector("h1");

@@ -39,6 +39,7 @@ const STATUS_COLORS = {
   COMPLETED: "bg-emerald-100 text-emerald-700",
 };
 
+const COMPLETED_STATUS = "COMPLETED";
 const EMPTY_LABELS = {};
 const TASK_TYPE_VALUES = ["Πότισμα", "Λίπανση", "Ψεκασμός", "Συγκομιδή", "Κλάδεμα", "Άλλο"];
 const TASK_TYPE_LABELS = {
@@ -99,10 +100,24 @@ function getTaskIcon(taskType = "") {
   return Tractor;
 }
 
+function isDeletedTask(task) {
+  return Boolean(
+    task?.deleted === true ||
+      task?.isDeleted === true ||
+      task?.deletedAt ||
+      task?.deleted_at ||
+      task?.status === "DELETED"
+  );
+}
+
+function isValidTask(task) {
+  return Boolean(task && typeof task === "object" && task.id != null && !isDeletedTask(task));
+}
+
 export default function GlobalTasks() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { language, t } = useAppPreferences();
+  const { language, theme, t } = useAppPreferences();
   const labels = t.tasks || EMPTY_LABELS;
   const [tasks, setTasks] = useState([]);
   const [fields, setFields] = useState([]);
@@ -115,14 +130,23 @@ export default function GlobalTasks() {
   const [typeFilter, setTypeFilter] = useState("ALL_TYPES");
   const [search, setSearch] = useState("");
   const viewMode = searchParams.get("view") === "calendar" ? "calendar" : "list";
+  console.log("Current Tasks in State:", tasks.length);
 
   useEffect(() => {
+    let ignore = false;
+    const fieldLabel = language === "el" ? "Χωράφι" : "Field";
+    const loadErrorMessage =
+      language === "el" ? "Αποτυχία φόρτωσης εργασιών. Δοκιμάστε ξανά." : "Failed to load tasks. Please try again.";
+    const unknownCropLabel = language === "el" ? "Άγνωστη καλλιέργεια" : "Unknown crop";
+
     const fetchAllData = async () => {
       setLoading(true);
       setError("");
 
       try {
         const fieldsRes = await api.get("/api/fields");
+        if (ignore) return;
+
         const fields = Array.isArray(fieldsRes.data) ? fieldsRes.data : [];
         setFields(fields);
 
@@ -140,17 +164,19 @@ export default function GlobalTasks() {
           fieldCrops.forEach((crop) => {
             crops.push(crop);
             lookup[crop.id] = {
-              cropName: crop.type || labels.unknownCrop || "Unknown crop",
+              cropName: crop.type || unknownCropLabel,
               fieldId: field.id,
-              fieldName: field.name || `${labels.field || "Field"} #${field.id}`,
+              fieldName: field.name || `${fieldLabel} #${field.id}`,
             };
           });
         });
+        if (ignore) return;
         setCropLookup(lookup);
 
         const tasksByCropResults = await Promise.allSettled(
           crops.map((crop) => api.get(`/api/tasks/crop/${crop.id}`))
         );
+        if (ignore) return;
 
         const mergedTasks = [];
         tasksByCropResults.forEach((result) => {
@@ -159,17 +185,28 @@ export default function GlobalTasks() {
           mergedTasks.push(...cropTasks);
         });
 
-        setTasks(mergedTasks);
+        const uniqueTasksMap = new Map();
+        mergedTasks.forEach((t) => {
+          if (t && t.id) uniqueTasksMap.set(t.id, t);
+        });
+        const finalTasks = Array.from(uniqueTasksMap.values()).filter(isValidTask);
+        console.log("IDs of tasks about to be set in state:", finalTasks.map((t) => t.id));
+        setTasks(finalTasks);
       } catch (err) {
+        if (ignore) return;
         console.error("Σφάλμα φόρτωσης global tasks:", err);
-        setError(labels.loadError || "Failed to load tasks. Please try again.");
+        setError(loadErrorMessage);
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     };
 
     fetchAllData();
-  }, [labels.field, labels.loadError, labels.unknownCrop]);
+
+    return () => {
+      ignore = true;
+    };
+  }, [language]);
 
   const statusLabels = useMemo(
     () => ({
@@ -221,9 +258,21 @@ export default function GlobalTasks() {
     });
   }, [tasks, statusFilter, typeFilter, search]);
 
+  const upcomingTasks = useMemo(() => {
+    return filteredTasks.filter(
+      (task) => task && task.status && task.status.toString().toUpperCase() === "PENDING"
+    );
+  }, [filteredTasks]);
+
   const calendarEvents = useMemo(() => {
     return filteredTasks
-      .filter((task) => task.taskDate)
+      .filter(
+        (task) =>
+          task &&
+          task.taskDate &&
+          task.status &&
+          task.status.toString().toUpperCase() === "PENDING"
+      )
       .map((task) => ({
         title: task.taskType || labels.task || "Task",
         start: new Date(task.taskDate),
@@ -247,7 +296,11 @@ export default function GlobalTasks() {
     if (!window.confirm(labels.deleteConfirm || "Are you sure you want to delete this task?")) return;
     try {
       await api.delete(`/api/tasks/${taskId}`);
-      setTasks((prev) => prev.filter((task) => task.id !== taskId));
+      setTasks((prev) => {
+        const filtered = prev.filter((t) => t.id !== taskId);
+        console.log(`Task ${taskId} removed. Remaining in state:`, filtered.length);
+        return filtered;
+      });
     } catch (err) {
       if (err?.response?.status === 400) {
         alert(labels.deleteRelationError || "This item cannot be deleted because it is connected to other data.");
@@ -289,9 +342,9 @@ export default function GlobalTasks() {
       doc.text(labels.pdfTitle || "Agricultural Task Calendar - AgriManager", 40, 44);
       doc.setFontSize(10);
       doc.text(`${labels.exportDate || "Export date"}: ${new Date().toLocaleDateString(language === "el" ? "el-GR" : "en-US")}`, 40, 64);
-      doc.text(`${labels.totalRecords || "Total records"}: ${filteredTasks.length}`, 40, 80);
+      doc.text(`${labels.totalRecords || "Total records"}: ${upcomingTasks.length}`, 40, 80);
 
-      const rows = filteredTasks.map((task) => {
+      const rows = upcomingTasks.map((task) => {
         const cropInfo = cropLookup[task.cropId];
         return [
           formatTaskDate(task.taskDate, labels.noDate || "No date", language === "el" ? "el-GR" : "en-US"),
@@ -354,7 +407,7 @@ export default function GlobalTasks() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
-            {labels.total || "Total"}: {filteredTasks.length}
+            {labels.total || "Total"}: {upcomingTasks.length}
           </span>
           <Button onClick={exportToPDF} variant="secondary" size="sm">
             <Download className="h-3.5 w-3.5" />
@@ -431,6 +484,7 @@ export default function GlobalTasks() {
           </div>
           <div className="h-[680px] rounded-2xl border border-slate-200 bg-white p-3 text-sm shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100">
             <Calendar
+              key={`${theme}-${language}-${tasks.length}`}
               culture={language === "el" ? "el" : "en"}
               localizer={calendarLocalizer}
               events={calendarEvents}
@@ -442,7 +496,7 @@ export default function GlobalTasks() {
               eventPropGetter={(event) => ({
                 className:
                   event.resource?.status === "COMPLETED"
-                    ? "border-0 bg-emerald-700 text-white dark:bg-emerald-600"
+                    ? "border-0 bg-emerald-500/60 text-emerald-950 dark:bg-emerald-400/45 dark:text-emerald-50"
                     : "border-0 bg-amber-600 text-white dark:bg-amber-500 dark:text-slate-950",
               })}
             />

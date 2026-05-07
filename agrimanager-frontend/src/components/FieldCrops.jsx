@@ -78,7 +78,7 @@ export default function FieldCrops() {
   
   // States για το Modal Καλλιέργειας (Πολύγωνο)
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({ id: null, type: "", variety: "", plantingDate: "", zoneBoundary: [] });
+  const [formData, setFormData] = useState({ id: null, type: "", variety: "", zoneBoundary: [] });
 
   // States για το Modal Εργασιών (Σημείο/Point)
   const [showTaskModal, setShowTaskModal] = useState(false);
@@ -212,7 +212,7 @@ export default function FieldCrops() {
         zoneBoundary: crop.zoneBoundary.coordinates[0] 
       });
     } else {
-      setFormData({ id: null, type: "", variety: "", plantingDate: "", zoneBoundary: [] });
+      setFormData({ id: null, type: "", variety: "", zoneBoundary: [] });
     }
     setShowModal(true);
   };
@@ -220,7 +220,8 @@ export default function FieldCrops() {
   const handleSubmitCrop = async (e) => {
     e.preventDefault();
     const payload = { 
-      ...formData, 
+      type: formData.type,
+      variety: formData.variety,
       fieldId: parseInt(fieldId), 
       zoneBoundary: { type: "Polygon", coordinates: [formData.zoneBoundary] } 
     };
@@ -545,7 +546,6 @@ export default function FieldCrops() {
               <form onSubmit={handleSubmitCrop} className="space-y-5">
                 <input type="text" required placeholder={labels.cropTypePlaceholder || "Type (e.g. Olives)"} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900 shadow-sm placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-400" value={formData.type || ""} onChange={e => setFormData({...formData, type: e.target.value})} />
                 <input type="text" placeholder={labels.varietyPlaceholder || "Variety"} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900 shadow-sm placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-400" value={formData.variety || ""} onChange={e => setFormData({...formData, variety: e.target.value})} />
-                <input type="date" className="w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white" value={formData.plantingDate || ""} onChange={e => setFormData({...formData, plantingDate: e.target.value})} />
                 <Button type="submit" disabled={formData.zoneBoundary.length === 0} className="w-full">
                   {labels.saveZone || "Save Zone"}
                 </Button>

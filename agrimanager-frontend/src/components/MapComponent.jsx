@@ -180,10 +180,11 @@ export default function MapComponent({
     : [];
 
   return (
-    <div className="relative z-0 isolate" style={{ height: '100%', width: '100%', minHeight: '500px' }}>
+    <div className="relative z-0 isolate w-full" style={{ height: '100%', width: '100%', minHeight: '500px' }}>
       <MapContainer 
         center={[38.2466, 21.7346]} 
         zoom={13} 
+        className="w-full"
         style={{ height: '100%', width: '100%', minHeight: '500px' }}
       >
         <TileLayer

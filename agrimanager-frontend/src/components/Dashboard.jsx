@@ -93,13 +93,15 @@ export default function Dashboard() {
   }, [user]);
 
   if (loading) return (
-    <Surface className="flex min-h-[420px] items-center justify-center p-10">
-      <p className="animate-pulse text-xl font-bold text-emerald-600 dark:text-emerald-300">Φόρτωση δεδομένων από το χωράφι...</p>
-    </Surface>
+    <div className="mx-auto w-full max-w-6xl px-4 md:px-6">
+      <Surface className="flex min-h-[420px] items-center justify-center p-10">
+        <p className="animate-pulse text-xl font-bold text-emerald-600 dark:text-emerald-300">Φόρτωση δεδομένων από το χωράφι...</p>
+      </Surface>
+    </div>
   );
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 md:px-6">
       <PageHeader
         eyebrow={t.dashboard.eyebrow}
         title={t.dashboard.title}
@@ -112,20 +114,18 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <StatCard icon={MapPinned} title={t.dashboard.totalFields} value={stats?.totalFields || 0} tone="emerald" />
-            <StatCard icon={Sprout} title={t.dashboard.activeCrops} value={stats?.activeCrops || 0} tone="sky" />
-            <StatCard icon={LayoutGrid} title={t.dashboard.pendingTasks} value={stats?.pendingTasks || 0} tone="amber" />
-          </div>
-
-          <SectionCard title={t.dashboard.mapTitle} description={t.dashboard.mapDescription}>
-            <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
-              <MapComponent dashboardFields={advisorContext.fields} />
-            </div>
-          </SectionCard>
+      <div className="w-full space-y-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <StatCard icon={MapPinned} title={t.dashboard.totalFields} value={stats?.totalFields || 0} tone="emerald" />
+          <StatCard icon={Sprout} title={t.dashboard.activeCrops} value={stats?.activeCrops || 0} tone="sky" />
+          <StatCard icon={LayoutGrid} title={t.dashboard.pendingTasks} value={stats?.pendingTasks || 0} tone="amber" />
         </div>
+
+        <SectionCard title={t.dashboard.mapTitle} description={t.dashboard.mapDescription}>
+          <div className="w-full overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
+            <MapComponent dashboardFields={advisorContext.fields} />
+          </div>
+        </SectionCard>
       </div>
     </div>
   );
