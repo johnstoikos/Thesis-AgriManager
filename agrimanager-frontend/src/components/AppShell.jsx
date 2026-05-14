@@ -383,17 +383,31 @@ function CalendarPopover() {
     };
   }, [isOpen, loaded]);
 
+  // ΔΙΟΡΘΩΣΗ: Φιλτράρισμα ώστε να εμφανίζονται μόνο οι εκκρεμείς εργασίες (όχι οι ολοκληρωμένες)
   const upcomingTasks = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     return tasks
-      .filter((task) => task.taskDate && new Date(task.taskDate) >= today)
+      .filter((task) => 
+        task.taskDate && 
+        new Date(task.taskDate) >= today &&
+        task.status !== 'COMPLETED' // Εξαιρούμε τις ολοκληρωμένες εργασίες
+      )
       .sort((a, b) => new Date(a.taskDate) - new Date(b.taskDate))
       .slice(0, 5);
   }, [tasks]);
 
-  const taskDates = useMemo(() => new Set(tasks.map((task) => dateKey(task.taskDate)).filter(Boolean)), [tasks]);
+  // ΔΙΟΡΘΩΣΗ: Φιλτράρισμα των ημερομηνιών για τις πορτοκαλί τελείες στο ημερολόγιο
+  const taskDates = useMemo(() => 
+    new Set(
+      tasks
+        .filter(task => task.status !== 'COMPLETED') // Μόνο εκκρεμείς εργασίες στον χάρτη ημερομηνιών
+        .map((task) => dateKey(task.taskDate))
+        .filter(Boolean)
+    ), 
+  [tasks]);
+
   const monthDays = useMemo(() => {
     const year = visibleMonth.getFullYear();
     const month = visibleMonth.getMonth();

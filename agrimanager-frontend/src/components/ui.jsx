@@ -1,4 +1,5 @@
 import { createElement } from "react";
+import { createPortal } from "react-dom"; // Προσθήκη για τον Τηλεμεταφορέα
 import { AlertCircle, Inbox } from "lucide-react";
 
 function cn(...classes) {
@@ -230,43 +231,61 @@ export function SectionCard({ title, description, badge, side, children, classNa
   );
 }
 
+/**
+ * ΟΛΟΚΛΗΡΩΜΕΝΟ ModalShell με React Portal:
+ * Μεταφέρει το modal στο document.body για να αποφύγει Stacking Context issues.
+ */
 export function ModalShell({ title, description, onClose, children, className = "", size = "xl" }) {
   const sizeClasses = {
     md: "max-w-2xl",
     lg: "max-w-4xl",
-    xl: "max-w-6xl",
+    xl: "max-w-7xl",
   };
 
-  return (
-    <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm">
-      <div className={cn("w-full overflow-hidden rounded-[28px] border border-white/40 bg-white shadow-2xl duration-300 animate-[modal-pop_0.22s_ease-out] dark:border-slate-700 dark:bg-slate-900", sizeClasses[size], className)}>
-        <div className="border-b border-slate-100 px-6 py-5 dark:border-slate-800">
-          <div>
-            <h3 className="text-xl font-black text-slate-950 dark:text-slate-100">{title}</h3>
-            {description && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p>}
-          </div>
+  // Ο Τηλεμεταφορέας
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex justify-center items-start overflow-y-auto bg-slate-950/70 p-4 py-8 backdrop-blur-md">
+      <div className={cn(
+        "w-full bg-white dark:bg-slate-900 rounded-[40px] shadow-[0_32px_80px_rgba(0,0,0,0.4)] border border-white/20 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-300",
+        sizeClasses[size],
+        className
+      )}>
+        <div className="border-b border-slate-100 px-10 py-8 dark:border-slate-800">
+          <h3 className="text-3xl font-black tracking-tight text-slate-950 dark:text-white">{title}</h3>
+          {description && <p className="mt-2 text-base font-medium text-slate-500 dark:text-slate-400">{description}</p>}
         </div>
-        {children}
-        <div className="flex justify-end border-t border-slate-100 px-6 py-4 dark:border-slate-800">
-          <Button type="button" variant="secondary" onClick={onClose}>
+        
+        <div className="relative">
+          {children}
+        </div>
+
+        <div className="flex justify-end border-t border-slate-100 px-10 py-6 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 rounded-b-[40px]">
+          <Button type="button" variant="secondary" onClick={onClose} className="px-8 h-12 text-base">
             Ακύρωση
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body // Προορισμός: Το σώμα της σελίδας
   );
 }
 
-
 export function FieldLabel({ children }) {
-  return <label className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">{children}</label>;
+  return <label className="mb-2 block text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{children}</label>;
 }
 
 export function FieldInput({ className = "", ...props }) {
   return (
     <input
       className={cn(
-        "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-300 focus:ring-2 focus:ring-emerald-300/60 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-400 dark:disabled:bg-slate-900 dark:disabled:text-slate-500 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/30",
+        // Βασικό στυλ (Light mode)
+        "w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10",
+        // Στυλ για απενεργοποιημένο πεδίο (Light mode)
+        "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500",
+        // Στυλ για Dark mode (Ενεργό)
+        "dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-emerald-500 dark:focus:ring-emerald-500/10",
+        // ΔΙΟΡΘΩΣΗ: Στυλ για απενεργοποιημένο πεδίο στο Dark Mode
+        "dark:disabled:bg-slate-900 dark:disabled:text-slate-500 dark:disabled:border-slate-800",
         className
       )}
       {...props}
@@ -278,7 +297,7 @@ export function FieldTextarea({ className = "", ...props }) {
   return (
     <textarea
       className={cn(
-        "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-300 focus:ring-2 focus:ring-emerald-300/60 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-400 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/30",
+        "w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white",
         className
       )}
       {...props}
@@ -290,7 +309,7 @@ export function FieldSelect({ className = "", children, ...props }) {
   return (
     <select
       className={cn(
-        "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-300/60 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-emerald-500 dark:focus:ring-emerald-500/30",
+        "w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-base font-bold text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white",
         className
       )}
       {...props}
