@@ -11,6 +11,7 @@ import {
 } from "./ui";
 import { useAppPreferences } from "../i18n";
 import { useAuth } from "../context/auth-context";
+import api from "../api/axios"; // <--- Βεβαιώσου ότι το axios γίνεται import για να κάνουμε το call
 
 export default function Profile() {
   const { t } = useAppPreferences();
@@ -20,6 +21,11 @@ export default function Profile() {
   const [showSaved, setShowSaved] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(user?.profilePhoto || user?.avatarUrl || "");
+  
+  // STATES ΓΙΑ ΤΗ ΦΟΡΜΑ ΤΟΥ PASSWORD
+  const [passwordForm, setPasswordForm] = useState({ oldPassword: "", newPassword: "" });
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     fullName: user?.fullName || user?.name || user?.username || labels.defaultUser || "AgriManager User",
     email: user?.email || user?.username || "user@agrimanager.local",
@@ -44,7 +50,6 @@ export default function Profile() {
       profilePhoto: avatarPreview,
     };
 
-    console.log("Profile Save Payload:", profilePayload);
     const updatedProfile = await updateUser(profilePayload);
     if (!updatedProfile) {
       alert(labels.saveError || "Profile could not be saved.");
@@ -60,6 +65,31 @@ export default function Profile() {
     setAvatarPreview(updatedProfile.profilePhoto || "");
     setShowSaved(true);
     window.setTimeout(() => setShowSaved(false), 3000);
+  };
+
+  // Η ΝΕΑ ΣΥΝΑΡΤΗΣΗ ΠΟΥ ΚΑΛΕΙ ΤΟ BACKEND ΓΙΑ ΑΛΛΑΓΗ PASSWORD
+  const handlePasswordSubmit = async () => {
+    if (!passwordForm.oldPassword || !passwordForm.newPassword) {
+      alert("Παρακαλώ συμπληρώστε όλα τα πεδία");
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      const response = await api.put("/api/users/profile/change-password", {
+        oldPassword: passwordForm.oldPassword,
+        newPassword: passwordForm.newPassword
+      });
+      
+      alert(response.data.message || "Ο κωδικός άλλαξε επιτυχώς!");
+      setShowPasswordModal(false);
+      setPasswordForm({ oldPassword: "", newPassword: "" }); // Reset τη φόρμα
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.error || "Αποτυχία αλλαγής κωδικού πρόσβασης.");
+    } finally {
+      setPasswordLoading(false);
+    }
   };
 
   const handleImageChange = (event) => {
@@ -195,21 +225,32 @@ export default function Profile() {
       {showPasswordModal && (
         <ModalShell
           title={labels.changePassword || "Change Password"}
-          description={labels.changePasswordDescription || "Password changes will be connected later."}
+          description={labels.changePasswordDescription}
           onClose={() => setShowPasswordModal(false)}
+          cancelText={labels.cancel || "Cancel"}
           size="md"
         >
           <div className="space-y-4 p-6">
             <div>
               <FieldLabel>{labels.currentPassword || "Current Password"}</FieldLabel>
-              <FieldInput type="password" placeholder={labels.currentPasswordPlaceholder || "Enter your current password"} />
+              <FieldInput 
+                type="password" 
+                placeholder={labels.currentPasswordPlaceholder || "Enter your current password"} 
+                value={passwordForm.oldPassword}
+                onChange={(e) => setPasswordForm({ ...passwordForm, oldPassword: e.target.value })}
+              />
             </div>
             <div>
               <FieldLabel>{labels.newPassword || "New Password"}</FieldLabel>
-              <FieldInput type="password" placeholder={labels.newPasswordPlaceholder || "Enter a new password"} />
+              <FieldInput 
+                type="password" 
+                placeholder={labels.newPasswordPlaceholder || "Enter a new password"} 
+                value={passwordForm.newPassword}
+                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+              />
             </div>
-            <Button className="w-full" onClick={() => setShowPasswordModal(false)}>
-              {labels.savePassword || "Save Password"}
+            <Button className="w-full" onClick={handlePasswordSubmit} disabled={passwordLoading}>
+              {passwordLoading ? "Saving..." : labels.savePassword || "Save Password"}
             </Button>
           </div>
         </ModalShell>

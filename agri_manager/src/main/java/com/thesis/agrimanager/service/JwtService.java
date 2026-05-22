@@ -21,8 +21,7 @@ public class JwtService {
 
     private static final long EXPIRATION_TIME = 86400000;
 
-    // Μετατρέπει το String σε Key αντικείμενο
-    // Βεβαιώσου ότι το όνομα είναι getSignKey (χωρίς το -ing)
+
     private Key getSignKey() {
         byte[] keyBytes = Decoders.BASE64.decode(secretKeyString);
         // Αν το string δεν είναι valid base64 (που το δικό σου δεν είναι),

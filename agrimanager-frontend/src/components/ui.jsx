@@ -231,11 +231,8 @@ export function SectionCard({ title, description, badge, side, children, classNa
   );
 }
 
-/**
- * ΟΛΟΚΛΗΡΩΜΕΝΟ ModalShell με React Portal:
- * Μεταφέρει το modal στο document.body για να αποφύγει Stacking Context issues.
- */
-export function ModalShell({ title, description, onClose, children, className = "", size = "xl" }) {
+
+export function ModalShell({ title, description, onClose, children, className = "", size = "xl", cancelText = "Cancel" }) {
   const sizeClasses = {
     md: "max-w-2xl",
     lg: "max-w-4xl",
@@ -261,12 +258,12 @@ export function ModalShell({ title, description, onClose, children, className = 
 
         <div className="flex justify-end border-t border-slate-100 px-10 py-6 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 rounded-b-[40px]">
           <Button type="button" variant="secondary" onClick={onClose} className="px-8 h-12 text-base">
-            Ακύρωση
+            {cancelText}
           </Button>
         </div>
       </div>
     </div>,
-    document.body // Προορισμός: Το σώμα της σελίδας
+    document.body 
   );
 }
 

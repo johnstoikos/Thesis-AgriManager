@@ -8,7 +8,6 @@ import {
   Download,
   Droplets,
   Leaf,
-  MapPinned,
   Plus,
   Search,
   Shield,
@@ -319,16 +318,6 @@ export default function GlobalTasks() {
     navigate(`/fields/${fieldId}?newTask=1`);
   };
 
-  const handleViewOnMap = (task) => {
-    const cropInfo = cropLookup[task.cropId];
-    const coordinates = task.location?.coordinates;
-    if (!cropInfo?.fieldId || !Array.isArray(coordinates)) return;
-
-    navigate(
-      `/fields/${cropInfo.fieldId}?taskId=${task.id}&cropId=${task.cropId}&lng=${coordinates[0]}&lat=${coordinates[1]}`
-    );
-  };
-
   const exportToPDF = async () => {
     try {
       const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
@@ -532,8 +521,6 @@ export default function GlobalTasks() {
                 {filteredTasks.map((task) => {
                   const Icon = getTaskIcon(task.taskType);
                   const cropInfo = cropLookup[task.cropId];
-                  const fieldId = cropInfo?.fieldId;
-                  const canNavigate = Boolean(fieldId && task.location?.coordinates);
                   const formattedDate = formatTaskDate(task.taskDate, labels.noDate || "No date", language === "el" ? "el-GR" : "en-US");
 
                   return (
@@ -566,7 +553,7 @@ export default function GlobalTasks() {
                       </td>
 
                       <td className="px-5 py-4">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-3">
                           <Button
                             onClick={() => handleComplete(task.id)}
                             disabled={task.status === "COMPLETED"}
@@ -577,16 +564,6 @@ export default function GlobalTasks() {
                             {labels.complete || "Complete"}
                           </Button>
 
-                          <Button
-                            onClick={() => handleViewOnMap(task)}
-                            disabled={!canNavigate}
-                            variant="secondary"
-                            size="sm"
-                            className="border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-400/30 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20"
-                          >
-                            <MapPinned className="h-3.5 w-3.5" />
-                            {labels.map || "Map"}
-                          </Button>
                           <Button
                             onClick={() => handleDeleteTask(task.id)}
                             variant="danger"
@@ -611,6 +588,7 @@ export default function GlobalTasks() {
           title={labels.fieldPickerTitle || "Choose Field for New Task"}
           description={labels.fieldPickerDescription || "Choose a field, then a crop, to register a task."}
           onClose={() => setShowFieldPicker(false)}
+          cancelText={labels.cancel || "Cancel"}
           size="md"
         >
             <div className="p-4 max-h-[360px] overflow-y-auto space-y-2">

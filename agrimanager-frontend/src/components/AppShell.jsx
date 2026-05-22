@@ -383,7 +383,6 @@ function CalendarPopover() {
     };
   }, [isOpen, loaded]);
 
-  // ΔΙΟΡΘΩΣΗ: Φιλτράρισμα ώστε να εμφανίζονται μόνο οι εκκρεμείς εργασίες (όχι οι ολοκληρωμένες)
   const upcomingTasks = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -392,17 +391,16 @@ function CalendarPopover() {
       .filter((task) => 
         task.taskDate && 
         new Date(task.taskDate) >= today &&
-        task.status !== 'COMPLETED' // Εξαιρούμε τις ολοκληρωμένες εργασίες
+        task.status !== 'COMPLETED' 
       )
       .sort((a, b) => new Date(a.taskDate) - new Date(b.taskDate))
       .slice(0, 5);
   }, [tasks]);
 
-  // ΔΙΟΡΘΩΣΗ: Φιλτράρισμα των ημερομηνιών για τις πορτοκαλί τελείες στο ημερολόγιο
   const taskDates = useMemo(() => 
     new Set(
       tasks
-        .filter(task => task.status !== 'COMPLETED') // Μόνο εκκρεμείς εργασίες στον χάρτη ημερομηνιών
+        .filter(task => task.status !== 'COMPLETED') 
         .map((task) => dateKey(task.taskDate))
         .filter(Boolean)
     ), 

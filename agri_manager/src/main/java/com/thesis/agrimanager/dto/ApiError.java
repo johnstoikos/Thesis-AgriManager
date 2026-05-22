@@ -3,9 +3,9 @@ package com.thesis.agrimanager.dto;
 import java.time.LocalDateTime;
 
 public class ApiError {
-    private String message;
-    private LocalDateTime timestamp;
-    private int status;
+    private final String message;
+    private final LocalDateTime timestamp;
+    private final int status;
 
     public ApiError(String message, int status) {
         this.message = message;

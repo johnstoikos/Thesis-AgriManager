@@ -32,14 +32,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String jwt;
         final String username;
 
-        // Αν δεν υπάρχει Header ή δεν ξεκινάει με Bearer, προχώρα στο επόμενο φίλτρο
+        
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        jwt = authHeader.substring(7); // Αφαιρούμε το "Bearer "
-        username = jwtService.extractUsername(jwt); // Θα φτιάξουμε αυτή τη μέθοδο στο JwtService
+        jwt = authHeader.substring(7);
+        username = jwtService.extractUsername(jwt);
 
         // Αν έχουμε username και ο χρήστης δεν είναι ήδη συνδεδεμένος στο SecurityContext
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {

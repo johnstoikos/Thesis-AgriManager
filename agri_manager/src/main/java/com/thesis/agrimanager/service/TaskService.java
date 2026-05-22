@@ -6,11 +6,13 @@ import com.thesis.agrimanager.model.Task;
 import com.thesis.agrimanager.repository.CropRepository;
 import com.thesis.agrimanager.repository.TaskRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class TaskService {
     private final TaskRepository taskRepository;
     private final CropRepository cropRepository;

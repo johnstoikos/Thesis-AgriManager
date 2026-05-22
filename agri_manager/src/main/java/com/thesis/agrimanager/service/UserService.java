@@ -14,10 +14,8 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
-    // 1. Προσθέτουμε τη δήλωση του JwtService
     private final JwtService jwtService;
 
-    // 2. Ενημερώνουμε τον Constructor για να δέχεται και το JwtService
     public UserService(UserRepository userRepository, JwtService jwtService) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
@@ -25,7 +23,7 @@ public class UserService {
     }
 
     public User registerNewUser(UserRegistrationDTO registrationDto) {
-        if (userRepository.findByUsername(registrationDto.getUsername()).isPresent()) {
+        if (userRepository.findByUsername(registrationDto.getUsername()).isPresent()) {        
             throw new RuntimeException("Το username χρησιμοποιείται ήδη");
         }
 
@@ -48,7 +46,6 @@ public class UserService {
             throw new RuntimeException("Λάθος κωδικός πρόσβασης");
         }
 
-        // Τώρα το jwtService αναγνωρίζεται κανονικά!
         return jwtService.generateToken(user.getUsername());
     }
 
@@ -68,6 +65,17 @@ public class UserService {
         User savedUser = userRepository.save(user);
         System.out.println("Saved user phone: " + savedUser.getPhone());
         return toProfileDTO(savedUser);
+    }
+
+    public void changePassword(String username, String oldPassword, String newPassword) {
+        User user = getUserByUsername(username);
+
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw new RuntimeException("Ο παλιός κωδικός πρόσβασης είναι λανθασμένος!");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
     }
 
     public UserProfileDTO toProfileDTO(User user) {

@@ -13,6 +13,7 @@ function WikiInfoModal({ crop, data, loading, error, onClose, labels }) {
       title={`${labels.wikiTitle || "Wikipedia Info"}: ${crop?.variety || crop?.type || labels.wikiCropFallback || "Crop"}`}
       description={labels.wikiDescription || "Short encyclopedic summary from Greek Wikipedia."}
       onClose={onClose}
+      cancelText={labels.cancel || "Cancel"}
       size="md"
     >
       <div className="max-h-[70vh] overflow-y-auto p-6">
@@ -538,6 +539,7 @@ export default function FieldCrops() {
           title={formData.id ? labels.editZone || "Edit Zone" : labels.newZone || "New Zone"}
           description={labels.zoneDescription || "Fill in the crop details and define the polygon on the map."}
           onClose={handleCloseCropModal}
+          cancelText={labels.cancel || "Cancel"}
           size="xl"
           className="max-h-[92vh] flex flex-col"
         >
@@ -569,6 +571,7 @@ export default function FieldCrops() {
           title={`${labels.tasksTitle || "Tasks"}: ${selectedCrop.type}`}
           description={isAddingTask ? labels.selectPointDescription || "Select a point inside the zone boundary." : labels.manageTasksDescription || "Manage task history and new tasks."}
           onClose={handleCloseTaskModal}
+          cancelText={labels.cancel || "Cancel"}
           size="xl"
           className="max-h-[92vh] flex flex-col"
         >
@@ -650,6 +653,7 @@ export default function FieldCrops() {
             setShowCropPickerModal(false);
             clearNewTaskQuery();
           }}
+          cancelText={labels.cancel || "Cancel"}
           size="md"
         >
             <div className="p-4 max-h-[360px] overflow-y-auto space-y-2">

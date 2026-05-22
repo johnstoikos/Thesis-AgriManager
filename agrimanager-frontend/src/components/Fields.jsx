@@ -117,7 +117,7 @@ export default function Fields() {
         }
         setFormData(prev => ({ ...prev, boundary: closed }));
       }
-    } catch (err) { /* ignore parse errors */ }
+    } catch { /* ignore parse errors */ }
   };
 
   const navigate = useNavigate();
@@ -150,6 +150,13 @@ export default function Fields() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-slate-800">
+            {loading && (
+              <tr>
+                <td colSpan="3" className="px-6 py-8 text-center text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                  {labels.loading || "Loading fields..."}
+                </td>
+              </tr>
+            )}
             {fields.map(field => (
               <tr key={field.id} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-500/5">
                 <td className="px-6 py-4 font-medium dark:text-slate-100">{field.name}</td>
@@ -180,42 +187,61 @@ export default function Fields() {
 
       {showModal && (
         <ModalShell
-          title={formData.id ? "Επεξεργασία Χωραφιού" : "Νέο Χωράφι"}
+          title={formData.id ? labels.editField : labels.newField}
+          description={labels.modalDescription}
           onClose={() => setShowModal(false)}
+          cancelText={labels.cancel || "Cancel"}
           size="xl"
         >
-          {/* 
-              ΑΛΛΑΓΗ: Προσθήκη min-h-[75vh] για να εξαναγκάσουμε τη φόρμα 
-              να τεντώσει προς τα κάτω, γεμίζοντας το κενό στην οθόνη.
-          */}
-          <form id="field-form" onSubmit={handleSubmit} className="p-10 space-y-10 min-h-[75vh]">
-            <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
+          <form id="field-form" onSubmit={handleSubmit} className="flex min-h-[75vh] flex-col lg:flex-row">
+            <div className="flex flex-col gap-6 border-b border-slate-200 bg-slate-50/50 p-6 dark:border-slate-800 dark:bg-slate-900/50 lg:w-1/3 lg:border-b-0 lg:border-r lg:p-8">
               <div className="space-y-3">
-                <FieldLabel>Όνομα Χωραφιού</FieldLabel>
+                <FieldLabel>{labels.name}</FieldLabel>
                 <FieldInput
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  placeholder="π.χ. Βόρειο Κτήμα"
-                  className="text-xl h-16 shadow-inner"
+                  placeholder={labels.name}
+                  className="h-14 shadow-inner"
                 />
               </div>
+
               <div className="space-y-3">
-                <FieldLabel>Έκταση (Στρέμματα)</FieldLabel>
+                <FieldLabel>{labels.areaLabel}</FieldLabel>
                 <FieldInput
                   type="number" step="0.01"
                   value={formData.area || ""}
                   onChange={(e) => setFormData({...formData, area: e.target.value})}
-                  placeholder="Υπολογίζεται αυτόματα..."
-                  className="bg-slate-50/50 font-bold dark:bg-slate-800/50 h-16"
+                  placeholder={labels.autoAreaPlaceholder}
+                  className="h-14 bg-white font-bold dark:bg-slate-800/50"
                 />
+              </div>
+
+              <div className="space-y-3">
+                <FieldLabel>{labels.coordsLabel}</FieldLabel>
+                <textarea
+                  className="min-h-40 w-full resize-none rounded-2xl border border-slate-200 bg-white p-5 font-mono text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                  placeholder="21.73, 38.24"
+                  onChange={(e) => handleManualCoordsChange(e.target.value)}
+                />
+              </div>
+
+              <div className="mt-auto pt-4">
+                <Button
+                  type="submit"
+                  variant="success"
+                  size="lg"
+                  className="h-14 w-full text-base shadow-lg shadow-emerald-600/20"
+                  disabled={!formData.name || formData.boundary.length === 0}
+                >
+                  {formData.id ? labels.update : labels.save}
+                </Button>
               </div>
             </div>
 
-            <div className="space-y-4">
-              <FieldLabel>Σχεδίαση ή Προβολή στο Χάρτη</FieldLabel>
-              {/* Αυξημένο ύψος χάρτη για να εκμεταλλευτούμε το νέο χώρο */}
-              <div className="h-[600px] w-full overflow-hidden rounded-[40px] border-4 border-slate-50 dark:border-slate-800 shadow-2xl">
+            <div className="flex min-h-[520px] flex-col gap-4 p-6 lg:w-2/3 lg:p-8">
+              <FieldLabel>{labels.mapLabel}</FieldLabel>
+              <div className="min-h-[460px] flex-1 overflow-hidden rounded-[32px] border border-slate-200 shadow-2xl dark:border-slate-800">
                 <MapComponent
                   allFields={fields}
                   boundary={formData.boundary}
@@ -228,28 +254,6 @@ export default function Fields() {
                   }}
                 />
               </div>
-            </div>
-
-            <div className="space-y-4">
-              <FieldLabel>Επικόλληση Συντεταγμένων (lng, lat ανά γραμμή)</FieldLabel>
-              <textarea 
-                className="w-full rounded-3xl border border-slate-200 bg-slate-50/30 p-6 text-base font-mono text-slate-700 outline-none focus:border-emerald-500 focus:ring-8 focus:ring-emerald-500/5 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                rows="4"
-                placeholder="21.73, 38.24..."
-                onChange={(e) => handleManualCoordsChange(e.target.value)}
-              />
-            </div>
-
-            <div className="flex justify-end pt-6">
-              <Button 
-                type="submit" 
-                variant="success"
-                size="lg"
-                className="px-12 h-16 text-lg shadow-2xl shadow-emerald-600/30 rounded-2xl"
-                disabled={!formData.name || formData.boundary.length === 0}
-              >
-                {formData.id ? "Ενημέρωση Χωραφιού" : "Αποθήκευση Χωραφιού"}
-              </Button>
             </div>
           </form>
         </ModalShell>

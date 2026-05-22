@@ -1,4 +1,4 @@
-package com.thesis.agrimanager.config; // <--- ΕΛΕΓΞΕ ΑΝ ΑΥΤΟ ΕΙΝΑΙ ΤΟ ΣΩΣΤΟ PACKAGE ΣΟΥ
+package com.thesis.agrimanager.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

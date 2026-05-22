@@ -60,11 +60,10 @@ function getTaskIcon(taskType) {
   });
 }
 
-// --- 1. Ο "Σωτήρας" των Modals: Διορθώνει το μέγεθος του χάρτη ---
+// --- 1.Διορθώνει το έγεθος του χάρτη ---
 function MapResizer() {
   const map = useMap();
   useEffect(() => {
-    // Περιμένουμε λίγο να τελειώσει το animation του Modal και κάνουμε refresh το μέγεθος
     const timer = setTimeout(() => {
       map.invalidateSize();
     }, 400);

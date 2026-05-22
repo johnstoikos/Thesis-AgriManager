@@ -8,11 +8,10 @@ public class CropDTO {
     private String type;
     private String variety;
     private LocalDate plantingDate;
-    private Polygon zoneBoundary; // Η γεωμετρία της συγκεκριμένης καλλιέργειας
-    private Long fieldId; // Το ID του χωραφιού στο οποίο ανήκει
-    private Double zoneArea;       // Η έκταση της ζώνης σε τ.μ. ή στρέμματα
-    private Double coveragePercentage; // Το % κάλυψης του χωραφιού
-
+    private Polygon zoneBoundary; 
+    private Long fieldId; 
+    private Double zoneArea;
+    private Double coveragePercentage;
 
     // Getters and Setters
     public Long getId() { return id; }

@@ -8,8 +8,6 @@ import com.thesis.agrimanager.model.Field;
 import com.thesis.agrimanager.model.User;
 import com.thesis.agrimanager.repository.FieldRepository;
 import com.thesis.agrimanager.repository.UserRepository; // Χρειάζεται για να βρίσκουμε τον owner
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import java.util.List;

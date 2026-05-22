@@ -43,7 +43,7 @@ export default function Login() {
 
   return (
     <Layout>
-      <h1 className="text-3xl font-bold text-green-600 mb-6 text-center">AgriManager</h1>
+      <h1 className="text-3xl font-bold text-green-600 mb-6 text-center">Σύνδεση</h1>
       <form onSubmit={handleLogin} className="space-y-4">
         <div>
           <label className="block text-gray-700">Username</label>

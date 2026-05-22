@@ -33,7 +33,7 @@ export default function Signup() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
       <div className="bg-white p-8 shadow-xl rounded-2xl border-2 border-green-500 w-full max-w-md">
-        <h1 className="text-3xl font-bold text-green-600 mb-6 text-center">Νέος Λογαριασμός 🚜</h1>
+        <h1 className="text-3xl font-bold text-green-600 mb-6 text-center">Νέος Λογαριασμός</h1>
         
         <form onSubmit={handleSignup} className="space-y-4">
           <input 
