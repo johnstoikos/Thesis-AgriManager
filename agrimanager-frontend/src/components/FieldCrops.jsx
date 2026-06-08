@@ -4,8 +4,22 @@ import { BookOpen, CloudSun, Droplets, ExternalLink, Thermometer, Wind } from "l
 import api from "../api/axios";
 import MapComponent from "./MapComponent";
 import * as turf from "@turf/turf";
-import { Button, ModalShell } from "./ui";
+import { Button, FieldInput, FieldSelect, FieldTextarea, ModalShell } from "./ui";
 import { useAppPreferences } from "../i18n";
+
+const INITIAL_TASK_FORM_DATA = {
+  taskType: "Πότισμα",
+  taskDate: "",
+  description: "",
+  cost: "",
+  laborHours: "",
+};
+
+function toOptionalNumber(value) {
+  if (value === "" || value == null) return null;
+  const parsed = Number(String(value).replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
 function WikiInfoModal({ crop, data, loading, error, onClose, labels }) {
   return (
@@ -92,7 +106,7 @@ export default function FieldCrops() {
   const [openedTaskId, setOpenedTaskId] = useState(null);
   
   // Στοιχεία φόρμας εργασίας (η θέση αποθηκεύεται στο pendingLocation)
-  const [taskFormData, setTaskFormData] = useState({ taskType: "Πότισμα", taskDate: "", description: "" });
+  const [taskFormData, setTaskFormData] = useState(INITIAL_TASK_FORM_DATA);
 
   const TASK_STATUS_LABELS = {
     PENDING: labels.pending || "PENDING",
@@ -246,7 +260,7 @@ export default function FieldCrops() {
     fetchTasks(crop.id);
     setIsAddingTask(startAdding);
     setPendingLocation(null);
-    setTaskFormData({ taskType: "Πότισμα", taskDate: "", description: "" });
+    setTaskFormData(INITIAL_TASK_FORM_DATA);
     setShowTaskModal(true);
   };
 
@@ -292,6 +306,8 @@ export default function FieldCrops() {
         description: taskFormData.description,
         taskDate: formattedDate,
         status: "PENDING",
+        cost: toOptionalNumber(taskFormData.cost),
+        laborHours: toOptionalNumber(taskFormData.laborHours),
         longitude: Number(longitude),
         latitude: Number(latitude),
         cropId: selectedCrop.id,
@@ -301,7 +317,7 @@ export default function FieldCrops() {
       await api.post("/api/tasks", taskData);
       setIsAddingTask(false);
       setPendingLocation(null);
-      setTaskFormData({ taskType: "Πότισμα", taskDate: "", description: "" });
+      setTaskFormData(INITIAL_TASK_FORM_DATA);
       fetchTasks(selectedCrop.id);
     } catch (err) {
       console.error("Σφάλμα κατά την αποθήκευση εργασίας:", err);
@@ -579,27 +595,47 @@ export default function FieldCrops() {
             <div className="overflow-y-auto border-r border-slate-100 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-900">
 
               {!isAddingTask ? (
-                <Button onClick={() => { setIsAddingTask(true); setPendingLocation(null); }} className="mb-6 w-full">
+                <Button onClick={() => { setIsAddingTask(true); setPendingLocation(null); setTaskFormData(INITIAL_TASK_FORM_DATA); }} className="mb-6 w-full">
                   + {labels.newMapEntry || "New Map Entry"}
                 </Button>
               ) : (
                 <form onSubmit={handleSaveTask} className="bg-blue-50 p-5 rounded-2xl mb-6 border border-blue-200 animate-in zoom-in-95 shadow-sm dark:border-blue-400/30 dark:bg-blue-500/10">
                    <p className="text-[9px] font-black text-blue-600 mb-3 uppercase tracking-widest animate-pulse dark:text-blue-300">{labels.clickInsideZone || "Click inside the green zone boundary"}</p>
-                   <select className="w-full p-3 border rounded-xl mb-3 text-sm font-bold bg-white text-slate-900 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white" value={taskFormData.taskType} onChange={e => setTaskFormData({...taskFormData, taskType: e.target.value})}>
+                   <FieldSelect className="mb-3 rounded-xl px-3 py-3 text-sm" value={taskFormData.taskType} onChange={e => setTaskFormData({...taskFormData, taskType: e.target.value})}>
                      {TASK_TYPE_OPTIONS.map((option) => (
                        <option key={option.value} value={option.value}>{option.label}</option>
                      ))}
-                   </select>
+                   </FieldSelect>
                    <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-blue-700 dark:text-slate-200">
                      {labels.taskDate || "Date"}
                    </label>
-                   <input
+                   <FieldInput
                      type="date"
-                     className="mb-3 w-full rounded-xl border bg-white p-3 text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                     className="mb-3 rounded-xl px-3 py-3 text-sm font-bold"
                      value={taskFormData.taskDate || ""}
                      onChange={e => setTaskFormData({...taskFormData, taskDate: e.target.value})}
                    />
-                   <textarea placeholder={labels.taskDescriptionPlaceholder || "Task description..."} className="w-full p-3 border rounded-xl mb-4 text-sm bg-white h-24 resize-none text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-blue-400 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-400" value={taskFormData.description || ""} onChange={e => setTaskFormData({...taskFormData, description: e.target.value})} />
+                   <FieldInput
+                     type="number"
+                     min="0"
+                     step="0.01"
+                     inputMode="decimal"
+                     placeholder={labels.taskCostPlaceholder || "Κόστος Εργασίας (€)"}
+                     className="mb-3 rounded-xl px-3 py-3 text-sm font-bold"
+                     value={taskFormData.cost || ""}
+                     onChange={e => setTaskFormData({...taskFormData, cost: e.target.value})}
+                   />
+                   <FieldInput
+                     type="number"
+                     min="0"
+                     step="0.25"
+                     inputMode="decimal"
+                     placeholder={labels.laborHoursPlaceholder || "Ώρες εργασίας"}
+                     className="mb-3 rounded-xl px-3 py-3 text-sm font-bold"
+                     value={taskFormData.laborHours || ""}
+                     onChange={e => setTaskFormData({...taskFormData, laborHours: e.target.value})}
+                   />
+                   <FieldTextarea placeholder={labels.taskDescriptionPlaceholder || "Task description..."} className="mb-4 h-24 resize-none rounded-xl px-3 py-3 text-sm" value={taskFormData.description || ""} onChange={e => setTaskFormData({...taskFormData, description: e.target.value})} />
                    <div className="flex gap-2">
                      <Button type="submit" disabled={!pendingLocation} className="flex-1" size="sm">{labels.save || "Save"}</Button>
                      <Button type="button" onClick={() => { setIsAddingTask(false); setPendingLocation(null); }} variant="secondary" className="flex-1" size="sm">{labels.cancel || "Cancel"}</Button>
@@ -615,6 +651,9 @@ export default function FieldCrops() {
                     <div>
                       <div className="text-xs font-bold text-gray-800 uppercase tracking-tight dark:text-slate-100">{t.taskType}</div>
                       <div className="text-[10px] text-gray-400 mt-0.5 line-clamp-1 italic dark:text-slate-400">{t.description || labels.noDescription || "No description"}</div>
+                      <div className="mt-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                        {labels.cost || "Cost"}: {Number(t.cost || 0).toLocaleString("el-GR", { style: "currency", currency: "EUR" })}
+                      </div>
                     </div>
                     <Button
                       disabled={t.status === 'COMPLETED'} 

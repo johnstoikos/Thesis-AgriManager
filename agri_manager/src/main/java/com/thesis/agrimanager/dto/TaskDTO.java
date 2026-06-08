@@ -1,37 +1,55 @@
 package com.thesis.agrimanager.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.locationtech.jts.geom.Point;
-import java.time.LocalDate; // Βεβαιώσου ότι είναι LocalDate
+import java.math.BigDecimal;
+import java.time.LocalDate;
 
-@Data
 public class TaskDTO {
-    private Long id;
-    private String taskType;
-    private String description;
+    private final Long id;
+    private final String taskType;
+    private final String description;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate taskDate; // ΑΛΛΑΓΗ ΑΠΟ LocalDateTime ΣΕ LocalDate
+    private final LocalDate taskDate;
 
-    private String status;
-    private Point location;
-    private Long cropId;
+    private final String status;
+    private final BigDecimal cost;
+    private final Double laborHours;
+    private final Point location;
+    private final Long cropId;
 
+    @JsonCreator
+    public TaskDTO(
+            @JsonProperty("id") Long id,
+            @JsonProperty("taskType") String taskType,
+            @JsonProperty("description") String description,
+            @JsonProperty("taskDate") LocalDate taskDate,
+            @JsonProperty("status") String status,
+            @JsonProperty("cost") BigDecimal cost,
+            @JsonProperty("laborHours") Double laborHours,
+            @JsonProperty("location") Point location,
+            @JsonProperty("cropId") Long cropId) {
+        this.id = id;
+        this.taskType = taskType;
+        this.description = description;
+        this.taskDate = taskDate;
+        this.status = status;
+        this.cost = cost;
+        this.laborHours = laborHours;
+        this.location = location;
+        this.cropId = cropId;
+    }
 
-    // Getters και Setters
     public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
     public String getTaskType() { return taskType; }
-    public void setTaskType(String taskType) { this.taskType = taskType; }
     public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
     public LocalDate getTaskDate() { return taskDate; }
-    public void setTaskDate(LocalDate taskDate) { this.taskDate = taskDate; }
     public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public BigDecimal getCost() { return cost; }
+    public Double getLaborHours() { return laborHours; }
     public Point getLocation() { return location; }
-    public void setLocation(Point location) { this.location = location; }
     public Long getCropId() { return cropId; }
-    public void setCropId(Long cropId) { this.cropId = cropId; }
 }

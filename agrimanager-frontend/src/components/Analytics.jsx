@@ -5,6 +5,7 @@ import {
   BarChart3,
   CheckCircle2,
   ClipboardList,
+  CircleDollarSign,
   Download,
   Layers3,
   Sprout,
@@ -30,6 +31,7 @@ import { Button, EmptyState, ErrorState, SectionCard, SkeletonLines, StatCard, S
 import { useAppPreferences } from "../i18n";
 
 const CROP_COLORS = ["#059669", "#0f766e", "#84a98c", "#22c55e", "#14b8a6", "#64748b"];
+const FINANCIAL_COLORS = ["#2563eb", "#0891b2", "#7c3aed", "#db2777", "#ea580c", "#16a34a"];
 const TASK_STATUS_COLORS = {
   PENDING: "#f59e0b",
   COMPLETED: "#10b981",
@@ -40,6 +42,15 @@ function formatSquareMeters(value, locale = "en-US") {
   return new Intl.NumberFormat(locale, {
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+function formatCurrency(value, locale = "el-GR") {
+  const amount = toNumber(value);
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 2,
+  }).format(Number.isFinite(amount) ? amount : 0);
 }
 
 function toNumber(value) {
@@ -110,7 +121,7 @@ function ChartEmptyState({ icon, title, description }) {
   );
 }
 
-function GreekTooltip({ active, payload, label, valueSuffix = "" }) {
+function GreekTooltip({ active, payload, label, valueSuffix = "", valueFormatter }) {
   if (!active || !payload?.length) return null;
 
   return (
@@ -121,7 +132,7 @@ function GreekTooltip({ active, payload, label, valueSuffix = "" }) {
           <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
           <span className="font-semibold">{entry.name}:</span>
           <span>
-            {entry.value}
+            {valueFormatter ? valueFormatter(entry.value) : entry.value}
             {valueSuffix}
           </span>
         </div>
@@ -136,6 +147,7 @@ export default function Analytics() {
   const [fields, setFields] = useState([]);
   const [crops, setCrops] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [financials, setFinancials] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -144,9 +156,13 @@ export default function Analytics() {
       setLoading(true);
       setError("");
       try {
-        const fieldsRes = await api.get("/api/fields");
+        const [fieldsRes, financialsRes] = await Promise.all([
+          api.get("/api/fields"),
+          api.get("/api/stats/financials"),
+        ]);
         const availableFields = Array.isArray(fieldsRes.data) ? fieldsRes.data : [];
         setFields(availableFields);
+        setFinancials(Array.isArray(financialsRes.data) ? financialsRes.data : []);
 
         const cropResults = await Promise.allSettled(
           availableFields.map((field) => api.get(`/api/crops/field/${field.id}`))
@@ -228,12 +244,26 @@ export default function Analytics() {
       .map((status) => ({ status, name: statusLabels[status], value: grouped[status] }));
   }, [labels.completedStatus, labels.pending, labels.unknown, tasks]);
 
+  const financialData = useMemo(() => {
+    return financials
+      .map((entry) => ({
+        name: entry.fieldName || labels.unknownField || "Unknown field",
+        value: toNumber(entry.totalCost),
+      }))
+      .filter((entry) => Number.isFinite(entry.value) && entry.value > 0)
+      .sort((a, b) => b.value - a.value);
+  }, [financials, labels.unknownField]);
+
   const stats = useMemo(() => {
     const totalFieldSquareMeters = fields.reduce((sum, field) => sum + getFieldSquareMeters(field), 0);
     const pendingTasks = tasks.filter((task) => task.status === "PENDING").length;
     const completedTasks = tasks.filter((task) => task.status === "COMPLETED").length;
     const totalTasks = tasks.length;
     const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    const totalFinancialCost = financials.reduce((sum, entry) => {
+      const cost = toNumber(entry.totalCost);
+      return sum + (Number.isFinite(cost) ? cost : 0);
+    }, 0);
 
     return {
       totalFieldSquareMeters,
@@ -243,8 +273,9 @@ export default function Analytics() {
       completionPercentage,
       totalFields: fields.length,
       totalTasks,
+      totalFinancialCost,
     };
-  }, [crops.length, tasks, fields]);
+  }, [crops.length, tasks, fields, financials]);
 
   const handleExportPDF = async () => {
     const exportArea = document.getElementById("pdf-export-area");
@@ -382,7 +413,7 @@ export default function Analytics() {
             node.style.overflow = "visible";
           });
 
-          const chartColors = [...CROP_COLORS, ...Object.values(TASK_STATUS_COLORS), "#0f172a", "#94a3b8"];
+          const chartColors = [...CROP_COLORS, ...FINANCIAL_COLORS, ...Object.values(TASK_STATUS_COLORS), "#0f172a", "#94a3b8"];
           clonedArea.querySelectorAll("svg").forEach((svg) => {
             svg.style.backgroundColor = "transparent";
             svg.style.overflow = "visible";
@@ -540,6 +571,24 @@ export default function Analytics() {
           )}
         </div>
 
+        {!loading && (
+          <Surface className="p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                  {labels.financialSummary || "Financial Summary"}
+                </p>
+                <p className="mt-2 text-3xl font-black tracking-tight text-slate-950 dark:text-slate-100">
+                  {formatCurrency(stats.totalFinancialCost, labels.currencyLocale || "el-GR")}
+                </p>
+              </div>
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300">
+                <CircleDollarSign className="h-6 w-6" />
+              </div>
+            </div>
+          </Surface>
+        )}
+
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <SectionCard
             title={labels.cropDistribution || "Crop Distribution"}
@@ -629,6 +678,55 @@ export default function Analytics() {
                     <Bar dataKey="value" name={labels.taskCount || "Task count"} radius={[14, 14, 6, 6]}>
                       {taskData.map((entry) => (
                         <Cell key={entry.name} fill={TASK_STATUS_COLORS[entry.status] || TASK_STATUS_COLORS.UNKNOWN} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </SectionCard>
+
+          <SectionCard
+            title={labels.financialAnalysis || "Financial Analysis"}
+            description={labels.financialAnalysisDescription || "Total completed task expenses grouped by field."}
+            badge={labels.expenses || "Expenses"}
+            side={<CircleDollarSign className="h-6 w-6 text-sky-700 dark:text-sky-300" />}
+            className="xl:col-span-2"
+          >
+            {loading ? (
+              <ChartSkeleton />
+            ) : financialData.length === 0 ? (
+              <ChartEmptyState
+                icon={CircleDollarSign}
+                title={labels.noFinancialData || "No financial data"}
+                description={labels.noFinancialDataDescription || "Completed tasks with costs will appear here by field."}
+              />
+            ) : (
+              <div className="h-[360px] rounded-3xl bg-transparent dark:bg-slate-900">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={financialData} margin={{ top: 16, right: 24, left: 16, bottom: 8 }}>
+                    <CartesianGrid stroke={isDarkMode ? "#334155" : "#e2e8f0"} strokeDasharray="4 6" vertical={false} />
+                    <XAxis
+                      dataKey="name"
+                      axisLine={false}
+                      tickLine={false}
+                      interval={0}
+                      tick={{ fill: isDarkMode ? "#cbd5e1" : "#475569", fontSize: 12, fontWeight: 700 }}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(value) => formatCurrency(value, labels.currencyLocale || "el-GR")}
+                      tick={{ fill: isDarkMode ? "#94a3b8" : "#64748b", fontSize: 12 }}
+                    />
+                    <Tooltip content={<GreekTooltip valueFormatter={(value) => formatCurrency(value, labels.currencyLocale || "el-GR")} />} />
+                    <Legend
+                      formatter={() => <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">{labels.totalCost || "Total cost"}</span>}
+                      iconType="circle"
+                    />
+                    <Bar dataKey="value" name={labels.totalCost || "Total cost"} radius={[14, 14, 6, 6]}>
+                      {financialData.map((entry, index) => (
+                        <Cell key={entry.name} fill={FINANCIAL_COLORS[index % FINANCIAL_COLORS.length]} />
                       ))}
                     </Bar>
                   </BarChart>

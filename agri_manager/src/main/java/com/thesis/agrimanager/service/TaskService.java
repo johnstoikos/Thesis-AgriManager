@@ -36,6 +36,8 @@ public class TaskService {
         task.setDescription(dto.getDescription());
         task.setTaskDate(dto.getTaskDate());
         task.setStatus(dto.getStatus());
+        task.setCost(dto.getCost());
+        task.setLaborHours(dto.getLaborHours());
         task.setLocation(dto.getLocation());
         task.setCrop(crop);
 
@@ -55,15 +57,17 @@ public class TaskService {
     }
 
     private TaskDTO convertToDTO(Task task) {
-        TaskDTO dto = new TaskDTO();
-        dto.setId(task.getId());
-        dto.setTaskType(task.getTaskType());
-        dto.setDescription(task.getDescription());
-        dto.setTaskDate(task.getTaskDate());
-        dto.setStatus(task.getStatus());
-        dto.setLocation(task.getLocation());
-        dto.setCropId(task.getCrop().getId());
-        return dto;
+        return new TaskDTO(
+                task.getId(),
+                task.getTaskType(),
+                task.getDescription(),
+                task.getTaskDate(),
+                task.getStatus(),
+                task.getCost(),
+                task.getLaborHours(),
+                task.getLocation(),
+                task.getCrop().getId()
+        );
     }
 
     public TaskDTO completeTask(Long taskId) {

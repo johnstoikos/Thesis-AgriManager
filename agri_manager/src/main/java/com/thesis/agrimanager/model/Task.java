@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import org.locationtech.jts.geom.Point;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
@@ -21,6 +22,11 @@ public class Task {
     private LocalDate taskDate; // Χρησιμοποιούμε LocalDate για μόνο ημερομηνία
 
     private String status; // PENDING, COMPLETED
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal cost; // Χρηματικό κόστος της εργασίας
+
+    private Double laborHours; // Ώρες εργασίας
 
     @Column(columnDefinition = "geometry(Point, 4326)")
     private Point location; // Το σημείο της εργασίας στο χάρτη
@@ -51,6 +57,12 @@ public class Task {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public BigDecimal getCost() { return cost; }
+    public void setCost(BigDecimal cost) { this.cost = cost; }
+
+    public Double getLaborHours() { return laborHours; }
+    public void setLaborHours(Double laborHours) { this.laborHours = laborHours; }
 
     public Point getLocation() { return location; }
     public void setLocation(Point location) { this.location = location; }

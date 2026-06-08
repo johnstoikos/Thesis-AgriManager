@@ -89,6 +89,15 @@ function formatTaskDate(date, fallback = "No date", locale = "en-US") {
   });
 }
 
+function formatCurrency(value, locale = "el-GR") {
+  const amount = Number(value || 0);
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 2,
+  }).format(Number.isFinite(amount) ? amount : 0);
+}
+
 function getTaskIcon(taskType = "") {
   const type = taskType ? String(taskType).toLowerCase() : "default";
   if (type.includes("ποτ")) return Droplets;
@@ -341,13 +350,14 @@ export default function GlobalTasks() {
           cropInfo?.cropName || `${labels.crop || "Crop"} #${task.cropId}`,
           task.taskType || labels.unknownTaskType || "Unknown type",
           task.description || labels.noDescription || "No description",
+          formatCurrency(task.cost, language === "el" ? "el-GR" : "en-US"),
           statusLabels[task.status] || task.status || labels.unknown || "Unknown",
         ];
       });
 
       autoTable(doc, {
         startY: 104,
-        head: [[labels.date || "Date", labels.field || "Field", labels.crop || "Crop", labels.taskType || "Task Type", labels.descriptionLabel || "Description", labels.status || "Status"]],
+        head: [[labels.date || "Date", labels.field || "Field", labels.crop || "Crop", labels.taskType || "Task Type", labels.descriptionLabel || "Description", labels.cost || "Cost", labels.status || "Status"]],
         body: rows,
         styles: {
           font: "LiberationSans",
@@ -500,6 +510,7 @@ export default function GlobalTasks() {
                   <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.task || "Task"}</th>
                   <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.cropField || "Crop / Field"}</th>
                   <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.date || "Date"}</th>
+                  <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.cost || "Cost"}</th>
                   <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.status || "Status"}</th>
                   <th className="text-right px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.actions || "Actions"}</th>
                 </tr>
@@ -507,7 +518,7 @@ export default function GlobalTasks() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filteredTasks.length === 0 && (
                   <tr>
-                    <td colSpan="5" className="px-5 py-10">
+                    <td colSpan="6" className="px-5 py-10">
                       <EmptyState
                         icon={Tractor}
                         title={labels.noTasks || "No tasks found"}
@@ -547,6 +558,10 @@ export default function GlobalTasks() {
                       </td>
 
                       <td className="px-5 py-4 text-sm text-slate-700 dark:text-slate-300">{formattedDate}</td>
+
+                      <td className="px-5 py-4 text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                        {formatCurrency(task.cost, language === "el" ? "el-GR" : "en-US")}
+                      </td>
 
                       <td className="px-5 py-4">
                         <StatusBadge status={task.status}>{statusLabels[task.status] || task.status}</StatusBadge>

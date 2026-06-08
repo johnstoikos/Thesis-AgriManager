@@ -15,6 +15,19 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     @Query("""
             SELECT t
             FROM Task t
+            JOIN FETCH t.crop c
+            JOIN FETCH c.field f
+            WHERE t.status = :status
+              AND f.owner.username = :username
+            """)
+    List<Task> findByStatusAndOwnerUsernameWithCropAndField(
+            @Param("status") String status,
+            @Param("username") String username
+    );
+
+    @Query("""
+            SELECT t
+            FROM Task t
             WHERE t.status = 'PENDING'
               AND t.taskDate <= :date
               AND t.crop.field.owner.username = :username
