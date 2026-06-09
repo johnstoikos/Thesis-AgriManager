@@ -1,0 +1,29 @@
+package com.thesis.agrimanager.controller;
+
+import com.thesis.agrimanager.dto.AdminOverviewDTO;
+import com.thesis.agrimanager.dto.CropDistributionDTO;
+import com.thesis.agrimanager.service.AdminStatsService;
+import java.util.List;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/admin/stats")
+public class AdminStatsController {
+    private final AdminStatsService adminStatsService;
+
+    public AdminStatsController(AdminStatsService adminStatsService) {
+        this.adminStatsService = adminStatsService;
+    }
+
+    @GetMapping("/overview")
+    public AdminOverviewDTO getOverview() {
+        return adminStatsService.getOverview();
+    }
+
+    @GetMapping("/crops-dist")
+    public List<CropDistributionDTO> getCropDistribution() {
+        return adminStatsService.getCropDistribution();
+    }
+}

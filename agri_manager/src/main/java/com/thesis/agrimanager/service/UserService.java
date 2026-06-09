@@ -85,7 +85,8 @@ public class UserService {
                 user.getEmail(),
                 user.getFullName(),
                 user.getPhone(),
-                user.getProfilePhoto()
+                user.getProfilePhoto(),
+                user.getRoles()
         );
     }
 }

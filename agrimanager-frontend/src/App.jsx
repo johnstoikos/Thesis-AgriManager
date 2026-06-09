@@ -3,6 +3,9 @@ import Login from "./components/auth/Login";
 import Signup from "./components/auth/Signup";
 import Dashboard from "./components/Dashboard";
 import AppShell from "./components/AppShell";
+import AdminDashboard from "./components/AdminDashboard";
+import AdminUsersManagement from "./components/AdminUsersManagement";
+import AdminShell from "./components/AdminShell";
 import Fields from "./components/Fields";
 import FieldCrops from "./components/FieldCrops";
 import GlobalTasks from "./components/GlobalTasks";
@@ -12,10 +15,11 @@ import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { useAuth } from "./context/auth-context";
 import { AppPreferencesProvider } from "./i18n";
+import { getHomePath, getUserRoles } from "./utils/auth";
 
-// Προστατευμένη διαδρομή με ενσωματωμένο Layout (Navbar)
-function ProtectedRoute() {
-  const { authLoading, isAuthenticated } = useAuth();
+// Προστατευμένη διαδρομή με role guard και διαφορετικό shell ανά module.
+function ProtectedRoute({ allowedRoles, children }) {
+  const { authLoading, isAuthenticated, user } = useAuth();
 
   if (authLoading) {
     return (
@@ -29,7 +33,13 @@ function ProtectedRoute() {
     return <Navigate to="/login" replace />;
   }
 
-  return <AppShell />;
+  const hasAllowedRole = allowedRoles.some((role) => getUserRoles(user).includes(role));
+
+  if (!hasAllowedRole) {
+    return <Navigate to={getHomePath(user)} replace />;
+  }
+
+  return children;
 }
 
 export default function App() {
@@ -43,8 +53,14 @@ export default function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
 
-              {/* ΠΡΟΣΤΑΤΕΥΜΕΝΕΣ ΔΙΑΔΡΟΜΕΣ (Εδώ μέσα μπαίνουν όλα όσα θέλουν Navbar) */}
-              <Route element={<ProtectedRoute />}>
+              {/* Farmer UI */}
+              <Route
+                element={
+                  <ProtectedRoute allowedRoles={["ROLE_USER"]}>
+                    <AppShell />
+                  </ProtectedRoute>
+                }
+              >
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/fields" element={<Fields />} />
                 <Route path="/fields/:fieldId" element={<FieldCrops />} />
@@ -52,6 +68,19 @@ export default function App() {
                 <Route path="/tasks" element={<GlobalTasks />} />
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/profile" element={<Profile />} />
+              </Route>
+
+              {/* Admin UI */}
+              <Route
+                element={
+                  <ProtectedRoute allowedRoles={["ROLE_ADMIN"]}>
+                    <AdminShell />
+                  </ProtectedRoute>
+                }
+              >
+                <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                <Route path="/admin/crops-dist" element={<AdminDashboard focus="crops" />} />
+                <Route path="/admin/users" element={<AdminUsersManagement />} />
               </Route>
 
               {/* Redirects */}
@@ -65,7 +94,7 @@ export default function App() {
 }
 
 function AuthRedirect() {
-  const { authLoading, isAuthenticated } = useAuth();
+  const { authLoading, isAuthenticated, user } = useAuth();
   if (authLoading) return null;
-  return <Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />;
+  return <Navigate to={isAuthenticated ? getHomePath(user) : "/login"} replace />;
 }

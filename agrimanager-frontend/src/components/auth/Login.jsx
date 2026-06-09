@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import api from "../../api/axios";
 import { useAuth } from "../../context/auth-context";
+import { getHomePath } from "../../utils/auth";
 import { Button } from "../ui";
 
 function Layout({ children }) {
@@ -34,7 +35,7 @@ export default function Login() {
         return;
       }
 
-      navigate("/dashboard", { replace: true });
+      navigate(getHomePath(profile), { replace: true });
     } catch (err) {
       console.error("Σφάλμα σύνδεσης:", err);
       setError("Λάθος στοιχεία ή πρόβλημα σύνδεσης");
