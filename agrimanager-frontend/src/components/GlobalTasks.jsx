@@ -4,7 +4,6 @@ import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import { format, getDay, parse, startOfWeek } from "date-fns";
 import { el } from "date-fns/locale";
 import {
-  CheckCircle2,
   Download,
   Droplets,
   Leaf,
@@ -31,6 +30,8 @@ import {
   StatusBadge,
   Surface,
 } from "./ui";
+import TaskProgressControl from "./TaskProgressControl";
+import { isHarvestTaskType } from "../utils/taskProgress";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 
 const STATUS_COLORS = {
@@ -290,14 +291,16 @@ export default function GlobalTasks() {
       }));
   }, [filteredTasks, labels.task]);
 
-  const handleComplete = async (taskId) => {
-    try {
-      await api.patch(`/api/tasks/${taskId}/complete`);
-      setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, status: "COMPLETED" } : task)));
-    } catch (err) {
-      console.error("Σφάλμα ενημέρωσης εργασίας:", err);
-      alert(labels.completeError || "Failed to update task status.");
-    }
+  const handleProgressSave = async (taskId, { progress, yieldAmount }) => {
+    const params = { progress };
+    if (yieldAmount !== null) params.yieldAmount = yieldAmount;
+
+    const response = await api.patch(`/api/tasks/${taskId}/progress`, null, { params });
+    const updatedTask = response.data;
+    setTasks((currentTasks) =>
+      currentTasks.map((task) => (task.id === taskId ? updatedTask : task))
+    );
+    return updatedTask;
   };
 
   const handleDeleteTask = async (taskId) => {
@@ -504,21 +507,22 @@ export default function GlobalTasks() {
       ) : (
         <Surface className="overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px]">
+            <table className="w-full min-w-[1080px]">
               <thead className="border-b border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900">
                 <tr>
                   <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.task || "Task"}</th>
                   <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.cropField || "Crop / Field"}</th>
                   <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.date || "Date"}</th>
                   <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.cost || "Cost"}</th>
-                  <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.status || "Status"}</th>
+                  <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.netHarvestProfit || "Net Harvest Profit"}</th>
+                  <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.progress || "Progress"}</th>
                   <th className="text-right px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.actions || "Actions"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filteredTasks.length === 0 && (
                   <tr>
-                    <td colSpan="6" className="px-5 py-10">
+                    <td colSpan="7" className="px-5 py-10">
                       <EmptyState
                         icon={Tractor}
                         title={labels.noTasks || "No tasks found"}
@@ -563,22 +567,34 @@ export default function GlobalTasks() {
                         {formatCurrency(task.cost, language === "el" ? "el-GR" : "en-US")}
                       </td>
 
-                      <td className="px-5 py-4">
-                        <StatusBadge status={task.status}>{statusLabels[task.status] || task.status}</StatusBadge>
+                      <td
+                        className={`px-5 py-4 text-sm font-black ${
+                          !isHarvestTaskType(task.taskType) || task.netHarvestProfit == null
+                            ? "text-slate-400 dark:text-slate-500"
+                            : Number(task.netHarvestProfit) >= 0
+                              ? "text-emerald-700 dark:text-emerald-300"
+                              : "text-rose-700 dark:text-rose-300"
+                        }`}
+                      >
+                        {isHarvestTaskType(task.taskType) && task.netHarvestProfit != null
+                          ? formatCurrency(task.netHarvestProfit, language === "el" ? "el-GR" : "en-US")
+                          : "-"}
                       </td>
 
                       <td className="px-5 py-4">
-                        <div className="flex justify-end gap-3">
-                          <Button
-                            onClick={() => handleComplete(task.id)}
-                            disabled={task.status === "COMPLETED"}
-                            variant="success"
-                            size="sm"
-                          >
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            {labels.complete || "Complete"}
-                          </Button>
+                        <div className="space-y-3">
+                          <StatusBadge status={task.status}>{statusLabels[task.status] || task.status}</StatusBadge>
+                          <TaskProgressControl
+                            key={`${task.id}-${task.completionPercentage}-${task.harvestedYieldAmount}`}
+                            task={task}
+                            labels={labels}
+                            onSave={(progressData) => handleProgressSave(task.id, progressData)}
+                          />
+                        </div>
+                      </td>
 
+                      <td className="px-5 py-4">
+                        <div className="flex justify-end">
                           <Button
                             onClick={() => handleDeleteTask(task.id)}
                             variant="danger"

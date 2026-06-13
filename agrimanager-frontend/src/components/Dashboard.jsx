@@ -1,10 +1,39 @@
-import { useState, useEffect } from "react";
-import { LayoutGrid, MapPinned, Sprout } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { CircleDollarSign, LayoutGrid, MapPinned, Sprout, TrendingDown } from "lucide-react";
 import api from "../api/axios";
 import { useAuth } from "../context/auth-context";
 import { useAppPreferences } from "../i18n";
 import MapComponent from "./MapComponent";
 import { PageHeader, SectionCard, StatCard, Surface } from "./ui";
+
+const EMPTY_FINANCIAL_STATS = {
+  totalRevenue: 0,
+  totalExpenses: 0,
+  monthlyFinancials: [],
+};
+
+const formatCurrency = (value) =>
+  new Intl.NumberFormat("el-GR", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 2,
+  }).format(Number(value || 0));
+
+const formatMonth = (month) => {
+  const date = new Date(`${month}-01T00:00:00`);
+  if (Number.isNaN(date.getTime())) return month;
+  return date.toLocaleDateString("el-GR", { month: "short", year: "2-digit" });
+};
 
 function persistAssistantContext({ fields, tasks, weather }) {
   try {
@@ -21,6 +50,7 @@ export default function Dashboard() {
   const { t } = useAppPreferences();
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
+  const [financialStats, setFinancialStats] = useState(EMPTY_FINANCIAL_STATS);
   const [advisorContext, setAdvisorContext] = useState({
     weather: null,
     profile: user || {},
@@ -32,9 +62,19 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    api.get("/api/stats/dashboard")
-      .then(response => {
-        setStats(response.data);
+    Promise.all([
+      api.get("/api/stats/dashboard"),
+      api.get("/api/stats/farmer-dashboard"),
+    ])
+      .then(([dashboardResponse, financialResponse]) => {
+        setStats(dashboardResponse.data);
+        setFinancialStats({
+          ...EMPTY_FINANCIAL_STATS,
+          ...(financialResponse.data || {}),
+          monthlyFinancials: Array.isArray(financialResponse.data?.monthlyFinancials)
+            ? financialResponse.data.monthlyFinancials
+            : [],
+        });
         setLoading(false);
       })
       .catch(err => {
@@ -43,6 +83,17 @@ export default function Dashboard() {
         setLoading(false);
       });
   }, []);
+
+  const monthlyFinancialData = useMemo(
+    () =>
+      financialStats.monthlyFinancials.map((item) => ({
+        month: item.month,
+        label: formatMonth(item.month),
+        expenses: Number(item.expenses || 0),
+        revenue: Number(item.revenue || 0),
+      })),
+    [financialStats.monthlyFinancials]
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -115,11 +166,38 @@ export default function Dashboard() {
       )}
 
       <div className="w-full space-y-6">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <StatCard icon={MapPinned} title={t.dashboard.totalFields} value={stats?.totalFields || 0} tone="emerald" />
           <StatCard icon={Sprout} title={t.dashboard.activeCrops} value={stats?.activeCrops || 0} tone="sky" />
           <StatCard icon={LayoutGrid} title={t.dashboard.pendingTasks} value={stats?.pendingTasks || 0} tone="amber" />
+          <StatCard icon={TrendingDown} title={t.dashboard.totalExpenses} value={formatCurrency(financialStats.totalExpenses)} tone="rose" />
+          <StatCard icon={CircleDollarSign} title={t.dashboard.totalRevenue} value={formatCurrency(financialStats.totalRevenue)} tone="emerald" />
         </div>
+
+        <SectionCard
+          title={t.dashboard.financialChartTitle}
+          description={t.dashboard.financialChartDescription}
+        >
+          {monthlyFinancialData.length === 0 ? (
+            <div className="flex min-h-[280px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm font-bold text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+              {t.dashboard.noFinancialData}
+            </div>
+          ) : (
+            <div className="h-[360px] min-w-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={monthlyFinancialData} margin={{ top: 12, right: 18, left: 8, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" vertical={false} />
+                  <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#64748b", fontSize: 12, fontWeight: 700 }} />
+                  <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `${Number(value).toLocaleString("el-GR")} €`} tick={{ fill: "#64748b", fontSize: 12 }} />
+                  <Tooltip formatter={(value, name) => [formatCurrency(value), name]} contentStyle={{ borderRadius: "12px", border: "1px solid #cbd5e1", fontWeight: 700 }} />
+                  <Legend />
+                  <Bar dataKey="expenses" name={t.dashboard.expensesSeries} fill="#dc2626" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="revenue" name={t.dashboard.revenueSeries} fill="#16a34a" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </SectionCard>
 
         <SectionCard title={t.dashboard.mapTitle} description={t.dashboard.mapDescription}>
           <div className="w-full overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">

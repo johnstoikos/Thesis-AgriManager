@@ -4,7 +4,6 @@ import {
   BarChart3,
   Bell,
   CalendarDays,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   CloudRain,
@@ -28,6 +27,8 @@ import api from "../api/axios";
 import { useAuth } from "../context/auth-context";
 import { useTheme } from "../context/ThemeContext";
 import { useAppPreferences } from "../i18n";
+import AiAssistantWidget from "./AiAssistantWidget";
+import TaskProgressControl from "./TaskProgressControl";
 import { Button, Popover, Switch } from "./ui";
 
 const formatDate = (value) => {
@@ -112,6 +113,7 @@ const notificationToneClasses = {
 };
 
 function BellDropdown({ label }) {
+  const { t } = useAppPreferences();
   const [isOpen, setIsOpen] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -135,13 +137,18 @@ function BellDropdown({ label }) {
     fetchNotifications();
   }, []);
 
-  const handleCheck = async (taskId) => {
-    try {
-      await api.patch(`/api/tasks/${taskId}/complete`);
-      setTasks((currentTasks) => currentTasks.filter((task) => task.id !== taskId));
-    } catch (err) {
-      console.error("Σφάλμα ολοκλήρωσης εργασίας από ειδοποίηση:", err);
-    }
+  const handleProgressSave = async (taskId, { progress, yieldAmount }) => {
+    const params = { progress };
+    if (yieldAmount !== null) params.yieldAmount = yieldAmount;
+
+    const response = await api.patch(`/api/tasks/${taskId}/progress`, null, { params });
+    const updatedTask = response.data;
+    setTasks((currentTasks) => (
+      progress === 100
+        ? currentTasks.filter((task) => task.id !== taskId)
+        : currentTasks.map((task) => (task.id === taskId ? updatedTask : task))
+    ));
+    return updatedTask;
   };
 
   return (
@@ -199,17 +206,14 @@ function BellDropdown({ label }) {
                         <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
                           {task.description || "Εκκρεμής εργασία που χρειάζεται έλεγχο."}
                         </p>
+                        <TaskProgressControl
+                          key={`${task.id}-${task.completionPercentage}-${task.harvestedYieldAmount}`}
+                          task={task}
+                          compact
+                          labels={t.tasks}
+                          onSave={(progressData) => handleProgressSave(task.id, progressData)}
+                        />
                       </div>
-                      <Button
-                        type="button"
-                        onClick={() => handleCheck(task.id)}
-                        variant="success"
-                        size="sm"
-                        className="shrink-0 rounded-xl"
-                      >
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        Check
-                      </Button>
                     </div>
                   </article>
                 );
@@ -639,6 +643,7 @@ export default function AppShell() {
           </div>
         </main>
       </div>
+      <AiAssistantWidget />
     </div>
   );
 }

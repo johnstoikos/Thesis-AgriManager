@@ -6,6 +6,25 @@ import * as turf from '@turf/turf';
 import { Button, FieldInput, FieldLabel, ModalShell, Surface } from "./ui";
 import { useAppPreferences } from "../i18n";
 
+const emptyFieldForm = {
+  id: null,
+  name: "",
+  area: "",
+  boundary: [],
+  soilType: "",
+  soilPh: "",
+  irrigationType: "",
+};
+
+const soilTypeOptions = ["Αργιλώδες", "Αμμώδες", "Πηλώδες", "Ασβεστώδες", "Ιλυώδες"];
+const irrigationTypeOptions = ["Σταγόνα", "Μπεκ", "Ξηρικό"];
+
+const selectClassName = "h-14 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
+
+function optionalNumber(value) {
+  return value === "" || value === null || value === undefined ? null : Number(value);
+}
+
 export default function Fields() {
   const { t } = useAppPreferences();
   const labels = t.fields || {};
@@ -13,12 +32,7 @@ export default function Fields() {
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
   
-  const [formData, setFormData] = useState({
-    id: null, 
-    name: "",
-    area: "",
-    boundary: [] 
-  });
+  const [formData, setFormData] = useState(emptyFieldForm);
 
   const fetchFields = useCallback(async () => {
     try {
@@ -50,8 +64,11 @@ export default function Fields() {
     setFormData({
       id: field.id,
       name: field.name,
-      area: field.area,
-      boundary: field.boundary.coordinates[0] 
+      area: field.area ?? "",
+      boundary: field.boundary?.coordinates?.[0] || [],
+      soilType: field.soilType || "",
+      soilPh: field.soilPh ?? "",
+      irrigationType: field.irrigationType || "",
     });
     setShowModal(true);
   };
@@ -82,7 +99,11 @@ export default function Fields() {
       boundary: {
         type: "Polygon",
         coordinates: [formData.boundary]
-      }
+      },
+      // Τα παρακάτω πεδία εμπλουτίζουν το context που θα χρησιμοποιήσει ο AI Assistant.
+      soilType: formData.soilType || null,
+      soilPh: optionalNumber(formData.soilPh),
+      irrigationType: formData.irrigationType || null,
     };
 
     try {
@@ -93,7 +114,7 @@ export default function Fields() {
       }
       
       setShowModal(false); 
-      setFormData({ id: null, name: "", area: "", boundary: [] }); 
+      setFormData(emptyFieldForm);
       fetchFields(); 
     } catch (err) {
       console.error("Σφάλμα αποθήκευσης:", err.response?.data);
@@ -134,7 +155,7 @@ export default function Fields() {
               {labels.title || "Τα Χωράφια μου"}
             </h2>
           </div>
-          <Button onClick={() => { setFormData({ id: null, name: "", area: "", boundary: [] }); setShowModal(true); }}>
+          <Button onClick={() => { setFormData(emptyFieldForm); setShowModal(true); }}>
             + {labels.addField || "Προσθήκη Χωραφιού"}
           </Button>
         </div>
@@ -215,6 +236,51 @@ export default function Fields() {
                   placeholder={labels.autoAreaPlaceholder}
                   className="h-14 bg-white font-bold dark:bg-slate-800/50"
                 />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                <div className="space-y-3">
+                  <FieldLabel>{labels.soilType || "Τύπος Εδάφους"}</FieldLabel>
+                  <select
+                    value={formData.soilType}
+                    onChange={(e) => setFormData({...formData, soilType: e.target.value})}
+                    className={selectClassName}
+                  >
+                    <option value="">{labels.selectPlaceholder || "Επιλογή..."}</option>
+                    {soilTypeOptions.map((soilType) => (
+                      <option key={soilType} value={soilType}>{soilType}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-3">
+                  <FieldLabel>{labels.soilPhOptional || "pH Εδάφους (Προαιρετικό)"}</FieldLabel>
+                  <FieldInput
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="14"
+                    value={formData.soilPh}
+                    onChange={(e) => setFormData({...formData, soilPh: e.target.value})}
+                    placeholder="6.8"
+                    className="h-14 bg-white font-bold dark:bg-slate-800/50"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <FieldLabel>{labels.irrigationType || "Τύπος Ποτίσματος"}</FieldLabel>
+                  <select
+                    value={formData.irrigationType}
+                    onChange={(e) => setFormData({...formData, irrigationType: e.target.value})}
+                    className={selectClassName}
+                  >
+                    <option value="">{labels.selectPlaceholder || "Επιλογή..."}</option>
+                    {irrigationTypeOptions.map((irrigationType) => (
+                      <option key={irrigationType} value={irrigationType}>{irrigationType}</option>
+                    ))}
+                  </select>
+                </div>
+
               </div>
 
               <div className="space-y-3">

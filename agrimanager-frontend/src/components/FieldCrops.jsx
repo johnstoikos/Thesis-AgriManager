@@ -1,18 +1,33 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { BookOpen, CloudSun, Droplets, ExternalLink, Thermometer, Wind } from "lucide-react";
+import { BookOpen, CloudSun, Droplets, ExternalLink, Pencil, Thermometer, Wind } from "lucide-react";
 import api from "../api/axios";
 import MapComponent from "./MapComponent";
 import * as turf from "@turf/turf";
 import { Button, FieldInput, FieldSelect, FieldTextarea, ModalShell } from "./ui";
+import TaskProgressControl from "./TaskProgressControl";
+import { isHarvestTaskType } from "../utils/taskProgress";
 import { useAppPreferences } from "../i18n";
 
 const INITIAL_TASK_FORM_DATA = {
+  id: null,
   taskType: "Πότισμα",
   taskDate: "",
   description: "",
   cost: "",
   laborHours: "",
+  status: "PENDING",
+  completionPercentage: 0,
+  harvestedYieldAmount: "",
+};
+
+const INITIAL_CROP_FORM_DATA = {
+  id: null,
+  type: "",
+  variety: "",
+  zoneBoundary: [],
+  harvestYield: "",
+  sellingPricePerKg: "",
 };
 
 function toOptionalNumber(value) {
@@ -93,7 +108,7 @@ export default function FieldCrops() {
   
   // States για το Modal Καλλιέργειας (Πολύγωνο)
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({ id: null, type: "", variety: "", zoneBoundary: [] });
+  const [formData, setFormData] = useState(INITIAL_CROP_FORM_DATA);
 
   // States για το Modal Εργασιών (Σημείο/Point)
   const [showTaskModal, setShowTaskModal] = useState(false);
@@ -108,10 +123,6 @@ export default function FieldCrops() {
   // Στοιχεία φόρμας εργασίας (η θέση αποθηκεύεται στο pendingLocation)
   const [taskFormData, setTaskFormData] = useState(INITIAL_TASK_FORM_DATA);
 
-  const TASK_STATUS_LABELS = {
-    PENDING: labels.pending || "PENDING",
-    COMPLETED: labels.completed || "COMPLETED",
-  };
   const TASK_TYPE_OPTIONS = [
     { value: "Πότισμα", label: labels.water || "Watering" },
     { value: "Λίπανση", label: labels.fertilize || "Fertilization" },
@@ -224,10 +235,12 @@ export default function FieldCrops() {
       setFormData({ 
         ...crop, 
         variety: crop.variety || "", 
-        zoneBoundary: crop.zoneBoundary.coordinates[0] 
+        zoneBoundary: crop.zoneBoundary.coordinates[0],
+        harvestYield: crop.harvestYield ?? "",
+        sellingPricePerKg: crop.sellingPricePerKg ?? "",
       });
     } else {
-      setFormData({ id: null, type: "", variety: "", zoneBoundary: [] });
+      setFormData(INITIAL_CROP_FORM_DATA);
     }
     setShowModal(true);
   };
@@ -237,6 +250,9 @@ export default function FieldCrops() {
     const payload = { 
       type: formData.type,
       variety: formData.variety,
+      // Τα οικονομικά της σοδειάς ανήκουν στην καλλιέργεια, όχι στο χωράφι.
+      harvestYield: toOptionalNumber(formData.harvestYield),
+      sellingPricePerKg: toOptionalNumber(formData.sellingPricePerKg),
       fieldId: parseInt(fieldId), 
       zoneBoundary: { type: "Polygon", coordinates: [formData.zoneBoundary] } 
     };
@@ -276,24 +292,28 @@ export default function FieldCrops() {
   const handleSaveTask = async (e) => {
     e.preventDefault();
     const [longitude, latitude] = Array.isArray(pendingLocation) ? pendingLocation : [];
+    const isEditingTask = Boolean(taskFormData.id);
+    const hasSelectedLocation = Number.isFinite(Number(longitude)) && Number.isFinite(Number(latitude));
 
-    if (!Number.isFinite(Number(longitude)) || !Number.isFinite(Number(latitude))) {
+    if (!isEditingTask && !hasSelectedLocation) {
       alert("Παρακαλώ επιλέξτε σημείο στο χάρτη");
       return;
     }
 
     // Έλεγχος Turf: Πρέπει το σημείο να είναι εντός του πολυγώνου της καλλιέργειας
-    try {
-      const point = turf.point([Number(longitude), Number(latitude)]);
-      const polygon = turf.polygon(selectedCrop.zoneBoundary.coordinates);
-      const isInside = turf.booleanPointInPolygon(point, polygon);
-      
-      if (!isInside) {
-        alert(labels.pinInsideAlert || "The pin must be inside the crop boundary.");
-        return; 
+    if (hasSelectedLocation) {
+      try {
+        const point = turf.point([Number(longitude), Number(latitude)]);
+        const polygon = turf.polygon(selectedCrop.zoneBoundary.coordinates);
+        const isInside = turf.booleanPointInPolygon(point, polygon);
+
+        if (!isInside) {
+          alert(labels.pinInsideAlert || "The pin must be inside the crop boundary.");
+          return;
+        }
+      } catch (err) {
+        console.error("Turf Error:", err);
       }
-    } catch (err) {
-      console.error("Turf Error:", err);
     }
 
     try {
@@ -305,16 +325,24 @@ export default function FieldCrops() {
         taskType: taskFormData.taskType,
         description: taskFormData.description,
         taskDate: formattedDate,
-        status: "PENDING",
+        status: taskFormData.status || "PENDING",
+        completionPercentage: taskFormData.completionPercentage ?? 0,
+        harvestedYieldAmount: isHarvestTaskType(taskFormData.taskType)
+          ? toOptionalNumber(taskFormData.harvestedYieldAmount)
+          : null,
         cost: toOptionalNumber(taskFormData.cost),
         laborHours: toOptionalNumber(taskFormData.laborHours),
-        longitude: Number(longitude),
-        latitude: Number(latitude),
+        longitude: hasSelectedLocation ? Number(longitude) : null,
+        latitude: hasSelectedLocation ? Number(latitude) : null,
         cropId: selectedCrop.id,
       };
 
       console.log("FINAL PAYLOAD:", taskData);
-      await api.post("/api/tasks", taskData);
+      if (taskFormData.id) {
+        await api.put(`/api/tasks/${taskFormData.id}`, taskData);
+      } else {
+        await api.post("/api/tasks", taskData);
+      }
       setIsAddingTask(false);
       setPendingLocation(null);
       setTaskFormData(INITIAL_TASK_FORM_DATA);
@@ -325,13 +353,37 @@ export default function FieldCrops() {
     }
   };
 
-  const handleCompleteTask = async (taskId) => {
-    try {
-      await api.patch(`/api/tasks/${taskId}/complete`);
-      fetchTasks(selectedCrop.id);
-    } catch (err) {
-      console.error("Σφάλμα κατά την ολοκλήρωση:", err);
+  const handleEditTask = (task) => {
+    const coordinates = task?.location?.coordinates;
+    setTaskFormData({
+      id: task.id,
+      taskType: task.taskType || "Πότισμα",
+      taskDate: task.taskDate || "",
+      description: task.description || "",
+      cost: task.cost ?? "",
+      laborHours: task.laborHours ?? "",
+      status: task.status || "PENDING",
+      completionPercentage: task.completionPercentage ?? (task.status === "COMPLETED" ? 100 : 0),
+      harvestedYieldAmount: task.harvestedYieldAmount ?? "",
+    });
+    setPendingLocation(Array.isArray(coordinates) ? coordinates : null);
+    setIsAddingTask(true);
+  };
+
+  const handleProgressSave = async (taskId, { progress, yieldAmount }) => {
+    const params = { progress };
+    if (yieldAmount !== null) params.yieldAmount = yieldAmount;
+
+    const response = await api.patch(`/api/tasks/${taskId}/progress`, null, { params });
+    const updatedTask = response.data;
+    setTasks((currentTasks) =>
+      currentTasks.map((task) => (task.id === taskId ? updatedTask : task))
+    );
+
+    if (progress === 100 && isHarvestTaskType(updatedTask.taskType)) {
+      fetchData();
     }
+    return updatedTask;
   };
 
   const handleDeleteCrop = async (id) => {
@@ -564,6 +616,26 @@ export default function FieldCrops() {
               <form onSubmit={handleSubmitCrop} className="space-y-5">
                 <input type="text" required placeholder={labels.cropTypePlaceholder || "Type (e.g. Olives)"} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900 shadow-sm placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-400" value={formData.type || ""} onChange={e => setFormData({...formData, type: e.target.value})} />
                 <input type="text" placeholder={labels.varietyPlaceholder || "Variety"} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900 shadow-sm placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-400" value={formData.variety || ""} onChange={e => setFormData({...formData, variety: e.target.value})} />
+                <FieldInput
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  inputMode="decimal"
+                  placeholder={labels.harvestYieldPlaceholder || "Συνολική Παραγωγή (Kg)"}
+                  className="rounded-xl px-3 py-3 text-sm font-bold"
+                  value={formData.harvestYield || ""}
+                  onChange={e => setFormData({...formData, harvestYield: e.target.value})}
+                />
+                <FieldInput
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  inputMode="decimal"
+                  placeholder={labels.sellingPricePerKgPlaceholder || "Τιμή Πώλησης ανά Kg (€)"}
+                  className="rounded-xl px-3 py-3 text-sm font-bold"
+                  value={formData.sellingPricePerKg || ""}
+                  onChange={e => setFormData({...formData, sellingPricePerKg: e.target.value})}
+                />
                 <Button type="submit" disabled={formData.zoneBoundary.length === 0} className="w-full">
                   {labels.saveZone || "Save Zone"}
                 </Button>
@@ -600,7 +672,11 @@ export default function FieldCrops() {
                 </Button>
               ) : (
                 <form onSubmit={handleSaveTask} className="bg-blue-50 p-5 rounded-2xl mb-6 border border-blue-200 animate-in zoom-in-95 shadow-sm dark:border-blue-400/30 dark:bg-blue-500/10">
-                   <p className="text-[9px] font-black text-blue-600 mb-3 uppercase tracking-widest animate-pulse dark:text-blue-300">{labels.clickInsideZone || "Click inside the green zone boundary"}</p>
+                   <p className="text-[9px] font-black text-blue-600 mb-3 uppercase tracking-widest animate-pulse dark:text-blue-300">
+                     {taskFormData.id
+                       ? labels.editTaskHint || "Update task details"
+                       : labels.clickInsideZone || "Click inside the green zone boundary"}
+                   </p>
                    <FieldSelect className="mb-3 rounded-xl px-3 py-3 text-sm" value={taskFormData.taskType} onChange={e => setTaskFormData({...taskFormData, taskType: e.target.value})}>
                      {TASK_TYPE_OPTIONS.map((option) => (
                        <option key={option.value} value={option.value}>{option.label}</option>
@@ -637,8 +713,10 @@ export default function FieldCrops() {
                    />
                    <FieldTextarea placeholder={labels.taskDescriptionPlaceholder || "Task description..."} className="mb-4 h-24 resize-none rounded-xl px-3 py-3 text-sm" value={taskFormData.description || ""} onChange={e => setTaskFormData({...taskFormData, description: e.target.value})} />
                    <div className="flex gap-2">
-                     <Button type="submit" disabled={!pendingLocation} className="flex-1" size="sm">{labels.save || "Save"}</Button>
-                     <Button type="button" onClick={() => { setIsAddingTask(false); setPendingLocation(null); }} variant="secondary" className="flex-1" size="sm">{labels.cancel || "Cancel"}</Button>
+                     <Button type="submit" disabled={!taskFormData.id && !pendingLocation} className="flex-1" size="sm">
+                       {taskFormData.id ? labels.updateTask || "Update Task" : labels.save || "Save"}
+                     </Button>
+                     <Button type="button" onClick={() => { setIsAddingTask(false); setPendingLocation(null); setTaskFormData(INITIAL_TASK_FORM_DATA); }} variant="secondary" className="flex-1" size="sm">{labels.cancel || "Cancel"}</Button>
                    </div>
                 </form>
               )}
@@ -647,23 +725,31 @@ export default function FieldCrops() {
                 <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block mb-1 dark:text-slate-400">{labels.taskHistory || "Task History"}</span>
                 {tasks.length === 0 && <p className="text-xs text-gray-400 italic text-center py-4 bg-white rounded-xl border border-dashed dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">{labels.noTasks || "No tasks."}</p>}
                 {tasks.map(t => (
-                  <div key={t.id} className="bg-white p-4 rounded-2xl border flex justify-between items-center shadow-sm hover:shadow-md transition-shadow dark:border-slate-800 dark:bg-slate-800">
-                    <div>
-                      <div className="text-xs font-bold text-gray-800 uppercase tracking-tight dark:text-slate-100">{t.taskType}</div>
-                      <div className="text-[10px] text-gray-400 mt-0.5 line-clamp-1 italic dark:text-slate-400">{t.description || labels.noDescription || "No description"}</div>
-                      <div className="mt-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
-                        {labels.cost || "Cost"}: {Number(t.cost || 0).toLocaleString("el-GR", { style: "currency", currency: "EUR" })}
+                  <div key={t.id} className="rounded-2xl border bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-slate-800 dark:bg-slate-800">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold uppercase tracking-tight text-gray-800 dark:text-slate-100">{t.taskType}</div>
+                        <div className="mt-0.5 line-clamp-1 text-[10px] italic text-gray-400 dark:text-slate-400">{t.description || labels.noDescription || "No description"}</div>
+                        <div className="mt-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                          {labels.cost || "Cost"}: {Number(t.cost || 0).toLocaleString("el-GR", { style: "currency", currency: "EUR" })}
+                        </div>
                       </div>
+                      <Button onClick={() => handleEditTask(t)} variant="secondary" size="sm">
+                        <Pencil className="h-3.5 w-3.5" />
+                        {labels.edit || "Edit"}
+                      </Button>
                     </div>
-                    <Button
-                      disabled={t.status === 'COMPLETED'} 
-                      onClick={() => handleCompleteTask(t.id)} 
-                      variant="secondary"
-                      size="sm"
-                      className={t.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' : 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:hover:bg-amber-500/25'}
-                    >
-                      {TASK_STATUS_LABELS[t.status] || t.status}
-                    </Button>
+                    <TaskProgressControl
+                      key={`${t.id}-${t.completionPercentage}-${t.harvestedYieldAmount}`}
+                      task={t}
+                      compact
+                      labels={{
+                        ...labels,
+                        progress: labels.progress || "Πρόοδος",
+                        harvestedYield: labels.harvestedYield || "Ποσότητα συγκομιδής (Kg)",
+                      }}
+                      onSave={(progressData) => handleProgressSave(t.id, progressData)}
+                    />
                   </div>
                 ))}
               </div>

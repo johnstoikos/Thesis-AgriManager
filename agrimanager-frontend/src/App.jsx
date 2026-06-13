@@ -5,6 +5,7 @@ import Dashboard from "./components/Dashboard";
 import AppShell from "./components/AppShell";
 import AdminDashboard from "./components/AdminDashboard";
 import AdminUsersManagement from "./components/AdminUsersManagement";
+import CropStatistics from "./components/CropStatistics";
 import AdminShell from "./components/AdminShell";
 import Fields from "./components/Fields";
 import FieldCrops from "./components/FieldCrops";
@@ -79,7 +80,7 @@ export default function App() {
                 }
               >
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                <Route path="/admin/crops-dist" element={<AdminDashboard focus="crops" />} />
+                <Route path="/admin/crops-dist" element={<CropStatistics />} />
                 <Route path="/admin/users" element={<AdminUsersManagement />} />
               </Route>
 
@@ -97,4 +98,18 @@ function AuthRedirect() {
   const { authLoading, isAuthenticated, user } = useAuth();
   if (authLoading) return null;
   return <Navigate to={isAuthenticated ? getHomePath(user) : "/login"} replace />;
+}
+
+function MainLayout() {
+  return (
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar />
+      <main className="flex-1 overflow-y-auto p-6">
+        <Outlet /> {/* Εδώ προβάλλονται οι σελίδες σου */}
+      </main>
+
+      {/* Το Floating AI Widget σου που κάθεται «πάνω» από όλα */}
+      <AiAssistantWidget />
+    </div>
+  );
 }
