@@ -42,6 +42,7 @@ public class CropService {
         crop.setType(cropDTO.getType());
         crop.setVariety(cropDTO.getVariety());
         crop.setPlantingDate(cropDTO.getPlantingDate());
+        applyCropHarvestData(crop, cropDTO);
         crop.setZoneBoundary(cropDTO.getZoneBoundary());
         crop.setField(field); // Σύνδεση με το Field
 
@@ -75,6 +76,7 @@ public class CropService {
         crop.setType(cropDTO.getType());
         crop.setVariety(cropDTO.getVariety());
         crop.setPlantingDate(cropDTO.getPlantingDate());
+        applyCropHarvestData(crop, cropDTO);
 
         Crop updatedCrop = cropRepository.save(crop);
         return convertToDTO(updatedCrop);
@@ -105,6 +107,8 @@ public class CropService {
         dto.setType(crop.getType());
         dto.setVariety(crop.getVariety());
         dto.setPlantingDate(crop.getPlantingDate());
+        dto.setHarvestYield(crop.getHarvestYield());
+        dto.setSellingPricePerKg(crop.getSellingPricePerKg());
         dto.setZoneBoundary(crop.getZoneBoundary());
         dto.setFieldId(crop.getField().getId());
 
@@ -120,5 +124,10 @@ public class CropService {
         }
 
         return dto;
+    }
+
+    private void applyCropHarvestData(Crop crop, CropDTO cropDTO) {
+        crop.setHarvestYield(cropDTO.getHarvestYield());
+        crop.setSellingPricePerKg(cropDTO.getSellingPricePerKg());
     }
 }

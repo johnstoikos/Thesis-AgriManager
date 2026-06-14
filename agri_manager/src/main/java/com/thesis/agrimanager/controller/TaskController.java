@@ -31,9 +31,23 @@ public class TaskController {
         return taskService.getUrgentTasks(principal.getName());
     }
 
+    @PutMapping("/{id}")
+    public TaskDTO updateTask(@PathVariable Long id, @RequestBody TaskDTO dto, Principal principal) {
+        return taskService.updateTask(id, dto, principal.getName());
+    }
+
     @PatchMapping("/{id}/complete")
     public TaskDTO completeTask(@PathVariable Long id) {
         return taskService.completeTask(id);
+    }
+
+    @PatchMapping("/{id}/progress")
+    public TaskDTO updateTaskProgress(
+            @PathVariable Long id,
+            @RequestParam Integer progress,
+            @RequestParam(required = false) Double yieldAmount
+    ) {
+        return taskService.updateTaskProgress(id, progress, yieldAmount);
     }
 
     @DeleteMapping("/{id}")

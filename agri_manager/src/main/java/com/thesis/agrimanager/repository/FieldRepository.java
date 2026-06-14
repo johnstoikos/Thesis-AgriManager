@@ -16,10 +16,44 @@ public interface FieldRepository extends JpaRepository<Field, Long> {
 
     long countByOwnerUsername(String username);
 
-    long countByOwnerId(Long ownerId);
+    @Query("""
+            SELECT COUNT(f)
+            FROM Field f
+            WHERE f.owner.id = :ownerId
+              AND 'ROLE_USER' MEMBER OF f.owner.roles
+              AND 'ROLE_ADMIN' NOT MEMBER OF f.owner.roles
+            """)
+    long countByOwnerId(@Param("ownerId") Long ownerId);
 
     // Για το getFieldsByUsername()
     List<Field> findByOwnerId(Long ownerId);
+
+    @Query("""
+            SELECT f
+            FROM Field f
+            WHERE 'ROLE_USER' MEMBER OF f.owner.roles
+              AND 'ROLE_ADMIN' NOT MEMBER OF f.owner.roles
+            ORDER BY f.name
+            """)
+    List<Field> findAllOwnedByFarmers();
+
+    @Query("""
+            SELECT f
+            FROM Field f
+            WHERE f.owner.id = :ownerId
+              AND 'ROLE_USER' MEMBER OF f.owner.roles
+              AND 'ROLE_ADMIN' NOT MEMBER OF f.owner.roles
+            ORDER BY f.name
+            """)
+    List<Field> findOwnedByFarmerId(@Param("ownerId") Long ownerId);
+
+    @Query("""
+            SELECT COUNT(f)
+            FROM Field f
+            WHERE 'ROLE_USER' MEMBER OF f.owner.roles
+              AND 'ROLE_ADMIN' NOT MEMBER OF f.owner.roles
+            """)
+    long countOwnedByFarmers();
 
     // Για το Security check (findByIdAndOwnerUsername)
     Optional<Field> findByIdAndOwnerUsername(Long id, String username);
@@ -27,6 +61,12 @@ public interface FieldRepository extends JpaRepository<Field, Long> {
     @Query("SELECT COALESCE(SUM(f.area), 0) FROM Field f")
     Double sumTotalArea();
 
-    @Query("SELECT COALESCE(SUM(f.area), 0) FROM Field f WHERE f.owner.id = :ownerId")
+    @Query("""
+            SELECT COALESCE(SUM(f.area), 0)
+            FROM Field f
+            WHERE f.owner.id = :ownerId
+              AND 'ROLE_USER' MEMBER OF f.owner.roles
+              AND 'ROLE_ADMIN' NOT MEMBER OF f.owner.roles
+            """)
     Double sumTotalAreaByOwnerId(@Param("ownerId") Long ownerId);
 }

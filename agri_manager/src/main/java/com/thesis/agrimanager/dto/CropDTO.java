@@ -1,6 +1,7 @@
 package com.thesis.agrimanager.dto;
 
 import org.locationtech.jts.geom.Polygon;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public class CropDTO {
@@ -8,6 +9,8 @@ public class CropDTO {
     private String type;
     private String variety;
     private LocalDate plantingDate;
+    private Double harvestYield;
+    private BigDecimal sellingPricePerKg;
     private Polygon zoneBoundary; 
     private Long fieldId; 
     private Double zoneArea;
@@ -25,6 +28,12 @@ public class CropDTO {
 
     public LocalDate getPlantingDate() { return plantingDate; }
     public void setPlantingDate(LocalDate plantingDate) { this.plantingDate = plantingDate; }
+
+    public Double getHarvestYield() { return harvestYield; }
+    public void setHarvestYield(Double harvestYield) { this.harvestYield = harvestYield; }
+
+    public BigDecimal getSellingPricePerKg() { return sellingPricePerKg; }
+    public void setSellingPricePerKg(BigDecimal sellingPricePerKg) { this.sellingPricePerKg = sellingPricePerKg; }
 
     public Polygon getZoneBoundary() { return zoneBoundary; }
     public void setZoneBoundary(Polygon zoneBoundary) { this.zoneBoundary = zoneBoundary; }

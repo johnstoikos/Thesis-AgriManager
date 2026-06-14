@@ -16,6 +16,9 @@ public class TaskDTO {
     private final LocalDate taskDate;
 
     private final String status;
+    private final Integer completionPercentage;
+    private final Double harvestedYieldAmount;
+    private final BigDecimal netHarvestProfit;
     private final BigDecimal cost;
     private final Double laborHours;
     private final Point location;
@@ -28,6 +31,9 @@ public class TaskDTO {
             @JsonProperty("description") String description,
             @JsonProperty("taskDate") LocalDate taskDate,
             @JsonProperty("status") String status,
+            @JsonProperty("completionPercentage") Integer completionPercentage,
+            @JsonProperty("harvestedYieldAmount") Double harvestedYieldAmount,
+            @JsonProperty("netHarvestProfit") BigDecimal netHarvestProfit,
             @JsonProperty("cost") BigDecimal cost,
             @JsonProperty("laborHours") Double laborHours,
             @JsonProperty("location") Point location,
@@ -37,6 +43,9 @@ public class TaskDTO {
         this.description = description;
         this.taskDate = taskDate;
         this.status = status;
+        this.completionPercentage = completionPercentage;
+        this.harvestedYieldAmount = harvestedYieldAmount;
+        this.netHarvestProfit = netHarvestProfit;
         this.cost = cost;
         this.laborHours = laborHours;
         this.location = location;
@@ -48,6 +57,9 @@ public class TaskDTO {
     public String getDescription() { return description; }
     public LocalDate getTaskDate() { return taskDate; }
     public String getStatus() { return status; }
+    public Integer getCompletionPercentage() { return completionPercentage; }
+    public Double getHarvestedYieldAmount() { return harvestedYieldAmount; }
+    public BigDecimal getNetHarvestProfit() { return netHarvestProfit; }
     public BigDecimal getCost() { return cost; }
     public Double getLaborHours() { return laborHours; }
     public Point getLocation() { return location; }

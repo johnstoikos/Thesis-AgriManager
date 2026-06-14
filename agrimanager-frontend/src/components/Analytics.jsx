@@ -31,7 +31,7 @@ import { Button, EmptyState, ErrorState, SectionCard, SkeletonLines, StatCard, S
 import { useAppPreferences } from "../i18n";
 
 const CROP_COLORS = ["#059669", "#0f766e", "#84a98c", "#22c55e", "#14b8a6", "#64748b"];
-const FINANCIAL_COLORS = ["#2563eb", "#0891b2", "#7c3aed", "#db2777", "#ea580c", "#16a34a"];
+const FINANCIAL_COLORS = ["#dc2626", "#16a34a"];
 const TASK_STATUS_COLORS = {
   PENDING: "#f59e0b",
   COMPLETED: "#10b981",
@@ -51,6 +51,12 @@ function formatCurrency(value, locale = "el-GR") {
     currency: "EUR",
     maximumFractionDigits: 2,
   }).format(Number.isFinite(amount) ? amount : 0);
+}
+
+function formatMonth(month, locale = "el-GR") {
+  const date = new Date(`${month}-01T00:00:00`);
+  if (Number.isNaN(date.getTime())) return month;
+  return date.toLocaleDateString(locale, { month: "short", year: "2-digit" });
 }
 
 function toNumber(value) {
@@ -144,10 +150,15 @@ function GreekTooltip({ active, payload, label, valueSuffix = "", valueFormatter
 export default function Analytics() {
   const { isDarkMode, t } = useAppPreferences();
   const labels = t.analytics || {};
+  const dashboardLabels = t.dashboard || {};
   const [fields, setFields] = useState([]);
   const [crops, setCrops] = useState([]);
   const [tasks, setTasks] = useState([]);
-  const [financials, setFinancials] = useState([]);
+  const [financialStats, setFinancialStats] = useState({
+    totalRevenue: 0,
+    totalExpenses: 0,
+    monthlyFinancials: [],
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -156,13 +167,19 @@ export default function Analytics() {
       setLoading(true);
       setError("");
       try {
-        const [fieldsRes, financialsRes] = await Promise.all([
+        const [fieldsRes, financialStatsRes] = await Promise.all([
           api.get("/api/fields"),
-          api.get("/api/stats/financials"),
+          api.get("/api/stats/farmer-dashboard"),
         ]);
         const availableFields = Array.isArray(fieldsRes.data) ? fieldsRes.data : [];
         setFields(availableFields);
-        setFinancials(Array.isArray(financialsRes.data) ? financialsRes.data : []);
+        setFinancialStats({
+          totalRevenue: toNumber(financialStatsRes.data?.totalRevenue) || 0,
+          totalExpenses: toNumber(financialStatsRes.data?.totalExpenses) || 0,
+          monthlyFinancials: Array.isArray(financialStatsRes.data?.monthlyFinancials)
+            ? financialStatsRes.data.monthlyFinancials
+            : [],
+        });
 
         const cropResults = await Promise.allSettled(
           availableFields.map((field) => api.get(`/api/crops/field/${field.id}`))
@@ -244,15 +261,20 @@ export default function Analytics() {
       .map((status) => ({ status, name: statusLabels[status], value: grouped[status] }));
   }, [labels.completedStatus, labels.pending, labels.unknown, tasks]);
 
-  const financialData = useMemo(() => {
-    return financials
-      .map((entry) => ({
-        name: entry.fieldName || labels.unknownField || "Unknown field",
-        value: toNumber(entry.totalCost),
-      }))
-      .filter((entry) => Number.isFinite(entry.value) && entry.value > 0)
-      .sort((a, b) => b.value - a.value);
-  }, [financials, labels.unknownField]);
+  const monthlyFinancialData = useMemo(
+    () =>
+      financialStats.monthlyFinancials.map((entry) => ({
+        month: entry.month,
+        label: formatMonth(entry.month, labels.currencyLocale || "el-GR"),
+        expenses: toNumber(entry.expenses) || 0,
+        revenue: toNumber(entry.revenue) || 0,
+      })),
+    [financialStats.monthlyFinancials, labels.currencyLocale]
+  );
+
+  const hasMonthlyFinancialData = monthlyFinancialData.some(
+    (entry) => entry.expenses !== 0 || entry.revenue !== 0
+  );
 
   const stats = useMemo(() => {
     const totalFieldSquareMeters = fields.reduce((sum, field) => sum + getFieldSquareMeters(field), 0);
@@ -260,10 +282,6 @@ export default function Analytics() {
     const completedTasks = tasks.filter((task) => task.status === "COMPLETED").length;
     const totalTasks = tasks.length;
     const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-    const totalFinancialCost = financials.reduce((sum, entry) => {
-      const cost = toNumber(entry.totalCost);
-      return sum + (Number.isFinite(cost) ? cost : 0);
-    }, 0);
 
     return {
       totalFieldSquareMeters,
@@ -273,9 +291,8 @@ export default function Analytics() {
       completionPercentage,
       totalFields: fields.length,
       totalTasks,
-      totalFinancialCost,
     };
-  }, [crops.length, tasks, fields, financials]);
+  }, [crops.length, tasks, fields]);
 
   const handleExportPDF = async () => {
     const exportArea = document.getElementById("pdf-export-area");
@@ -579,7 +596,7 @@ export default function Analytics() {
                   {labels.financialSummary || "Financial Summary"}
                 </p>
                 <p className="mt-2 text-3xl font-black tracking-tight text-slate-950 dark:text-slate-100">
-                  {formatCurrency(stats.totalFinancialCost, labels.currencyLocale || "el-GR")}
+                  {formatCurrency(financialStats.totalExpenses, labels.currencyLocale || "el-GR")}
                 </p>
               </div>
               <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300">
@@ -687,30 +704,29 @@ export default function Analytics() {
           </SectionCard>
 
           <SectionCard
-            title={labels.financialAnalysis || "Financial Analysis"}
-            description={labels.financialAnalysisDescription || "Total completed task expenses grouped by field."}
-            badge={labels.expenses || "Expenses"}
+            title={dashboardLabels.financialChartTitle || "Monthly Financial Overview"}
+            description={dashboardLabels.financialChartDescription || "Comparison of task costs and completed harvest revenue."}
+            badge={labels.financialSummary || "Financial Summary"}
             side={<CircleDollarSign className="h-6 w-6 text-sky-700 dark:text-sky-300" />}
             className="xl:col-span-2"
           >
             {loading ? (
               <ChartSkeleton />
-            ) : financialData.length === 0 ? (
+            ) : !hasMonthlyFinancialData ? (
               <ChartEmptyState
                 icon={CircleDollarSign}
                 title={labels.noFinancialData || "No financial data"}
-                description={labels.noFinancialDataDescription || "Completed tasks with costs will appear here by field."}
+                description={dashboardLabels.noFinancialData || "Monthly revenue and expenses will appear here."}
               />
             ) : (
               <div className="h-[360px] rounded-3xl bg-transparent dark:bg-slate-900">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={financialData} margin={{ top: 16, right: 24, left: 16, bottom: 8 }}>
+                  <BarChart data={monthlyFinancialData} margin={{ top: 16, right: 24, left: 16, bottom: 8 }}>
                     <CartesianGrid stroke={isDarkMode ? "#334155" : "#e2e8f0"} strokeDasharray="4 6" vertical={false} />
                     <XAxis
-                      dataKey="name"
+                      dataKey="label"
                       axisLine={false}
                       tickLine={false}
-                      interval={0}
                       tick={{ fill: isDarkMode ? "#cbd5e1" : "#475569", fontSize: 12, fontWeight: 700 }}
                     />
                     <YAxis
@@ -720,15 +736,19 @@ export default function Analytics() {
                       tick={{ fill: isDarkMode ? "#94a3b8" : "#64748b", fontSize: 12 }}
                     />
                     <Tooltip content={<GreekTooltip valueFormatter={(value) => formatCurrency(value, labels.currencyLocale || "el-GR")} />} />
-                    <Legend
-                      formatter={() => <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">{labels.totalCost || "Total cost"}</span>}
-                      iconType="circle"
+                    <Legend iconType="circle" />
+                    <Bar
+                      dataKey="expenses"
+                      name={dashboardLabels.expensesSeries || "Cost"}
+                      fill={FINANCIAL_COLORS[0]}
+                      radius={[10, 10, 0, 0]}
                     />
-                    <Bar dataKey="value" name={labels.totalCost || "Total cost"} radius={[14, 14, 6, 6]}>
-                      {financialData.map((entry, index) => (
-                        <Cell key={entry.name} fill={FINANCIAL_COLORS[index % FINANCIAL_COLORS.length]} />
-                      ))}
-                    </Bar>
+                    <Bar
+                      dataKey="revenue"
+                      name={dashboardLabels.revenueSeries || "Profit (Revenue)"}
+                      fill={FINANCIAL_COLORS[1]}
+                      radius={[10, 10, 0, 0]}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

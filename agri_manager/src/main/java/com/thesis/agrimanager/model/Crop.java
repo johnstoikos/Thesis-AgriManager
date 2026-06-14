@@ -2,6 +2,7 @@ package com.thesis.agrimanager.model;
 
 import jakarta.persistence.*;
 import org.locationtech.jts.geom.Polygon;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,6 +18,8 @@ public class Crop {
     private String type;
     private String variety;
     private LocalDate plantingDate;
+    private Double harvestYield; // Συνολική παραγωγή σοδειάς σε Kg
+    private BigDecimal sellingPricePerKg; // Τιμή πώλησης ανά Kg σε ευρώ
 
     @Column(columnDefinition = "geometry(Polygon, 4326)")
     private Polygon zoneBoundary;
@@ -42,6 +45,12 @@ public class Crop {
 
     public LocalDate getPlantingDate() { return plantingDate; }
     public void setPlantingDate(LocalDate plantingDate) { this.plantingDate = plantingDate; }
+
+    public Double getHarvestYield() { return harvestYield; }
+    public void setHarvestYield(Double harvestYield) { this.harvestYield = harvestYield; }
+
+    public BigDecimal getSellingPricePerKg() { return sellingPricePerKg; }
+    public void setSellingPricePerKg(BigDecimal sellingPricePerKg) { this.sellingPricePerKg = sellingPricePerKg; }
 
     public Field getField() { return field; }
     public void setField(Field field) { this.field = field; }

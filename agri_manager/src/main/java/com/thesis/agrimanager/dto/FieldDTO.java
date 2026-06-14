@@ -1,6 +1,5 @@
 package com.thesis.agrimanager.dto;
 
-import jakarta.persistence.Column;
 import lombok.Data;
 import org.locationtech.jts.geom.Polygon;
 
@@ -17,10 +16,25 @@ public class FieldDTO {
         this.area = area;
         this.boundary = boundary;
     }
+
+    public FieldDTO(Long id, String name, Double area, Polygon boundary, String soilType, Double soilPh,
+                    String irrigationType) {
+        this.id = id;
+        this.name = name;
+        this.area = area;
+        this.boundary = boundary;
+        this.soilType = soilType;
+        this.soilPh = soilPh;
+        this.irrigationType = irrigationType;
+    }
+
     private Long id;
     private String name;
     private Double area;
     private Polygon boundary; // Αυτό θα χρησιμοποιηθεί για το GET
+    private String soilType;
+    private Double soilPh;
+    private String irrigationType;
 
     // Getters και Setters
     public Long getId() { return id; }
@@ -31,4 +45,10 @@ public class FieldDTO {
     public void setArea(Double area) { this.area = area; }
     public Polygon getBoundary() { return boundary; }
     public void setBoundary(Polygon boundary) { this.boundary = boundary; }
+    public String getSoilType() { return soilType; }
+    public void setSoilType(String soilType) { this.soilType = soilType; }
+    public Double getSoilPh() { return soilPh; }
+    public void setSoilPh(Double soilPh) { this.soilPh = soilPh; }
+    public String getIrrigationType() { return irrigationType; }
+    public void setIrrigationType(String irrigationType) { this.irrigationType = irrigationType; }
 }

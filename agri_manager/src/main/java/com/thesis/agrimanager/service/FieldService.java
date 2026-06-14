@@ -47,7 +47,7 @@ public class FieldService {
 
         // 3. Μετατροπή σε DTO (για να μην στείλουμε όλο το Entity στο Frontend)
         return fields.stream()
-                .map(field -> new FieldDTO(field.getId(), field.getName(), field.getArea(), field.getBoundary()))
+                .map(this::convertToDTO)
                 .toList();
     }
 
@@ -67,6 +67,9 @@ public class FieldService {
         dto.setName(field.getName());
         dto.setArea(field.getArea());
         dto.setBoundary(field.getBoundary());
+        dto.setSoilType(field.getSoilType());
+        dto.setSoilPh(field.getSoilPh());
+        dto.setIrrigationType(field.getIrrigationType());
         return dto;
     }
 
@@ -77,6 +80,7 @@ public class FieldService {
 
         // Το Jackson έχει κάνει ήδη τα μαγικά του! Παίρνουμε το έτοιμο Polygon:
         field.setBoundary(request.getBoundary());
+        applyFieldContext(field, request);
 
         // Το στέλνουμε στην από πάνω μέθοδο (saveField) για να βρει τον User και να το σώσει
         return saveField(field);
@@ -104,10 +108,17 @@ public class FieldService {
         field.setName(request.getName());
         field.setArea(request.getArea());
         field.setBoundary(request.getBoundary());
+        applyFieldContext(field, request);
 
         // Το αποθηκεύουμε ξανά (το JPA καταλαβαίνει ότι είναι update γιατί έχει ήδη ID)
         Field updatedField = fieldRepository.save(field);
         return convertToDTO(updatedField);
+    }
+
+    private void applyFieldContext(Field field, FieldRequest request) {
+        field.setSoilType(request.getSoilType());
+        field.setSoilPh(request.getSoilPh());
+        field.setIrrigationType(request.getIrrigationType());
     }
 
     // 3. Διέγραψε ένα χωράφι (DELETE)

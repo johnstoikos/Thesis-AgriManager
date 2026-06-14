@@ -35,6 +35,9 @@ public class FieldController {
         fieldToSave.setName(request.getName());
         fieldToSave.setArea(request.getArea());
         fieldToSave.setBoundary(request.getBoundary());
+        fieldToSave.setSoilType(request.getSoilType());
+        fieldToSave.setSoilPh(request.getSoilPh());
+        fieldToSave.setIrrigationType(request.getIrrigationType());
         fieldToSave.setOwner(currentUser); // <--- ΕΔΩ ΣΥΝΔΕΟΥΜΕ ΤΟ ΧΩΡΑΦΙ ΜΕ ΤΟΝ ΧΡΗΣΤΗ
 
         Field savedField = fieldService.saveField(fieldToSave);

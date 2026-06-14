@@ -204,12 +204,24 @@ export default function CropStatistics() {
         .sort((first, second) => second.value - first.value),
     [analytics.pieChartData]
   );
+  const hasMonthlyFinancialData = monthlyData.some(
+    (item) => item.expenses !== 0 || item.revenue !== 0
+  );
 
   const selectedUser = users.find((user) => String(user.id) === selectedUserId);
   const selectedUserLabel = selectedUser ? getUserLabel(selectedUser) : "Όλοι οι αγρότες";
   const selectedRangeLabel =
     RANGE_OPTIONS.find((option) => option.value === selectedRange)?.label || selectedRange;
   const showFieldsTable = selectedUserId !== "";
+  const expensesHelper = showFieldsTable
+    ? `Εργασίες χρονικού εύρους · ${selectedRangeLabel}`
+    : "Όλες οι εργασίες των αγροτών";
+  const revenueHelper = showFieldsTable
+    ? `Παραγωγή επί τιμή πώλησης · ${selectedRangeLabel}`
+    : "Όλες οι καλλιέργειες των αγροτών";
+  const yieldHelper = showFieldsTable
+    ? `Παραγωγή χρονικού εύρους · ${selectedRangeLabel}`
+    : "Συνολική παραγωγή όλων των αγροτών";
 
   const exportToPdf = async () => {
     setExporting(true);
@@ -410,10 +422,10 @@ export default function CropStatistics() {
                 ))
               ) : (
                 <>
-                  <StatCard icon={TrendingDown} title="Συνολικά Έξοδα" value={formatCurrency(analytics.totalExpenses)} helper={`Εργασίες χρονικού εύρους · ${selectedRangeLabel}`} tone="rose" />
-                  <StatCard icon={CircleDollarSign} title="Συνολικά Έσοδα" value={formatCurrency(analytics.totalRevenue)} helper={`Παραγωγή επί τιμή πώλησης · ${selectedRangeLabel}`} tone="sky" />
+                  <StatCard icon={TrendingDown} title="Συνολικά Έξοδα" value={formatCurrency(analytics.totalExpenses)} helper={expensesHelper} tone="rose" />
+                  <StatCard icon={CircleDollarSign} title="Συνολικά Έσοδα" value={formatCurrency(analytics.totalRevenue)} helper={revenueHelper} tone="sky" />
                   <StatCard icon={TrendingUp} title="Καθαρό Κέρδος" value={formatCurrency(analytics.netProfit)} helper="Έσοδα μείον έξοδα" tone={Number(analytics.netProfit || 0) >= 0 ? "emerald" : "rose"} />
-                  <StatCard icon={Scale} title="Συνολική Σοδειά" value={`${formatNumber(analytics.totalYieldKg)} kg`} helper={`Παραγωγή χρονικού εύρους · ${selectedRangeLabel}`} tone="amber" />
+                  <StatCard icon={Scale} title="Συνολική Σοδειά" value={`${formatNumber(analytics.totalYieldKg)} kg`} helper={yieldHelper} tone="amber" />
                 </>
               )}
             </div>
@@ -423,6 +435,13 @@ export default function CropStatistics() {
             <SectionCard title="Έσοδα και Έξοδα ανά Μήνα" description={`${selectedUserLabel} · ${selectedRangeLabel}`}>
               {loading ? (
                 <SkeletonLines lines={8} />
+              ) : !hasMonthlyFinancialData ? (
+                <EmptyState
+                  icon={CircleDollarSign}
+                  title="Δεν υπάρχουν οικονομικά δεδομένα"
+                  description="Το γράφημα θα εμφανιστεί όταν υπάρχουν έσοδα ή έξοδα στο επιλεγμένο χρονικό εύρος."
+                  className="border-0 bg-transparent shadow-none"
+                />
               ) : (
                 <div className="h-[360px] min-w-0">
                   <ResponsiveContainer width="100%" height="100%">
@@ -432,8 +451,8 @@ export default function CropStatistics() {
                       <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `${formatNumber(value, 0)} €`} tick={{ fill: "#64748b", fontSize: 12 }} />
                       <Tooltip formatter={(value, name) => [formatCurrency(value), name]} contentStyle={{ borderRadius: "12px", border: "1px solid #cbd5e1", fontWeight: 700 }} />
                       <Legend />
-                      <Bar dataKey="expenses" name="Έξοδα" fill="#94a3b8" radius={[6, 6, 0, 0]} />
-                      <Bar dataKey="revenue" name="Έσοδα" fill="#111827" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="expenses" name="Κόστος (Έξοδα)" fill="#94a3b8" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="revenue" name="Κέρδος (Έσοδα)" fill="#111827" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.n52.jackson.datatype.jts.GeometryDeserializer;
 import org.n52.jackson.datatype.jts.GeometrySerializer;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -36,6 +35,11 @@ public class Field {
 
     private Double area; // Έκταση σε στρέμματα
 
+    // Εδαφολογικά/τεχνικά δεδομένα για analytics και AI context
+    private String soilType;
+    private Double soilPh;
+    private String irrigationType;
+
     // Constructors
     public Field() {}
 
@@ -54,6 +58,15 @@ public class Field {
 
     public Double getArea() { return area; }
     public void setArea(Double area) { this.area = area; }
+
+    public String getSoilType() { return soilType; }
+    public void setSoilType(String soilType) { this.soilType = soilType; }
+
+    public Double getSoilPh() { return soilPh; }
+    public void setSoilPh(Double soilPh) { this.soilPh = soilPh; }
+
+    public String getIrrigationType() { return irrigationType; }
+    public void setIrrigationType(String irrigationType) { this.irrigationType = irrigationType; }
 
     @OneToMany(mappedBy = "field", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Crop> crops;

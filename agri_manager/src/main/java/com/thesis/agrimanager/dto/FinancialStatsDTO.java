@@ -8,9 +8,14 @@ public class FinancialStatsDTO {
 
     public FinancialStatsDTO(String fieldName, BigDecimal totalCost) {
         this.fieldName = fieldName;
-        this.totalCost = totalCost != null ? totalCost : BigDecimal.ZERO;
+        this.totalCost = totalCost;
     }
 
-    public String getFieldName() { return fieldName; }
-    public BigDecimal getTotalCost() { return totalCost; }
+    public String getFieldName() {
+        return fieldName;
+    }
+
+    public BigDecimal getTotalCost() {
+        return totalCost;
+    }
 }

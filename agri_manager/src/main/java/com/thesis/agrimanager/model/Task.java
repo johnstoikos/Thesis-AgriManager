@@ -23,6 +23,10 @@ public class Task {
 
     private String status; // PENDING, COMPLETED
 
+    private Integer completionPercentage;
+
+    private Double harvestedYieldAmount;
+
     @Column(precision = 12, scale = 2)
     private BigDecimal cost; // Χρηματικό κόστος της εργασίας
 
@@ -57,6 +61,16 @@ public class Task {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public Integer getCompletionPercentage() { return completionPercentage; }
+    public void setCompletionPercentage(Integer completionPercentage) {
+        this.completionPercentage = completionPercentage;
+    }
+
+    public Double getHarvestedYieldAmount() { return harvestedYieldAmount; }
+    public void setHarvestedYieldAmount(Double harvestedYieldAmount) {
+        this.harvestedYieldAmount = harvestedYieldAmount;
+    }
 
     public BigDecimal getCost() { return cost; }
     public void setCost(BigDecimal cost) { this.cost = cost; }

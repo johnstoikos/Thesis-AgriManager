@@ -40,9 +40,9 @@ public class AdminStatsService {
                 .toList();
 
         return new AdminOverviewDTO(
-                userRepository.count(),
-                fieldRepository.count(),
-                taskRepository.count(),
+                userRepository.countFarmers(),
+                fieldRepository.countOwnedByFarmers(),
+                taskRepository.countOwnedByFarmers(),
                 monthlyActivity
         );
     }

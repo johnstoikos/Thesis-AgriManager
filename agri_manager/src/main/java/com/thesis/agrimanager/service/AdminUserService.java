@@ -39,15 +39,17 @@ public class AdminUserService {
 
     @Transactional(readOnly = true)
     public List<AdminUserDTO> getAllUsers() {
-        return userRepository.findAll().stream()
+        return userRepository.findAllFarmers().stream()
                 .map(this::toAdminUserDTO)
                 .toList();
     }
 
     @Transactional
     public void deleteUser(Long id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Ο χρήστης με ID " + id + " δεν βρέθηκε."));
+        User user = userRepository.findFarmerById(id)
+                .orElseThrow(() -> new RuntimeException(
+                        "Ο αγρότης με ID " + id + " δεν βρέθηκε ή δεν επιτρέπεται η διαγραφή του."
+                ));
 
         /*
          * Ο User δεν έχει cascade προς τα fields. Διαγράφουμε πρώτα τα fields του,
@@ -66,8 +68,8 @@ public class AdminUserService {
 
     @Transactional(readOnly = true)
     public AdminUserStatsDTO getUserStats(Long id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Ο χρήστης με ID " + id + " δεν βρέθηκε."));
+        User user = userRepository.findFarmerById(id)
+                .orElseThrow(() -> new RuntimeException("Ο αγρότης με ID " + id + " δεν βρέθηκε."));
 
         List<CropDistributionDTO> cropDistribution = cropRepository.getCropDistributionByOwnerId(id).stream()
                 .map(row -> new CropDistributionDTO(row.getCropType(), row.getTotalAcres()))

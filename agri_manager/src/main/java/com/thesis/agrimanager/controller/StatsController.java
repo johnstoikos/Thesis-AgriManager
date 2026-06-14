@@ -1,10 +1,9 @@
 package com.thesis.agrimanager.controller;
 
 import com.thesis.agrimanager.dto.DashboardDTO;
-import com.thesis.agrimanager.dto.FinancialStatsDTO;
+import com.thesis.agrimanager.dto.FarmerStatsDTO;
 import com.thesis.agrimanager.service.StatsService;
 import java.security.Principal;
-import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,8 +22,8 @@ public class StatsController {
         return statsService.getDashboardStats(principal.getName());
     }
 
-    @GetMapping("/financials")
-    public List<FinancialStatsDTO> getFinancials(Principal principal) {
-        return statsService.getFinancialStats(principal.getName());
+    @GetMapping("/farmer-dashboard")
+    public FarmerStatsDTO getFarmerDashboardStats(Principal principal) {
+        return statsService.getFarmerDashboardStats(principal.getName());
     }
 }
