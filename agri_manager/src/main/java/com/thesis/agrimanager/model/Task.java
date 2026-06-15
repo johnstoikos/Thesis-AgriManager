@@ -28,7 +28,13 @@ public class Task {
     private Double harvestedYieldAmount;
 
     @Column(precision = 12, scale = 2)
-    private BigDecimal cost; // Χρηματικό κόστος της εργασίας
+    private BigDecimal cost; // Συνολικό κόστος: ωριαίο κόστος x ώρες εργασίας
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal hourlyCost;
+
+    @Column(precision = 14, scale = 2)
+    private BigDecimal bookedRevenue;
 
     private Double laborHours; // Ώρες εργασίας
 
@@ -74,6 +80,12 @@ public class Task {
 
     public BigDecimal getCost() { return cost; }
     public void setCost(BigDecimal cost) { this.cost = cost; }
+
+    public BigDecimal getHourlyCost() { return hourlyCost; }
+    public void setHourlyCost(BigDecimal hourlyCost) { this.hourlyCost = hourlyCost; }
+
+    public BigDecimal getBookedRevenue() { return bookedRevenue; }
+    public void setBookedRevenue(BigDecimal bookedRevenue) { this.bookedRevenue = bookedRevenue; }
 
     public Double getLaborHours() { return laborHours; }
     public void setLaborHours(Double laborHours) { this.laborHours = laborHours; }

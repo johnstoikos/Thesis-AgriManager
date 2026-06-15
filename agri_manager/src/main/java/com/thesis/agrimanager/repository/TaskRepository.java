@@ -91,6 +91,17 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
             FROM Task t
             JOIN FETCH t.crop c
             JOIN FETCH c.field f
+            WHERE f.owner.username = :username
+              AND 'ROLE_USER' MEMBER OF f.owner.roles
+              AND 'ROLE_ADMIN' NOT MEMBER OF f.owner.roles
+            """)
+    List<Task> findAllForFarmerProfit(@Param("username") String username);
+
+    @Query("""
+            SELECT t
+            FROM Task t
+            JOIN FETCH t.crop c
+            JOIN FETCH c.field f
             WHERE t.taskDate BETWEEN :startDate AND :endDate
               AND 'ROLE_USER' MEMBER OF f.owner.roles
               AND 'ROLE_ADMIN' NOT MEMBER OF f.owner.roles

@@ -12,10 +12,12 @@ export default function TaskProgressControl({ task, onSave, labels = {}, compact
   const completed = task.status === "COMPLETED" || getTaskProgress(task) === 100;
 
   const persistProgress = async (nextProgress, nextYield = draftYield) => {
-    if (saving || completed) return;
+    if (saving) return;
 
     const normalizedProgress = Number(nextProgress);
     const normalizedYield = nextYield === "" ? null : Number(nextYield);
+
+    if (completed) return;
 
     if (harvestTask && normalizedProgress === 100 && normalizedYield === null) {
       setError(labels.yieldRequired || "Συμπληρώστε τα κιλά συγκομιδής πριν την ολοκλήρωση.");

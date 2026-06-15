@@ -99,6 +99,22 @@ function formatCurrency(value, locale = "el-GR") {
   }).format(Number.isFinite(amount) ? amount : 0);
 }
 
+function formatLaborHours(value, labels, locale = "el-GR") {
+  if (value == null || value === "") return "-";
+
+  const hours = Number(value);
+  if (!Number.isFinite(hours)) return "-";
+
+  const formattedHours = new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 2,
+  }).format(hours);
+  const unit = hours === 1
+    ? labels.laborHourUnit || "hour"
+    : labels.laborHoursUnit || "hours";
+
+  return `${formattedHours} ${unit}`;
+}
+
 function getTaskIcon(taskType = "") {
   const type = taskType ? String(taskType).toLowerCase() : "default";
   if (type.includes("ποτ")) return Droplets;
@@ -343,9 +359,16 @@ export default function GlobalTasks() {
       doc.text(labels.pdfTitle || "Agricultural Task Calendar - AgriManager", 40, 44);
       doc.setFontSize(10);
       doc.text(`${labels.exportDate || "Export date"}: ${new Date().toLocaleDateString(language === "el" ? "el-GR" : "en-US")}`, 40, 64);
-      doc.text(`${labels.totalRecords || "Total records"}: ${upcomingTasks.length}`, 40, 80);
+      const exportTasks = tasks.filter(isValidTask);
+      const pendingExportTasks = exportTasks.filter(
+        (task) => String(task.status || "").toUpperCase() !== COMPLETED_STATUS
+      );
+      const completedExportTasks = exportTasks.filter(
+        (task) => String(task.status || "").toUpperCase() === COMPLETED_STATUS
+      );
+      doc.text(`${labels.totalRecords || "Total records"}: ${exportTasks.length}`, 40, 80);
 
-      const rows = upcomingTasks.map((task) => {
+      const createRows = (sectionTasks) => sectionTasks.map((task) => {
         const cropInfo = cropLookup[task.cropId];
         return [
           formatTaskDate(task.taskDate, labels.noDate || "No date", language === "el" ? "el-GR" : "en-US"),
@@ -353,31 +376,75 @@ export default function GlobalTasks() {
           cropInfo?.cropName || `${labels.crop || "Crop"} #${task.cropId}`,
           task.taskType || labels.unknownTaskType || "Unknown type",
           task.description || labels.noDescription || "No description",
+          formatLaborHours(task.laborHours, labels, language === "el" ? "el-GR" : "en-US"),
           formatCurrency(task.cost, language === "el" ? "el-GR" : "en-US"),
           statusLabels[task.status] || task.status || labels.unknown || "Unknown",
         ];
       });
 
-      autoTable(doc, {
-        startY: 104,
-        head: [[labels.date || "Date", labels.field || "Field", labels.crop || "Crop", labels.taskType || "Task Type", labels.descriptionLabel || "Description", labels.cost || "Cost", labels.status || "Status"]],
-        body: rows,
-        styles: {
-          font: "LiberationSans",
-          fontSize: 9,
-          cellPadding: 6,
-          valign: "middle",
-          lineColor: [226, 232, 240],
-          lineWidth: 0.4,
-        },
-        headStyles: {
-          fillColor: [6, 95, 70],
-          textColor: [255, 255, 255],
-          fontStyle: "normal",
-        },
-        alternateRowStyles: { fillColor: [248, 250, 252] },
-        margin: { left: 40, right: 40 },
-      });
+      const tableHead = [[
+        labels.date || "Date",
+        labels.field || "Field",
+        labels.crop || "Crop",
+        labels.taskType || "Task Type",
+        labels.descriptionLabel || "Description",
+        labels.laborTime || "Labor Time",
+        labels.cost || "Cost",
+        labels.status || "Status",
+      ]];
+      const pageHeight = doc.internal.pageSize.getHeight();
+      let nextSectionY = 108;
+
+      const drawTaskSection = (title, sectionTasks, headerColor) => {
+        if (nextSectionY > pageHeight - 90) {
+          doc.addPage();
+          nextSectionY = 44;
+        }
+
+        doc.setFontSize(13);
+        doc.text(`${title} (${sectionTasks.length})`, 40, nextSectionY);
+
+        if (sectionTasks.length === 0) {
+          doc.setFontSize(9);
+          doc.text(labels.noExportRecords || "No records in this section.", 40, nextSectionY + 18);
+          nextSectionY += 42;
+          return;
+        }
+
+        autoTable(doc, {
+          startY: nextSectionY + 10,
+          head: tableHead,
+          body: createRows(sectionTasks),
+          styles: {
+            font: "LiberationSans",
+            fontSize: 9,
+            cellPadding: 6,
+            valign: "middle",
+            lineColor: [226, 232, 240],
+            lineWidth: 0.4,
+          },
+          headStyles: {
+            fillColor: headerColor,
+            textColor: [255, 255, 255],
+            fontStyle: "normal",
+          },
+          alternateRowStyles: { fillColor: [248, 250, 252] },
+          margin: { left: 40, right: 40 },
+        });
+
+        nextSectionY = (doc.lastAutoTable?.finalY || nextSectionY + 40) + 28;
+      };
+
+      drawTaskSection(
+        labels.pendingTasksSection || "Pending tasks",
+        pendingExportTasks,
+        [180, 83, 9]
+      );
+      drawTaskSection(
+        labels.completedTasksSection || "Completed tasks",
+        completedExportTasks,
+        [6, 95, 70]
+      );
 
       doc.save("agrimanager-imerologio-ergasion.pdf");
     } catch (err) {
@@ -507,12 +574,13 @@ export default function GlobalTasks() {
       ) : (
         <Surface className="overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1080px]">
+            <table className="w-full min-w-[1200px]">
               <thead className="border-b border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900">
                 <tr>
                   <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.task || "Task"}</th>
                   <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.cropField || "Crop / Field"}</th>
                   <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.date || "Date"}</th>
+                  <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.laborTime || "Labor Time"}</th>
                   <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.cost || "Cost"}</th>
                   <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.netHarvestProfit || "Net Harvest Profit"}</th>
                   <th className="text-left px-5 py-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">{labels.progress || "Progress"}</th>
@@ -522,7 +590,7 @@ export default function GlobalTasks() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filteredTasks.length === 0 && (
                   <tr>
-                    <td colSpan="7" className="px-5 py-10">
+                    <td colSpan="8" className="px-5 py-10">
                       <EmptyState
                         icon={Tractor}
                         title={labels.noTasks || "No tasks found"}
@@ -562,6 +630,10 @@ export default function GlobalTasks() {
                       </td>
 
                       <td className="px-5 py-4 text-sm text-slate-700 dark:text-slate-300">{formattedDate}</td>
+
+                      <td className="px-5 py-4 text-sm font-semibold text-slate-700 dark:text-slate-300">
+                        {formatLaborHours(task.laborHours, labels, language === "el" ? "el-GR" : "en-US")}
+                      </td>
 
                       <td className="px-5 py-4 text-sm font-bold text-emerald-700 dark:text-emerald-300">
                         {formatCurrency(task.cost, language === "el" ? "el-GR" : "en-US")}

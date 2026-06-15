@@ -7,6 +7,8 @@ import com.thesis.agrimanager.model.User;
 import com.thesis.agrimanager.repository.UserRepository;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Collections;
 
 @Service
@@ -34,6 +36,14 @@ public class UserService {
 
         user.setPassword(passwordEncoder.encode(registrationDto.getPassword()));
         user.setRoles(Collections.singleton("ROLE_USER"));
+        user.setTotalProfit(BigDecimal.ZERO);
+        user.setMonthlyRevenue(BigDecimal.ZERO);
+        user.setMonthlyExpenses(BigDecimal.ZERO);
+        LocalDate today = LocalDate.now();
+        user.setMonthlyFinancialPeriodStart(today.withDayOfMonth(1));
+        user.setProfitPeriodStart(
+                LocalDate.of(today.getYear(), today.getMonthValue() <= 6 ? 1 : 7, 1)
+        );
 
         return userRepository.save(user);
     }

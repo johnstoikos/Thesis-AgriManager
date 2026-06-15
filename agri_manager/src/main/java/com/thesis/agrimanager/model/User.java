@@ -2,6 +2,8 @@ package com.thesis.agrimanager.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Set;
 
 @Entity
@@ -27,6 +29,19 @@ public class User {
 
     @Column(columnDefinition = "text")
     private String profilePhoto;
+
+    @Column(precision = 14, scale = 2)
+    private BigDecimal totalProfit;
+
+    @Column(precision = 14, scale = 2)
+    private BigDecimal monthlyRevenue;
+
+    @Column(precision = 14, scale = 2)
+    private BigDecimal monthlyExpenses;
+
+    private LocalDate monthlyFinancialPeriodStart;
+
+    private LocalDate profitPeriodStart;
 
     // Εδώ ορίζουμε αν είναι απλός αγρότης ή Admin
     @ElementCollection(fetch = FetchType.EAGER)
@@ -66,6 +81,26 @@ public class User {
         return profilePhoto;
     }
 
+    public BigDecimal getTotalProfit() {
+        return totalProfit;
+    }
+
+    public BigDecimal getMonthlyRevenue() {
+        return monthlyRevenue;
+    }
+
+    public BigDecimal getMonthlyExpenses() {
+        return monthlyExpenses;
+    }
+
+    public LocalDate getMonthlyFinancialPeriodStart() {
+        return monthlyFinancialPeriodStart;
+    }
+
+    public LocalDate getProfitPeriodStart() {
+        return profitPeriodStart;
+    }
+
     public void setId(Long id) {
         this.id = id;
     }
@@ -92,6 +127,26 @@ public class User {
 
     public void setProfilePhoto(String profilePhoto) {
         this.profilePhoto = profilePhoto;
+    }
+
+    public void setTotalProfit(BigDecimal totalProfit) {
+        this.totalProfit = totalProfit;
+    }
+
+    public void setMonthlyRevenue(BigDecimal monthlyRevenue) {
+        this.monthlyRevenue = monthlyRevenue;
+    }
+
+    public void setMonthlyExpenses(BigDecimal monthlyExpenses) {
+        this.monthlyExpenses = monthlyExpenses;
+    }
+
+    public void setMonthlyFinancialPeriodStart(LocalDate monthlyFinancialPeriodStart) {
+        this.monthlyFinancialPeriodStart = monthlyFinancialPeriodStart;
+    }
+
+    public void setProfitPeriodStart(LocalDate profitPeriodStart) {
+        this.profitPeriodStart = profitPeriodStart;
     }
 
     public void setRoles(Set<String> roles) {

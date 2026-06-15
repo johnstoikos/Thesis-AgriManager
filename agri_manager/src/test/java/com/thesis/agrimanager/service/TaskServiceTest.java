@@ -20,6 +20,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -32,6 +33,9 @@ class TaskServiceTest {
 
     @Mock
     private CropRepository cropRepository;
+
+    @Mock
+    private UserProfitService userProfitService;
 
     @AfterEach
     void clearSecurityContext() {
@@ -53,6 +57,10 @@ class TaskServiceTest {
         assertEquals(125.5, task.getCrop().getHarvestYield());
         assertEquals(0, new BigDecimal("41.00").compareTo(updatedTask.getNetHarvestProfit()));
         verify(cropRepository).save(task.getCrop());
+        verify(userProfitService).recordRevenue(
+                task.getCrop().getField().getOwner(),
+                new BigDecimal("51.000")
+        );
     }
 
     @Test
@@ -71,12 +79,150 @@ class TaskServiceTest {
         verify(taskRepository, never()).save(any(Task.class));
     }
 
-    private TaskService serviceFor(Task task) {
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken("farmer", null)
+    @Test
+    void completingHarvestWithoutSellingPriceIsRejected() {
+        Task task = harvestTask(80, 25.5);
+        task.getCrop().setSellingPricePerKg(null);
+        TaskService taskService = serviceFor(task);
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> taskService.updateTaskProgress(task.getId(), 100, null)
         );
+
+        assertEquals(100.0, task.getCrop().getHarvestYield());
+        verify(cropRepository, never()).save(any(Crop.class));
+        verify(taskRepository, never()).save(any(Task.class));
+    }
+
+    @Test
+    void deletingCompletedHarvestPreservesCropYieldAndSellingPrice() {
+        Task task = harvestTask(100, 25.5);
+        task.setStatus("COMPLETED");
+        TaskService taskService = new TaskService(taskRepository, cropRepository, userProfitService);
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+        doAnswer(invocation -> {
+            task.getCrop().setHarvestYield(
+                    task.getCrop().getHarvestYield() - task.getHarvestedYieldAmount()
+            );
+            task.getCrop().setSellingPricePerKg(BigDecimal.ZERO);
+            return null;
+        }).when(taskRepository).delete(task);
+
+        taskService.deleteTask(task.getId(), "farmer");
+
+        assertEquals(100.0, task.getCrop().getHarvestYield());
+        assertEquals(0, new BigDecimal("2.00").compareTo(task.getCrop().getSellingPricePerKg()));
+        verify(taskRepository).delete(task);
+        verify(cropRepository, never()).save(any(Crop.class));
+        verify(userProfitService).preserveFinancialsAfterDeletion(
+                task.getCrop().getField().getOwner()
+        );
+    }
+
+    @Test
+    void creatingTaskForAnotherFarmersCropIsRejectedBeforeProfitChanges() {
+        Task task = harvestTask(0, null);
+        task.getCrop().getField().getOwner().setUsername("other-farmer");
+        TaskService taskService = serviceForAuthentication("farmer");
+        when(cropRepository.findById(task.getCrop().getId())).thenReturn(Optional.of(task.getCrop()));
+
+        assertThrows(
+                RuntimeException.class,
+                () -> taskService.saveTask(new com.thesis.agrimanager.dto.TaskDTO(
+                        null,
+                        "Ψεκασμός",
+                        "",
+                        java.time.LocalDate.now(),
+                        "PENDING",
+                        0,
+                        null,
+                        null,
+                        null,
+                        new BigDecimal("10.00"),
+                        1.0,
+                        null,
+                        task.getCrop().getId()
+                ))
+        );
+
+        verify(userProfitService, never()).ensureInitialized(any(String.class));
+        verify(taskRepository, never()).save(any(Task.class));
+    }
+
+    @Test
+    void creatingTaskCalculatesTotalCostFromHourlyCostAndLaborHours() {
+        Task template = harvestTask(0, null);
+        TaskService taskService = serviceForAuthentication("farmer");
+        when(cropRepository.findById(template.getCrop().getId()))
+                .thenReturn(Optional.of(template.getCrop()));
+        when(taskRepository.save(any(Task.class)))
+                .thenAnswer(invocation -> {
+                    Task saved = invocation.getArgument(0);
+                    saved.setId(30L);
+                    return saved;
+                });
+
+        var result = taskService.saveTask(new com.thesis.agrimanager.dto.TaskDTO(
+                null,
+                "Ψεκασμός",
+                "",
+                java.time.LocalDate.now(),
+                "PENDING",
+                0,
+                null,
+                null,
+                null,
+                new BigDecimal("12.50"),
+                3.0,
+                null,
+                template.getCrop().getId()
+        ));
+
+        assertEquals(0, new BigDecimal("12.50").compareTo(result.getHourlyCost()));
+        assertEquals(0, new BigDecimal("37.50").compareTo(result.getCost()));
+        verify(userProfitService).recordTask(
+                template.getCrop().getField().getOwner(),
+                BigDecimal.ZERO,
+                new BigDecimal("37.50")
+        );
+    }
+
+    private TaskService serviceFor(Task task) {
+        TaskService service = serviceForAuthentication("farmer");
         when(taskRepository.findByIdForProgressUpdate(task.getId())).thenReturn(Optional.of(task));
-        return new TaskService(taskRepository, cropRepository);
+        return service;
+    }
+
+    private TaskService serviceForAuthentication(String username) {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(username, null)
+        );
+        org.mockito.Mockito.lenient()
+                .when(userProfitService.bookHarvestRevenue(any(Task.class)))
+                .thenAnswer(invocation -> {
+                    Task harvest = invocation.getArgument(0);
+                    BigDecimal revenue = BigDecimal.valueOf(harvest.getHarvestedYieldAmount())
+                            .multiply(harvest.getCrop().getSellingPricePerKg());
+                    harvest.setBookedRevenue(revenue);
+                    return revenue;
+                });
+        org.mockito.Mockito.lenient()
+                .when(userProfitService.isCompletedHarvest(any(Task.class)))
+                .thenAnswer(invocation -> {
+                    Task candidate = invocation.getArgument(0);
+                    return "COMPLETED".equals(candidate.getStatus())
+                            || Integer.valueOf(100).equals(candidate.getCompletionPercentage());
+                });
+        org.mockito.Mockito.lenient()
+                .when(userProfitService.getHarvestRevenue(any(Task.class)))
+                .thenAnswer(invocation -> {
+                    Task harvest = invocation.getArgument(0);
+                    return harvest.getBookedRevenue() == null
+                            ? BigDecimal.ZERO
+                            : harvest.getBookedRevenue();
+                });
+        return new TaskService(taskRepository, cropRepository, userProfitService);
     }
 
     private Task harvestTask(int progress, Double harvestedYieldAmount) {

@@ -14,7 +14,7 @@ const INITIAL_TASK_FORM_DATA = {
   taskType: "Πότισμα",
   taskDate: "",
   description: "",
-  cost: "",
+  hourlyCost: "",
   laborHours: "",
   status: "PENDING",
   completionPercentage: 0,
@@ -114,6 +114,8 @@ export default function FieldCrops() {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showCropPickerModal, setShowCropPickerModal] = useState(false);
   const [selectedCrop, setSelectedCrop] = useState(null);
+  const [mapSelectedCropId, setMapSelectedCropId] = useState(null);
+  const [mapSelectionRequest, setMapSelectionRequest] = useState(0);
   const [tasks, setTasks] = useState([]);
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [pendingLocation, setPendingLocation] = useState(null);
@@ -132,6 +134,11 @@ export default function FieldCrops() {
     { value: "Άλλο", label: labels.other || "Other" },
   ];
 
+  const focusCropOnMap = (cropId) => {
+    setMapSelectedCropId(cropId);
+    setMapSelectionRequest((request) => request + 1);
+  };
+
   const fetchData = useCallback(async () => {
     try {
       const [fieldRes, cropsRes] = await Promise.all([
@@ -139,7 +146,14 @@ export default function FieldCrops() {
         api.get(`/api/crops/field/${fieldId}`)
       ]);
       setField(fieldRes.data);
-      setCrops(cropsRes.data);
+      const loadedCrops = Array.isArray(cropsRes.data) ? cropsRes.data : [];
+      setCrops(loadedCrops);
+      setMapSelectedCropId((currentId) => {
+        const selectionStillExists = loadedCrops.some(
+          (crop) => String(crop.id) === String(currentId)
+        );
+        return selectionStillExists ? currentId : loadedCrops[0]?.id ?? null;
+      });
       setLoading(false);
     } catch (err) {
       console.error("Σφάλμα κατά τη φόρτωση:", err);
@@ -247,12 +261,17 @@ export default function FieldCrops() {
 
   const handleSubmitCrop = async (e) => {
     e.preventDefault();
+    const sellingPricePerKg = toOptionalNumber(formData.sellingPricePerKg);
+    if (sellingPricePerKg == null || sellingPricePerKg <= 0) {
+      alert(labels.sellingPriceRequired || "Η τιμή πώλησης ανά Kg είναι υποχρεωτική.");
+      return;
+    }
     const payload = { 
       type: formData.type,
       variety: formData.variety,
       // Τα οικονομικά της σοδειάς ανήκουν στην καλλιέργεια, όχι στο χωράφι.
       harvestYield: toOptionalNumber(formData.harvestYield),
-      sellingPricePerKg: toOptionalNumber(formData.sellingPricePerKg),
+      sellingPricePerKg,
       fieldId: parseInt(fieldId), 
       zoneBoundary: { type: "Polygon", coordinates: [formData.zoneBoundary] } 
     };
@@ -294,9 +313,15 @@ export default function FieldCrops() {
     const [longitude, latitude] = Array.isArray(pendingLocation) ? pendingLocation : [];
     const isEditingTask = Boolean(taskFormData.id);
     const hasSelectedLocation = Number.isFinite(Number(longitude)) && Number.isFinite(Number(latitude));
+    const hourlyCost = toOptionalNumber(taskFormData.hourlyCost);
+    const laborHours = toOptionalNumber(taskFormData.laborHours);
 
     if (!isEditingTask && !hasSelectedLocation) {
       alert("Παρακαλώ επιλέξτε σημείο στο χάρτη");
+      return;
+    }
+    if (hourlyCost == null || laborHours == null) {
+      alert(labels.laborCostRequired || "Συμπληρώστε κόστος ανά ώρα και ώρες εργασίας.");
       return;
     }
 
@@ -330,8 +355,8 @@ export default function FieldCrops() {
         harvestedYieldAmount: isHarvestTaskType(taskFormData.taskType)
           ? toOptionalNumber(taskFormData.harvestedYieldAmount)
           : null,
-        cost: toOptionalNumber(taskFormData.cost),
-        laborHours: toOptionalNumber(taskFormData.laborHours),
+        hourlyCost,
+        laborHours,
         longitude: hasSelectedLocation ? Number(longitude) : null,
         latitude: hasSelectedLocation ? Number(latitude) : null,
         cropId: selectedCrop.id,
@@ -360,7 +385,7 @@ export default function FieldCrops() {
       taskType: task.taskType || "Πότισμα",
       taskDate: task.taskDate || "",
       description: task.description || "",
-      cost: task.cost ?? "",
+      hourlyCost: task.hourlyCost ?? "",
       laborHours: task.laborHours ?? "",
       status: task.status || "PENDING",
       completionPercentage: task.completionPercentage ?? (task.status === "COMPLETED" ? 100 : 0),
@@ -391,6 +416,7 @@ export default function FieldCrops() {
       try {
         await api.delete(`/api/crops/${id}`);
         setCrops((prev) => prev.filter((crop) => crop.id !== id));
+        setMapSelectedCropId((currentId) => String(currentId) === String(id) ? null : currentId);
         if (selectedCrop?.id === id) setShowTaskModal(false);
       } catch (err) {
         console.error("Σφάλμα κατά τη διαγραφή καλλιέργειας:", err);
@@ -549,56 +575,98 @@ export default function FieldCrops() {
         </Button>
       </div>
 
-      {/* ΚΥΡΙΟΣ ΠΙΝΑΚΑΣ ΚΑΛΛΙΕΡΓΕΙΩΝ */}
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden dark:border-slate-800 dark:bg-slate-900">
-        {loading ? (
-          <div className="p-12 text-center font-bold text-green-700 uppercase tracking-widest">{labels.loadingData || "Loading Data..."}</div>
-        ) : (
-          <table className="w-full text-left">
-            <thead className="bg-gray-50 border-b dark:border-slate-800 dark:bg-slate-950">
-              <tr>
-                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase dark:text-slate-400">{labels.cropVariety || "Crop / Variety"}</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase dark:text-slate-400">{labels.area || "Area"}</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase text-center dark:text-slate-400">{labels.coverage || "Coverage"}</th>
-                <th className="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase dark:text-slate-400">{labels.actions || "Actions"}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50 dark:divide-slate-800">
-              {crops.map(crop => (
-                <tr key={crop.id} className="hover:bg-green-50/30 transition dark:hover:bg-emerald-500/5">
-                  <td className="px-6 py-4 font-bold text-gray-800 dark:text-slate-100">
-                    {crop.type} <span className="block font-normal text-gray-400 text-xs uppercase dark:text-slate-500">{crop.variety || labels.general || "General"}</span>
-                  </td>
-                  <td className="px-6 py-4 font-mono text-sm text-slate-700 dark:text-slate-300">{crop.zoneArea?.toFixed(2)} {labels.stremmataShort || "strem."}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-[10px] font-bold">
-                      {crop.coveragePercentage?.toFixed(1)}%
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-wrap justify-end gap-2">
-                      <Button
-                        onClick={() => handleOpenWikiInfo(crop)}
-                        variant="secondary"
-                        size="sm"
-                        className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
+      {/* ΚΥΡΙΟΣ ΠΙΝΑΚΑΣ ΚΑΛΛΙΕΡΓΕΙΩΝ ΚΑΙ LIVE ΧΑΡΤΗΣ */}
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(360px,0.75fr)]">
+        <div className="self-start overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          {loading ? (
+            <div className="p-12 text-center font-bold text-green-700 uppercase tracking-widest">{labels.loadingData || "Loading Data..."}</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[680px] table-fixed text-left">
+                <thead className="bg-gray-50 border-b dark:border-slate-800 dark:bg-slate-950">
+                  <tr>
+                    <th className="w-[20%] px-5 py-4 text-xs font-bold text-gray-400 uppercase dark:text-slate-400">{labels.cropVariety || "Crop / Variety"}</th>
+                    <th className="w-[13%] px-4 py-4 text-xs font-bold text-gray-400 uppercase dark:text-slate-400">{labels.area || "Area"}</th>
+                    <th className="w-[12%] px-4 py-4 text-xs font-bold text-gray-400 uppercase text-center dark:text-slate-400">{labels.coverage || "Coverage"}</th>
+                    <th className="w-[55%] px-5 py-4 text-right text-xs font-bold text-gray-400 uppercase dark:text-slate-400">{labels.actions || "Actions"}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 dark:divide-slate-800">
+                  {crops.map(crop => {
+                    const isSelected = String(crop.id) === String(mapSelectedCropId);
+                    return (
+                      <tr
+                        key={crop.id}
+                        tabIndex={0}
+                        onClick={() => focusCropOnMap(crop.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            focusCropOnMap(crop.id);
+                          }
+                        }}
+                        className={`cursor-pointer transition ${
+                          isSelected
+                            ? "bg-emerald-50 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-500/10 dark:ring-emerald-400/30"
+                            : "hover:bg-green-50/30 dark:hover:bg-emerald-500/5"
+                        }`}
                       >
-                        <BookOpen className="h-3.5 w-3.5" />
-                        {labels.wikiInfo || "Wiki Info"}
-                      </Button>
-                      <Button onClick={() => handleOpenCropModal(crop)} variant="secondary" size="sm">
-                        {labels.edit || "Edit"}
-                      </Button>
-                      <Button onClick={() => handleDeleteCrop(crop.id)} variant="danger" size="sm">
-                        {labels.delete || "Delete"}
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+                        <td className="px-5 py-4 font-bold text-gray-800 dark:text-slate-100">
+                          {crop.type} <span className="block font-normal text-gray-400 text-xs uppercase dark:text-slate-500">{crop.variety || labels.general || "General"}</span>
+                        </td>
+                        <td className="px-4 py-4 font-mono text-sm text-slate-700 dark:text-slate-300">{crop.zoneArea?.toFixed(2)} {labels.stremmataShort || "strem."}</td>
+                        <td className="px-4 py-4 text-center">
+                          <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-[10px] font-bold">
+                            {crop.coveragePercentage?.toFixed(1)}%
+                          </span>
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex flex-nowrap justify-end gap-2">
+                            <Button
+                              onClick={() => handleOpenWikiInfo(crop)}
+                              variant="secondary"
+                              size="sm"
+                              className="!gap-1.5 !rounded-lg !px-2.5 !py-1.5 !text-[11px] border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
+                            >
+                              <BookOpen className="h-3 w-3" />
+                              {labels.wikiInfo || "Wiki Info"}
+                            </Button>
+                            <Button
+                              onClick={() => handleOpenCropModal(crop)}
+                              variant="secondary"
+                              size="sm"
+                              className="!rounded-lg !px-2.5 !py-1.5 !text-[11px]"
+                            >
+                              {labels.edit || "Edit"}
+                            </Button>
+                            <Button
+                              onClick={() => handleDeleteCrop(crop.id)}
+                              variant="danger"
+                              size="sm"
+                              className="!rounded-lg !px-2.5 !py-1.5 !text-[11px]"
+                            >
+                              {labels.delete || "Delete"}
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div className="min-h-[520px] overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <MapComponent
+            parentBoundary={field?.boundary?.coordinates?.[0]}
+            existingCrops={crops}
+            selectedCropId={mapSelectedCropId}
+            selectionRequest={mapSelectionRequest}
+            onCropSelect={(crop) => focusCropOnMap(crop.id)}
+          />
+        </div>
       </div>
 
       {/* MODAL 1: ΔΙΑΧΕΙΡΙΣΗ ΚΑΛΛΙΕΡΓΕΙΑΣ (ΠΟΛΥΓΩΝΟ) */}
@@ -628,15 +696,23 @@ export default function FieldCrops() {
                 />
                 <FieldInput
                   type="number"
-                  min="0"
+                  min="0.01"
                   step="0.01"
                   inputMode="decimal"
+                  required
                   placeholder={labels.sellingPricePerKgPlaceholder || "Τιμή Πώλησης ανά Kg (€)"}
                   className="rounded-xl px-3 py-3 text-sm font-bold"
                   value={formData.sellingPricePerKg || ""}
                   onChange={e => setFormData({...formData, sellingPricePerKg: e.target.value})}
                 />
-                <Button type="submit" disabled={formData.zoneBoundary.length === 0} className="w-full">
+                <Button
+                  type="submit"
+                  disabled={
+                    formData.zoneBoundary.length === 0
+                    || !(toOptionalNumber(formData.sellingPricePerKg) > 0)
+                  }
+                  className="w-full"
+                >
                   {labels.saveZone || "Save Zone"}
                 </Button>
               </form>
@@ -691,24 +767,32 @@ export default function FieldCrops() {
                      value={taskFormData.taskDate || ""}
                      onChange={e => setTaskFormData({...taskFormData, taskDate: e.target.value})}
                    />
+                   <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-blue-700 dark:text-slate-200">
+                     {labels.hourlyCost || "Κόστος ανά ώρα (€)"}
+                   </label>
                    <FieldInput
                      type="number"
                      min="0"
                      step="0.01"
                      inputMode="decimal"
-                     placeholder={labels.taskCostPlaceholder || "Κόστος Εργασίας (€)"}
+                     required
+                     placeholder={labels.taskCostPlaceholder || "Κόστος ανά ώρα (€)"}
                      className="mb-3 rounded-xl px-3 py-3 text-sm font-bold"
-                     value={taskFormData.cost || ""}
-                     onChange={e => setTaskFormData({...taskFormData, cost: e.target.value})}
+                     value={taskFormData.hourlyCost ?? ""}
+                     onChange={e => setTaskFormData({...taskFormData, hourlyCost: e.target.value})}
                    />
+                   <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-blue-700 dark:text-slate-200">
+                     {labels.laborHours || "Ώρες εργασίας"}
+                   </label>
                    <FieldInput
                      type="number"
                      min="0"
                      step="0.25"
                      inputMode="decimal"
+                     required
                      placeholder={labels.laborHoursPlaceholder || "Ώρες εργασίας"}
                      className="mb-3 rounded-xl px-3 py-3 text-sm font-bold"
-                     value={taskFormData.laborHours || ""}
+                     value={taskFormData.laborHours ?? ""}
                      onChange={e => setTaskFormData({...taskFormData, laborHours: e.target.value})}
                    />
                    <FieldTextarea placeholder={labels.taskDescriptionPlaceholder || "Task description..."} className="mb-4 h-24 resize-none rounded-xl px-3 py-3 text-sm" value={taskFormData.description || ""} onChange={e => setTaskFormData({...taskFormData, description: e.target.value})} />
@@ -731,7 +815,7 @@ export default function FieldCrops() {
                         <div className="text-xs font-bold uppercase tracking-tight text-gray-800 dark:text-slate-100">{t.taskType}</div>
                         <div className="mt-0.5 line-clamp-1 text-[10px] italic text-gray-400 dark:text-slate-400">{t.description || labels.noDescription || "No description"}</div>
                         <div className="mt-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
-                          {labels.cost || "Cost"}: {Number(t.cost || 0).toLocaleString("el-GR", { style: "currency", currency: "EUR" })}
+                          {labels.cost || "Total cost"}: {Number(t.cost || 0).toLocaleString("el-GR", { style: "currency", currency: "EUR" })}
                         </div>
                       </div>
                       <Button onClick={() => handleEditTask(t)} variant="secondary" size="sm">

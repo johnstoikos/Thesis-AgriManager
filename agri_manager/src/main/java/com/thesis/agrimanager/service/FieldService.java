@@ -10,6 +10,7 @@ import com.thesis.agrimanager.repository.FieldRepository;
 import com.thesis.agrimanager.repository.UserRepository; // Χρειάζεται για να βρίσκουμε τον owner
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -18,11 +19,17 @@ public class FieldService {
 
     private final FieldRepository fieldRepository;
     private final UserRepository userRepository; // 1. Προσθήκη του UserRepository
+    private final UserProfitService userProfitService;
 
     // 2. Ενημέρωση του Constructor
-    public FieldService(FieldRepository fieldRepository, UserRepository userRepository) {
+    public FieldService(
+            FieldRepository fieldRepository,
+            UserRepository userRepository,
+            UserProfitService userProfitService
+    ) {
         this.fieldRepository = fieldRepository;
         this.userRepository = userRepository;
+        this.userProfitService = userProfitService;
     }
 
     // 3. Επιστρέφουμε ΜΟΝΟ τα χωράφια του συνδεδεμένου χρήστη
@@ -122,12 +129,14 @@ public class FieldService {
     }
 
     // 3. Διέγραψε ένα χωράφι (DELETE)
+    @Transactional
     public void deleteField(Long id) {
         String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();
 
         Field field = fieldRepository.findByIdAndOwnerUsername(id, currentUsername)
                 .orElseThrow(() -> new RuntimeException("Το χωράφι δεν βρέθηκε ή δεν σας ανήκει."));
 
+        userProfitService.preserveFinancialsAfterDeletion(field.getOwner());
         fieldRepository.delete(field);
     }
 }

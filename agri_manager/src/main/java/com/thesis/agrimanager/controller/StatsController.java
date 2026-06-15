@@ -3,8 +3,11 @@ package com.thesis.agrimanager.controller;
 import com.thesis.agrimanager.dto.DashboardDTO;
 import com.thesis.agrimanager.dto.FarmerStatsDTO;
 import com.thesis.agrimanager.service.StatsService;
+import com.thesis.agrimanager.service.UserProfitService;
 import java.security.Principal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -25,5 +28,13 @@ public class StatsController {
     @GetMapping("/farmer-dashboard")
     public FarmerStatsDTO getFarmerDashboardStats(Principal principal) {
         return statsService.getFarmerDashboardStats(principal.getName());
+    }
+
+    @DeleteMapping("/financial/{target}")
+    public FarmerStatsDTO resetFinancialStats(
+            @PathVariable UserProfitService.FinancialResetTarget target,
+            Principal principal
+    ) {
+        return statsService.resetFinancialStats(principal.getName(), target);
     }
 }

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, useMap, Marker, Popup, Polygon, Tooltip, useMapEvents } from 'react-leaflet';
 import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
@@ -121,7 +121,7 @@ function TaskClickHandler({ isAddingTask, onPointSelect }) {
 }
 
 // --- 4. Αυτόματο Κεντράρισμα ---
-function MapEvents({ boundary, parentBoundary, focusedLocation }) {
+function MapEvents({ boundary, parentBoundary, focusedLocation, hasSelectedLayer }) {
   const map = useMap();
   useEffect(() => {
     if (focusedLocation?.length === 2) {
@@ -129,11 +129,57 @@ function MapEvents({ boundary, parentBoundary, focusedLocation }) {
       return;
     }
 
+    if (hasSelectedLayer) return;
+
     const target = (parentBoundary?.length > 0) ? parentBoundary : (boundary?.length > 0 ? boundary : null);
     if (target && target.length > 0) {
       map.flyTo([target[0][1], target[0][0]], 16);
     }
-  }, [parentBoundary, boundary, focusedLocation, map]);
+  }, [parentBoundary, boundary, focusedLocation, hasSelectedLayer, map]);
+  return null;
+}
+
+function SelectedLayerController({
+  selectedDashboardFieldId,
+  selectedCropId,
+  selectionRequest,
+  fieldMarkerRefs,
+  cropLayerRefs,
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    const selectedFieldMarker = selectedDashboardFieldId != null
+      ? fieldMarkerRefs.current.get(String(selectedDashboardFieldId))
+      : null;
+    const selectedCropLayer = selectedCropId != null
+      ? cropLayerRefs.current.get(String(selectedCropId))
+      : null;
+    const selectedLayer = selectedCropLayer || selectedFieldMarker;
+
+    if (!selectedLayer) return undefined;
+
+    if (selectedCropLayer?.getBounds) {
+      map.flyToBounds(selectedCropLayer.getBounds(), {
+        padding: [48, 48],
+        maxZoom: 17,
+        duration: 0.8,
+      });
+    } else if (selectedFieldMarker?.getLatLng) {
+      map.flyTo(selectedFieldMarker.getLatLng(), 16, { duration: 0.8 });
+    }
+
+    const popupTimer = window.setTimeout(() => selectedLayer.openPopup(), 650);
+    return () => window.clearTimeout(popupTimer);
+  }, [
+    cropLayerRefs,
+    fieldMarkerRefs,
+    map,
+    selectedCropId,
+    selectedDashboardFieldId,
+    selectionRequest,
+  ]);
+
   return null;
 }
 
@@ -141,9 +187,12 @@ function MapEvents({ boundary, parentBoundary, focusedLocation }) {
 export default function MapComponent({ 
   onPolygonComplete, boundary, parentBoundary, existingCrops, 
   tasks, isAddingTask, onPointSelect, pendingLocation, focusedLocation,
-  dashboardFields,
+  dashboardFields, selectedDashboardFieldId, onDashboardFieldSelect,
+  selectedCropId, onCropSelect, selectionRequest,
 }) {
   const navigate = useNavigate();
+  const fieldMarkerRefs = useRef(new Map());
+  const cropLayerRefs = useRef(new Map());
 
   const fieldMarkers = Array.isArray(dashboardFields)
     ? dashboardFields
@@ -192,7 +241,19 @@ export default function MapComponent({
         />
         
         <MapResizer />
-        <MapEvents boundary={boundary} parentBoundary={parentBoundary} focusedLocation={focusedLocation} />
+        <MapEvents
+          boundary={boundary}
+          parentBoundary={parentBoundary}
+          focusedLocation={focusedLocation}
+          hasSelectedLayer={selectedDashboardFieldId != null || selectedCropId != null}
+        />
+        <SelectedLayerController
+          selectedDashboardFieldId={selectedDashboardFieldId}
+          selectedCropId={selectedCropId}
+          selectionRequest={selectionRequest}
+          fieldMarkerRefs={fieldMarkerRefs}
+          cropLayerRefs={cropLayerRefs}
+        />
         <GeomanControls onPolygonComplete={onPolygonComplete} boundary={boundary} />
         <TaskClickHandler isAddingTask={isAddingTask} onPointSelect={onPointSelect} />
 
@@ -200,14 +261,32 @@ export default function MapComponent({
           <Marker
             key={marker.id}
             position={marker.position}
+            ref={(layer) => {
+              const markerKey = String(marker.id);
+              if (layer) fieldMarkerRefs.current.set(markerKey, layer);
+              else fieldMarkerRefs.current.delete(markerKey);
+            }}
             eventHandlers={{
-              click: () => navigate(`/fields/${marker.field.id}`),
+              click: () => {
+                if (onDashboardFieldSelect) {
+                  onDashboardFieldSelect(marker.field);
+                  return;
+                }
+                navigate(`/fields/${marker.field.id}`);
+              },
             }}
           >
             <Tooltip direction="top" offset={[0, -10]} opacity={0.9}>
               {marker.name}
             </Tooltip>
-            <Popup>{marker.name}</Popup>
+            <Popup>
+              <div className="min-w-32 font-sans text-xs">
+                <strong className="text-sm">{marker.name}</strong>
+                <div className="mt-1">
+                  {marker.field?.area != null ? `${marker.field.area} στρ.` : ""}
+                </div>
+              </div>
+            </Popup>
           </Marker>
         ))}
 
@@ -247,12 +326,49 @@ export default function MapComponent({
         {existingCrops?.map((crop, idx) => {
           if (!crop || !crop.zoneBoundary?.coordinates) return null;
           const positions = crop.zoneBoundary.coordinates[0].map(coord => [coord[1], coord[0]]);
+          const isSelected = String(crop.id) === String(selectedCropId);
           return (
             <Polygon 
-              key={idx} 
+              key={crop.id ?? idx}
+              ref={(layer) => {
+                const cropKey = String(crop.id ?? idx);
+                if (layer) cropLayerRefs.current.set(cropKey, layer);
+                else cropLayerRefs.current.delete(cropKey);
+              }}
               positions={positions} 
-              pathOptions={{ color: '#059669', fillColor: '#10b981', fillOpacity: 0.3, pmIgnore: true }} 
-            />
+              pathOptions={{
+                color: isSelected ? '#047857' : '#059669',
+                fillColor: isSelected ? '#34d399' : '#10b981',
+                fillOpacity: isSelected ? 0.5 : 0.25,
+                weight: isSelected ? 4 : 2,
+                pmIgnore: true,
+              }}
+              eventHandlers={{
+                click: (event) => {
+                  if (isAddingTask && onPointSelect) {
+                    const { lat, lng } = event.latlng;
+                    onPointSelect([lng, lat]);
+                    return;
+                  }
+                  onCropSelect?.(crop);
+                },
+              }}
+            >
+              {!isAddingTask && (
+                <Popup>
+                  <div className="min-w-40 font-sans text-xs">
+                    <strong className="text-sm">{crop.type || "Καλλιέργεια"}</strong>
+                    <div className="mt-1">{crop.variety || "Γενική ποικιλία"}</div>
+                    {crop.harvestYield != null && (
+                      <div className="mt-1">Παραγωγή: {crop.harvestYield} kg</div>
+                    )}
+                    {crop.sellingPricePerKg != null && (
+                      <div>Τιμή/kg: {crop.sellingPricePerKg} €</div>
+                    )}
+                  </div>
+                </Popup>
+              )}
+            </Polygon>
           );
         })}
 

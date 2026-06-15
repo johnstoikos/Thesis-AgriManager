@@ -20,6 +20,7 @@ public class TaskDTO {
     private final Double harvestedYieldAmount;
     private final BigDecimal netHarvestProfit;
     private final BigDecimal cost;
+    private final BigDecimal hourlyCost;
     private final Double laborHours;
     private final Point location;
     private final Long cropId;
@@ -35,6 +36,7 @@ public class TaskDTO {
             @JsonProperty("harvestedYieldAmount") Double harvestedYieldAmount,
             @JsonProperty("netHarvestProfit") BigDecimal netHarvestProfit,
             @JsonProperty("cost") BigDecimal cost,
+            @JsonProperty("hourlyCost") BigDecimal hourlyCost,
             @JsonProperty("laborHours") Double laborHours,
             @JsonProperty("location") Point location,
             @JsonProperty("cropId") Long cropId) {
@@ -47,6 +49,7 @@ public class TaskDTO {
         this.harvestedYieldAmount = harvestedYieldAmount;
         this.netHarvestProfit = netHarvestProfit;
         this.cost = cost;
+        this.hourlyCost = hourlyCost;
         this.laborHours = laborHours;
         this.location = location;
         this.cropId = cropId;
@@ -61,6 +64,7 @@ public class TaskDTO {
     public Double getHarvestedYieldAmount() { return harvestedYieldAmount; }
     public BigDecimal getNetHarvestProfit() { return netHarvestProfit; }
     public BigDecimal getCost() { return cost; }
+    public BigDecimal getHourlyCost() { return hourlyCost; }
     public Double getLaborHours() { return laborHours; }
     public Point getLocation() { return location; }
     public Long getCropId() { return cropId; }

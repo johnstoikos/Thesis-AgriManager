@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Run AgriManagerApplication",
+      "request": "launch",
+      "mainClass": "com.thesis.agrimanager.AgriManagerApplication",
+      "projectName": "agri_manager",
+      "cwd": "${workspaceFolder}/agri_manager",
+      "envFile": "${workspaceFolder}/agri_manager/.env",
+      "javaExec": "/usr/lib/jvm/java-21-openjdk/bin/java"
+    }
+  ]
+}

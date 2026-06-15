@@ -5,6 +5,7 @@ import MapComponent from "./MapComponent";
 import * as turf from '@turf/turf';
 import { Button, FieldInput, FieldLabel, ModalShell, Surface } from "./ui";
 import { useAppPreferences } from "../i18n";
+import { validateLandUse } from "../utils/landUseValidation";
 
 const emptyFieldForm = {
   id: null,
@@ -31,13 +32,23 @@ export default function Fields() {
   const [fields, setFields] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [selectedFieldId, setSelectedFieldId] = useState(null);
+  const [mapSelectionRequest, setMapSelectionRequest] = useState(0);
   
   const [formData, setFormData] = useState(emptyFieldForm);
 
   const fetchFields = useCallback(async () => {
     try {
       const res = await api.get("/api/fields");
-      setFields(res.data);
+      const loadedFields = Array.isArray(res.data) ? res.data : [];
+      setFields(loadedFields);
+      setSelectedFieldId((currentId) => {
+        const selectionStillExists = loadedFields.some(
+          (field) => String(field.id) === String(currentId)
+        );
+        return selectionStillExists ? currentId : loadedFields[0]?.id ?? null;
+      });
       setLoading(false);
     } catch (err) {
       console.error("Σφάλμα φόρτωσης:", err);
@@ -78,6 +89,7 @@ export default function Fields() {
       try {
         await api.delete(`/api/fields/${id}`);
         setFields((prev) => prev.filter((field) => field.id !== id));
+        setSelectedFieldId((currentId) => String(currentId) === String(id) ? null : currentId);
       } catch (err) {
         console.error("Σφάλμα κατά τη διαγραφή:", err);
         alert(labels.deleteError || "Η διαγραφή απέτυχε.");
@@ -106,7 +118,15 @@ export default function Fields() {
       irrigationType: formData.irrigationType || null,
     };
 
+    setIsSaving(true);
+
     try {
+      const polygon = turf.polygon([formData.boundary]);
+      const [lng, lat] = turf.pointOnFeature(polygon).geometry.coordinates;
+      const isLandUseValid = await validateLandUse(lat, lng, formData.boundary);
+
+      if (!isLandUseValid) return;
+
       if (formData.id) {
         await api.put(`/api/fields/${formData.id}`, payload);
       } else {
@@ -119,6 +139,8 @@ export default function Fields() {
     } catch (err) {
       console.error("Σφάλμα αποθήκευσης:", err.response?.data);
       alert(labels.saveError || "Σφάλμα κατά την αποθήκευση.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -142,6 +164,10 @@ export default function Fields() {
   };
 
   const navigate = useNavigate();
+  const focusFieldOnMap = (fieldId) => {
+    setSelectedFieldId(fieldId);
+    setMapSelectionRequest((request) => request + 1);
+  };
 
   return (
     <div className="space-y-6">
@@ -161,50 +187,76 @@ export default function Fields() {
         </div>
       </Surface>
 
-      <Surface className="overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="border-b border-gray-200 bg-gray-50 dark:border-slate-800 dark:bg-slate-900">
-            <tr>
-              <th className="px-6 py-3 text-xs font-bold uppercase text-gray-500 dark:text-slate-400">{labels.name || "Όνομα"}</th>
-              <th className="px-6 py-3 text-xs font-bold uppercase text-gray-500 dark:text-slate-400">{labels.area || "Έκταση"}</th>
-              <th className="px-6 py-3 text-xs font-bold uppercase text-gray-500 dark:text-slate-400">{labels.actions || "Ενέργειες"}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-slate-800">
-            {loading && (
-              <tr>
-                <td colSpan="3" className="px-6 py-8 text-center text-sm font-bold text-emerald-700 dark:text-emerald-300">
-                  {labels.loading || "Loading fields..."}
-                </td>
-              </tr>
-            )}
-            {fields.map(field => (
-              <tr key={field.id} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-500/5">
-                <td className="px-6 py-4 font-medium dark:text-slate-100">{field.name}</td>
-                <td className="px-6 py-4 dark:text-slate-300">{field.area} στρ.</td>
-                <td className="px-6 py-4">
-                  <div className="flex gap-2">
-                    {/* Χρήση labels.edit για τη μετάφραση "Επεξεργασία" */}
-                    <Button variant="secondary" size="sm" onClick={() => handleEdit(field)}>
-                      {labels.edit || "Edit"}
-                    </Button>
-                    
-                    {/* Χρήση labels.crops για τη μετάφραση "Καλλιέργειες" */}
-                    <Button variant="secondary" size="sm" onClick={() => navigate(`/fields/${field.id}/crops`)}>
-                      {labels.crops || "Crops"}
-                    </Button>
-                    
-                    {/* Χρήση labels.delete για τη μετάφραση "Διαγραφή" */}
-                    <Button variant="danger" size="sm" onClick={() => handleDelete(field.id)}>
-                      {labels.delete || "Delete"}
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Surface>
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)]">
+        <Surface className="self-start overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[680px] text-left">
+              <thead className="border-b border-gray-200 bg-gray-50 dark:border-slate-800 dark:bg-slate-900">
+                <tr>
+                  <th className="px-6 py-3 text-xs font-bold uppercase text-gray-500 dark:text-slate-400">{labels.name || "Όνομα"}</th>
+                  <th className="px-6 py-3 text-xs font-bold uppercase text-gray-500 dark:text-slate-400">{labels.area || "Έκταση"}</th>
+                  <th className="px-6 py-3 text-xs font-bold uppercase text-gray-500 dark:text-slate-400">{labels.actions || "Ενέργειες"}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-slate-800">
+                {loading && (
+                  <tr>
+                    <td colSpan="3" className="px-6 py-8 text-center text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                      {labels.loading || "Loading fields..."}
+                    </td>
+                  </tr>
+                )}
+                {fields.map(field => {
+                  const isSelected = String(field.id) === String(selectedFieldId);
+                  return (
+                    <tr
+                      key={field.id}
+                      tabIndex={0}
+                      onClick={() => focusFieldOnMap(field.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          focusFieldOnMap(field.id);
+                        }
+                      }}
+                      className={`cursor-pointer transition ${
+                        isSelected
+                          ? "bg-emerald-50 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-500/10 dark:ring-emerald-400/30"
+                          : "hover:bg-emerald-50/40 dark:hover:bg-emerald-500/5"
+                      }`}
+                    >
+                      <td className="px-6 py-4 font-medium dark:text-slate-100">{field.name}</td>
+                      <td className="px-6 py-4 dark:text-slate-300">{field.area} στρ.</td>
+                      <td className="px-6 py-4">
+                        <div className="flex gap-2">
+                          <Button variant="secondary" size="sm" onClick={() => handleEdit(field)}>
+                            {labels.edit || "Edit"}
+                          </Button>
+                          <Button variant="secondary" size="sm" onClick={() => navigate(`/fields/${field.id}/crops`)}>
+                            {labels.crops || "Crops"}
+                          </Button>
+                          <Button variant="danger" size="sm" onClick={() => handleDelete(field.id)}>
+                            {labels.delete || "Delete"}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Surface>
+
+        <Surface className="min-h-[520px] overflow-hidden">
+          <MapComponent
+            dashboardFields={fields}
+            selectedDashboardFieldId={selectedFieldId}
+            selectionRequest={mapSelectionRequest}
+            onDashboardFieldSelect={(field) => focusFieldOnMap(field.id)}
+          />
+        </Surface>
+      </div>
 
       {showModal && (
         <ModalShell
@@ -298,9 +350,13 @@ export default function Fields() {
                   variant="success"
                   size="lg"
                   className="h-14 w-full text-base shadow-lg shadow-emerald-600/20"
-                  disabled={!formData.name || formData.boundary.length === 0}
+                  disabled={isSaving || !formData.name || formData.boundary.length === 0}
                 >
-                  {formData.id ? labels.update : labels.save}
+                  {isSaving
+                    ? labels.validatingArea || "Έλεγχος περιοχής..."
+                    : formData.id
+                      ? labels.update
+                      : labels.save}
                 </Button>
               </div>
             </div>

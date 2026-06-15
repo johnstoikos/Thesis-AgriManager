@@ -3,12 +3,14 @@ package com.thesis.agrimanager.service;
 import com.thesis.agrimanager.dto.TaskDTO;
 import com.thesis.agrimanager.model.Crop;
 import com.thesis.agrimanager.model.Task;
+import com.thesis.agrimanager.model.User;
 import com.thesis.agrimanager.repository.CropRepository;
 import com.thesis.agrimanager.repository.TaskRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.Locale;
 import java.util.List;
@@ -20,15 +22,24 @@ import java.util.stream.Collectors;
 public class TaskService {
     private final TaskRepository taskRepository;
     private final CropRepository cropRepository;
+    private final UserProfitService userProfitService;
 
-    public TaskService(TaskRepository taskRepository, CropRepository cropRepository) {
+    public TaskService(
+            TaskRepository taskRepository,
+            CropRepository cropRepository,
+            UserProfitService userProfitService
+    ) {
         this.taskRepository = taskRepository;
         this.cropRepository = cropRepository;
+        this.userProfitService = userProfitService;
     }
 
     public TaskDTO saveTask(TaskDTO dto) {
         Crop crop = cropRepository.findById(dto.getCropId())
                 .orElseThrow(() -> new RuntimeException("Crop not found"));
+        User owner = crop.getField().getOwner();
+        verifyCropOwner(crop);
+        userProfitService.ensureInitialized(owner.getUsername());
 
         // Validation: Το σημείο της εργασίας πρέπει να είναι μέσα στο Crop Zone
         if (dto.getLocation() != null && !crop.getZoneBoundary().contains(dto.getLocation())) {
@@ -51,16 +62,27 @@ public class TaskService {
         task.setCompletionPercentage(initialProgress);
         task.setStatus(initialProgress == 100 ? "COMPLETED" : "PENDING");
         task.setHarvestedYieldAmount(initialYield);
-        task.setCost(dto.getCost());
-        task.setLaborHours(dto.getLaborHours());
+        applyLaborCost(task, dto.getHourlyCost(), dto.getLaborHours());
         task.setLocation(dto.getLocation());
         task.setCrop(crop);
 
-        if (initialProgress == 100 && initialYield != null) {
-            addHarvestYield(crop, initialYield);
+        if (initialProgress == 100 && isHarvestTask(dto.getTaskType())) {
+            requireSellingPrice(crop);
         }
 
-        return convertToDTO(taskRepository.save(task));
+        BigDecimal bookedRevenue = BigDecimal.ZERO;
+        if (initialProgress == 100 && initialYield != null) {
+            addHarvestYield(crop, initialYield);
+            bookedRevenue = userProfitService.bookHarvestRevenue(task);
+        }
+
+        Task savedTask = taskRepository.save(task);
+        userProfitService.recordTask(
+                owner,
+                bookedRevenue,
+                savedTask.getCost()
+        );
+        return convertToDTO(savedTask);
     }
 
     public List<TaskDTO> getTasksByCrop(Long cropId) {
@@ -86,6 +108,7 @@ public class TaskService {
                 task.getHarvestedYieldAmount(),
                 calculateNetHarvestProfit(task),
                 task.getCost(),
+                getEffectiveHourlyCost(task),
                 task.getLaborHours(),
                 task.getLocation(),
                 task.getCrop().getId()
@@ -99,11 +122,13 @@ public class TaskService {
     public TaskDTO updateTask(Long taskId, TaskDTO dto, String username) {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task not found"));
+        User owner = task.getCrop().getField().getOwner();
 
         String ownerUsername = task.getCrop().getField().getOwner().getUsername();
         if (!ownerUsername.equals(username)) {
             throw new RuntimeException("Δεν έχετε δικαίωμα να επεξεργαστείτε αυτή την εργασία!");
         }
+        userProfitService.ensureInitialized(owner.getUsername());
 
         int currentProgress = getEffectiveProgress(task);
         if (currentProgress == 100 && !Objects.equals(task.getTaskType(), dto.getTaskType())) {
@@ -134,8 +159,8 @@ public class TaskService {
         task.setTaskType(dto.getTaskType());
         task.setDescription(dto.getDescription());
         task.setTaskDate(dto.getTaskDate());
-        task.setCost(dto.getCost());
-        task.setLaborHours(dto.getLaborHours());
+        BigDecimal previousCost = zeroIfNull(task.getCost());
+        applyLaborCost(task, dto.getHourlyCost(), dto.getLaborHours());
         task.setCrop(crop);
 
         if (isHarvestTask(dto.getTaskType())) {
@@ -150,11 +175,22 @@ public class TaskService {
             task.setLocation(dto.getLocation());
         }
 
-        return convertToDTO(taskRepository.save(task));
+        Task savedTask = taskRepository.save(task);
+        BigDecimal expenseDelta = zeroIfNull(savedTask.getCost()).subtract(previousCost);
+        if (expenseDelta.signum() != 0) {
+            userProfitService.adjustExpense(owner, expenseDelta);
+        }
+        return convertToDTO(savedTask);
     }
 
-    public TaskDTO updateTaskProgress(Long taskId, Integer progress, Double yieldAmount) {
+    public TaskDTO updateTaskProgress(
+            Long taskId,
+            Integer progress,
+            Double yieldAmount
+    ) {
         Task task = findOwnedTaskForProgressUpdate(taskId);
+        User owner = task.getCrop().getField().getOwner();
+        userProfitService.ensureInitialized(owner.getUsername());
         int previousProgress = getEffectiveProgress(task);
         int validatedProgress = validateProgress(progress);
 
@@ -171,12 +207,19 @@ public class TaskService {
                     "Η ποσότητα συγκομιδής είναι υποχρεωτική για ολοκλήρωση στο 100%."
             );
         }
+        if (harvestTask && validatedProgress == 100) {
+            requireSellingPrice(task.getCrop());
+        }
 
         task.setCompletionPercentage(validatedProgress);
         task.setStatus(validatedProgress == 100 ? "COMPLETED" : "PENDING");
 
         if (harvestTask && previousProgress < 100 && validatedProgress == 100) {
             addHarvestYield(task.getCrop(), task.getHarvestedYieldAmount());
+            BigDecimal bookedRevenue = userProfitService.bookHarvestRevenue(task);
+            userProfitService.recordRevenue(owner, bookedRevenue);
+        } else if (harvestTask && validatedProgress == 100 && task.getBookedRevenue() == null) {
+            userProfitService.bookHarvestRevenue(task);
         }
 
         return convertToDTO(taskRepository.save(task));
@@ -186,14 +229,28 @@ public class TaskService {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Η εργασία δεν βρέθηκε"));
 
-        // Έλεγχος ιδιοκτησίας: Μόνο ο ιδιοκτήτης του χωραφιού μπορεί να σβήσει την εργασία
-        String ownerUsername = task.getCrop().getField().getOwner().getUsername();
+        Crop crop = task.getCrop();
+        String ownerUsername = crop.getField().getOwner().getUsername();
 
         if (!ownerUsername.equals(username)) {
             throw new RuntimeException("Δεν έχετε δικαίωμα να διαγράψετε αυτή την εργασία!");
         }
 
+        userProfitService.preserveFinancialsAfterDeletion(crop.getField().getOwner());
+
+        boolean preserveBookedHarvest = isHarvestTask(task.getTaskType())
+                && getEffectiveProgress(task) == 100;
+        Double bookedHarvestYield = preserveBookedHarvest ? crop.getHarvestYield() : null;
+        BigDecimal bookedSellingPrice = preserveBookedHarvest ? crop.getSellingPricePerKg() : null;
+
         taskRepository.delete(task);
+
+        if (preserveBookedHarvest) {
+            // Η διαγραφή του task αφαιρεί μόνο το ιστορικό του. Η ήδη καταχωρημένη
+            // σοδειά και η τιμή πώλησης παραμένουν οικονομικά στοιχεία του Crop.
+            crop.setHarvestYield(bookedHarvestYield);
+            crop.setSellingPricePerKg(bookedSellingPrice);
+        }
     }
 
     private Task findOwnedTaskForProgressUpdate(Long taskId) {
@@ -204,10 +261,14 @@ public class TaskService {
     }
 
     private void verifyTaskOwner(Task task) {
+        verifyCropOwner(task.getCrop());
+    }
+
+    private void verifyCropOwner(Crop crop) {
         String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();
-        String ownerUsername = task.getCrop().getField().getOwner().getUsername();
+        String ownerUsername = crop.getField().getOwner().getUsername();
         if (!ownerUsername.equals(currentUsername)) {
-            throw new RuntimeException("Δεν έχετε δικαίωμα να ενημερώσετε αυτή την εργασία!");
+            throw new RuntimeException("Δεν έχετε δικαίωμα πρόσβασης σε αυτή την καλλιέργεια!");
         }
     }
 
@@ -248,21 +309,66 @@ public class TaskService {
         cropRepository.save(crop);
     }
 
+    private void requireSellingPrice(Crop crop) {
+        if (crop.getSellingPricePerKg() == null || crop.getSellingPricePerKg().signum() <= 0) {
+            throw new IllegalArgumentException(
+                    "Η τιμή πώλησης ανά Kg είναι υποχρεωτική για την ολοκλήρωση συγκομιδής."
+            );
+        }
+    }
+
     private BigDecimal calculateNetHarvestProfit(Task task) {
-        if (!isHarvestTask(task.getTaskType()) || task.getHarvestedYieldAmount() == null) {
+        if (!userProfitService.isCompletedHarvest(task)) {
             return null;
         }
 
-        BigDecimal pricePerKg = task.getCrop().getSellingPricePerKg() == null
-                ? BigDecimal.ZERO
-                : task.getCrop().getSellingPricePerKg();
-        BigDecimal taskCost = task.getCost() == null
-                ? BigDecimal.ZERO
-                : task.getCost();
+        return userProfitService.getHarvestRevenue(task)
+                .subtract(zeroIfNull(task.getCost()));
+    }
 
-        return BigDecimal.valueOf(task.getHarvestedYieldAmount())
-                .multiply(pricePerKg)
-                .subtract(taskCost);
+    private void applyLaborCost(Task task, BigDecimal hourlyCost, Double laborHours) {
+        if (hourlyCost == null && laborHours == null) {
+            task.setHourlyCost(null);
+            task.setLaborHours(null);
+            task.setCost(null);
+            return;
+        }
+        if (hourlyCost == null || laborHours == null) {
+            throw new IllegalArgumentException(
+                    "Το κόστος ανά ώρα και οι ώρες εργασίας πρέπει να συμπληρώνονται μαζί."
+            );
+        }
+        if (hourlyCost.signum() < 0) {
+            throw new IllegalArgumentException("Το κόστος ανά ώρα δεν μπορεί να είναι αρνητικό.");
+        }
+        if (!Double.isFinite(laborHours) || laborHours < 0) {
+            throw new IllegalArgumentException("Οι ώρες εργασίας πρέπει να είναι μη αρνητικός αριθμός.");
+        }
+
+        BigDecimal normalizedHourlyCost = hourlyCost.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalCost = normalizedHourlyCost
+                .multiply(BigDecimal.valueOf(laborHours))
+                .setScale(2, RoundingMode.HALF_UP);
+        task.setHourlyCost(normalizedHourlyCost);
+        task.setLaborHours(laborHours);
+        task.setCost(totalCost);
+    }
+
+    private BigDecimal getEffectiveHourlyCost(Task task) {
+        if (task.getHourlyCost() != null) {
+            return task.getHourlyCost();
+        }
+        if (task.getCost() == null
+                || task.getLaborHours() == null
+                || task.getLaborHours() == 0) {
+            return null;
+        }
+        return task.getCost()
+                .divide(BigDecimal.valueOf(task.getLaborHours()), 2, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal zeroIfNull(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
     }
 
     private boolean isHarvestTask(String taskType) {

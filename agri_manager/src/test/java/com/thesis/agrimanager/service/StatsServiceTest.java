@@ -1,21 +1,18 @@
 package com.thesis.agrimanager.service;
 
 import com.thesis.agrimanager.dto.FarmerStatsDTO;
-import com.thesis.agrimanager.model.Crop;
-import com.thesis.agrimanager.model.Task;
 import com.thesis.agrimanager.repository.CropRepository;
 import com.thesis.agrimanager.repository.FieldRepository;
 import com.thesis.agrimanager.repository.TaskRepository;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,84 +27,64 @@ class StatsServiceTest {
     @Mock
     private TaskRepository taskRepository;
 
+    @Mock
+    private UserProfitService userProfitService;
+
     @Test
-    void farmerStatsGroupExpensesAndCompletedHarvestRevenueByMonth() {
-        Task irrigation = task(
-                "Πότισμα",
-                "COMPLETED",
-                LocalDate.of(2026, 1, 5),
-                "10.00",
-                null,
-                null
-        );
-        Task completedHarvest = task(
-                "Συγκομιδή",
-                "COMPLETED",
-                LocalDate.of(2026, 1, 20),
-                "5.00",
-                20.0,
-                "3.00"
-        );
-        Task pendingHarvest = task(
-                "HARVEST",
-                "PENDING",
-                LocalDate.of(2026, 2, 10),
-                "2.00",
-                10.0,
-                "4.00"
-        );
-        when(taskRepository.findForFarmerFinancials("farmer"))
-                .thenReturn(List.of(irrigation, completedHarvest, pendingHarvest));
+    void farmerStatsReturnStoredCurrentPeriodValues() {
+        when(userProfitService.getSnapshot("farmer"))
+                .thenReturn(new UserProfitService.FinancialSnapshot(
+                        new BigDecimal("60.00"),
+                        new BigDecimal("17.00"),
+                        new BigDecimal("43.00"),
+                        LocalDate.of(2026, 6, 1),
+                        LocalDate.of(2026, 1, 1),
+                        LocalDate.of(2026, 6, 30)
+                ));
 
         FarmerStatsDTO result = service().getFarmerDashboardStats("farmer");
 
-        assertEquals(0, new BigDecimal("60.00").compareTo(result.getTotalRevenue()));
-        assertEquals(0, new BigDecimal("17.00").compareTo(result.getTotalExpenses()));
-        assertEquals(2, result.getMonthlyFinancials().size());
-        assertEquals("2026-01", result.getMonthlyFinancials().get(0).getMonth());
-        assertEquals(
-                0,
-                new BigDecimal("60.00").compareTo(result.getMonthlyFinancials().get(0).getRevenue())
+        assertMoney("60.00", result.getTotalRevenue());
+        assertMoney("17.00", result.getTotalExpenses());
+        assertMoney("43.00", result.getTotalProfit());
+        assertEquals(LocalDate.of(2026, 6, 1), result.getMonthlyPeriodStart());
+        assertEquals(LocalDate.of(2026, 1, 1), result.getProfitPeriodStart());
+        assertEquals(LocalDate.of(2026, 6, 30), result.getProfitPeriodEnd());
+    }
+
+    @Test
+    void resettingFinancialStatsReturnsUpdatedValues() {
+        when(userProfitService.resetFinancialData(
+                "farmer",
+                UserProfitService.FinancialResetTarget.EXPENSES
+        )).thenReturn(new UserProfitService.FinancialSnapshot(
+                new BigDecimal("60.00"),
+                BigDecimal.ZERO,
+                new BigDecimal("43.00"),
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 1, 1),
+                LocalDate.of(2026, 6, 30)
+        ));
+
+        FarmerStatsDTO result = service().resetFinancialStats(
+                "farmer",
+                UserProfitService.FinancialResetTarget.EXPENSES
         );
-        assertEquals(
-                0,
-                new BigDecimal("15.00").compareTo(result.getMonthlyFinancials().get(0).getExpenses())
-        );
-        assertEquals("2026-02", result.getMonthlyFinancials().get(1).getMonth());
-        assertEquals(
-                0,
-                BigDecimal.ZERO.compareTo(result.getMonthlyFinancials().get(1).getRevenue())
-        );
-        assertEquals(
-                0,
-                new BigDecimal("2.00").compareTo(result.getMonthlyFinancials().get(1).getExpenses())
+
+        assertMoney("60.00", result.getTotalRevenue());
+        assertMoney("0.00", result.getTotalExpenses());
+        assertMoney("43.00", result.getTotalProfit());
+        verify(userProfitService).resetFinancialData(
+                "farmer",
+                UserProfitService.FinancialResetTarget.EXPENSES
         );
     }
 
     private StatsService service() {
-        return new StatsService(fieldRepository, cropRepository, taskRepository);
+        return new StatsService(fieldRepository, cropRepository, taskRepository, userProfitService);
     }
 
-    private Task task(
-            String taskType,
-            String status,
-            LocalDate taskDate,
-            String cost,
-            Double harvestedYield,
-            String sellingPrice
-    ) {
-        Crop crop = new Crop();
-        if (sellingPrice != null) {
-            crop.setSellingPricePerKg(new BigDecimal(sellingPrice));
-        }
-
-        Task task = new Task();
-        task.setTaskType(taskType);
-        task.setStatus(status);
-        task.setTaskDate(taskDate);
-        task.setCost(new BigDecimal(cost));
-        task.setHarvestedYieldAmount(harvestedYield);
-        task.setCrop(crop);
-        return task;
+    private void assertMoney(String expected, BigDecimal actual) {
+        assertEquals(0, new BigDecimal(expected).compareTo(actual));
     }
 }

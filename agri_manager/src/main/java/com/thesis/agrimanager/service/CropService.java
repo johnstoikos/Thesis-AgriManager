@@ -6,7 +6,9 @@ import com.thesis.agrimanager.model.Field;
 import com.thesis.agrimanager.repository.CropRepository;
 import com.thesis.agrimanager.repository.FieldRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -15,13 +17,20 @@ public class CropService {
 
     private final CropRepository cropRepository;
     private final FieldRepository fieldRepository;
+    private final UserProfitService userProfitService;
 
-    public CropService(CropRepository cropRepository, FieldRepository fieldRepository) {
+    public CropService(
+            CropRepository cropRepository,
+            FieldRepository fieldRepository,
+            UserProfitService userProfitService
+    ) {
         this.cropRepository = cropRepository;
         this.fieldRepository = fieldRepository;
+        this.userProfitService = userProfitService;
     }
 
     public CropDTO saveCrop(CropDTO cropDTO) {
+        validateSellingPrice(cropDTO.getSellingPricePerKg());
         // 1. Ποιος είναι ο συνδεδεμένος χρήστης;
         String currentUsername = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
 
@@ -53,6 +62,7 @@ public class CropService {
     }
 
     public CropDTO updateCrop(Long id, CropDTO cropDTO) {
+        validateSellingPrice(cropDTO.getSellingPricePerKg());
         String currentUsername = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
 
         // 1. Βρίσκουμε την υπάρχουσα καλλιέργεια
@@ -82,6 +92,7 @@ public class CropService {
         return convertToDTO(updatedCrop);
     }
 
+    @Transactional
     public void deleteCrop(Long id) {
         // Έλεγχος αν υπάρχει και αν ανήκει στον χρήστη μέσω του Field
         Crop crop = cropRepository.findById(id)
@@ -92,6 +103,7 @@ public class CropService {
             throw new RuntimeException("Δεν έχετε δικαίωμα διαγραφής αυτής της καλλιέργειας.");
         }
 
+        userProfitService.preserveFinancialsAfterDeletion(crop.getField().getOwner());
         cropRepository.delete(crop);
     }
 
@@ -129,5 +141,13 @@ public class CropService {
     private void applyCropHarvestData(Crop crop, CropDTO cropDTO) {
         crop.setHarvestYield(cropDTO.getHarvestYield());
         crop.setSellingPricePerKg(cropDTO.getSellingPricePerKg());
+    }
+
+    private void validateSellingPrice(BigDecimal sellingPricePerKg) {
+        if (sellingPricePerKg == null || sellingPricePerKg.signum() <= 0) {
+            throw new IllegalArgumentException(
+                    "Η τιμή πώλησης ανά Kg είναι υποχρεωτική και πρέπει να είναι μεγαλύτερη από μηδέν."
+            );
+        }
     }
 }

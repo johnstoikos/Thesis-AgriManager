@@ -4,11 +4,14 @@ import {
   AlertTriangle,
   BarChart3,
   CheckCircle2,
+  ChevronDown,
   ClipboardList,
   CircleDollarSign,
   Download,
   Layers3,
   Sprout,
+  Trash2,
+  TrendingDown,
 } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -27,11 +30,10 @@ import {
 } from "recharts";
 import * as turf from "@turf/turf";
 import api from "../api/axios";
-import { Button, EmptyState, ErrorState, SectionCard, SkeletonLines, StatCard, Surface } from "./ui";
+import { Button, EmptyState, ErrorState, Popover, SectionCard, SkeletonLines, StatCard, Surface } from "./ui";
 import { useAppPreferences } from "../i18n";
 
 const CROP_COLORS = ["#059669", "#0f766e", "#84a98c", "#22c55e", "#14b8a6", "#64748b"];
-const FINANCIAL_COLORS = ["#dc2626", "#16a34a"];
 const TASK_STATUS_COLORS = {
   PENDING: "#f59e0b",
   COMPLETED: "#10b981",
@@ -51,12 +53,6 @@ function formatCurrency(value, locale = "el-GR") {
     currency: "EUR",
     maximumFractionDigits: 2,
   }).format(Number.isFinite(amount) ? amount : 0);
-}
-
-function formatMonth(month, locale = "el-GR") {
-  const date = new Date(`${month}-01T00:00:00`);
-  if (Number.isNaN(date.getTime())) return month;
-  return date.toLocaleDateString(locale, { month: "short", year: "2-digit" });
 }
 
 function toNumber(value) {
@@ -150,17 +146,26 @@ function GreekTooltip({ active, payload, label, valueSuffix = "", valueFormatter
 export default function Analytics() {
   const { isDarkMode, t } = useAppPreferences();
   const labels = t.analytics || {};
-  const dashboardLabels = t.dashboard || {};
   const [fields, setFields] = useState([]);
   const [crops, setCrops] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [financialStats, setFinancialStats] = useState({
     totalRevenue: 0,
     totalExpenses: 0,
-    monthlyFinancials: [],
+    totalProfit: 0,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [resetMenuOpen, setResetMenuOpen] = useState(false);
+  const [resettingTarget, setResettingTarget] = useState("");
+  const [resetMessage, setResetMessage] = useState("");
+
+  const resetOptions = [
+    { target: "REVENUE", label: labels.resetRevenue || "Revenue" },
+    { target: "EXPENSES", label: labels.resetExpenses || "Expenses" },
+    { target: "PROFIT", label: labels.resetProfit || "Semester profit" },
+    { target: "ALL", label: labels.resetAll || "All financial data" },
+  ];
 
   useEffect(() => {
     const fetchAnalyticsData = async () => {
@@ -176,9 +181,7 @@ export default function Analytics() {
         setFinancialStats({
           totalRevenue: toNumber(financialStatsRes.data?.totalRevenue) || 0,
           totalExpenses: toNumber(financialStatsRes.data?.totalExpenses) || 0,
-          monthlyFinancials: Array.isArray(financialStatsRes.data?.monthlyFinancials)
-            ? financialStatsRes.data.monthlyFinancials
-            : [],
+          totalProfit: toNumber(financialStatsRes.data?.totalProfit) || 0,
         });
 
         const cropResults = await Promise.allSettled(
@@ -261,21 +264,6 @@ export default function Analytics() {
       .map((status) => ({ status, name: statusLabels[status], value: grouped[status] }));
   }, [labels.completedStatus, labels.pending, labels.unknown, tasks]);
 
-  const monthlyFinancialData = useMemo(
-    () =>
-      financialStats.monthlyFinancials.map((entry) => ({
-        month: entry.month,
-        label: formatMonth(entry.month, labels.currencyLocale || "el-GR"),
-        expenses: toNumber(entry.expenses) || 0,
-        revenue: toNumber(entry.revenue) || 0,
-      })),
-    [financialStats.monthlyFinancials, labels.currencyLocale]
-  );
-
-  const hasMonthlyFinancialData = monthlyFinancialData.some(
-    (entry) => entry.expenses !== 0 || entry.revenue !== 0
-  );
-
   const stats = useMemo(() => {
     const totalFieldSquareMeters = fields.reduce((sum, field) => sum + getFieldSquareMeters(field), 0);
     const pendingTasks = tasks.filter((task) => task.status === "PENDING").length;
@@ -293,6 +281,35 @@ export default function Analytics() {
       totalTasks,
     };
   }, [crops.length, tasks, fields]);
+
+  const handleResetFinancialData = async ({ target, label }) => {
+    const confirmation = (
+      labels.resetConfirm
+      || 'Delete "{item}"? Tasks, crops and harvest records will not be deleted.'
+    ).replace("{item}", label);
+
+    if (!window.confirm(confirmation)) return;
+
+    setResettingTarget(target);
+    setResetMessage("");
+    try {
+      const response = await api.delete(`/api/stats/financial/${target}`);
+      setFinancialStats({
+        totalRevenue: toNumber(response.data?.totalRevenue) || 0,
+        totalExpenses: toNumber(response.data?.totalExpenses) || 0,
+        totalProfit: toNumber(response.data?.totalProfit) || 0,
+      });
+      setResetMenuOpen(false);
+      setResetMessage(
+        (labels.resetSuccess || '"{item}" was reset successfully.').replace("{item}", label)
+      );
+    } catch (err) {
+      console.error("Σφάλμα διαγραφής οικονομικών δεδομένων:", err);
+      alert(err.response?.data?.message || labels.resetError || "Financial data reset failed.");
+    } finally {
+      setResettingTarget("");
+    }
+  };
 
   const handleExportPDF = async () => {
     const exportArea = document.getElementById("pdf-export-area");
@@ -430,7 +447,7 @@ export default function Analytics() {
             node.style.overflow = "visible";
           });
 
-          const chartColors = [...CROP_COLORS, ...FINANCIAL_COLORS, ...Object.values(TASK_STATUS_COLORS), "#0f172a", "#94a3b8"];
+          const chartColors = [...CROP_COLORS, ...Object.values(TASK_STATUS_COLORS), "#0f172a", "#94a3b8"];
           clonedArea.querySelectorAll("svg").forEach((svg) => {
             svg.style.backgroundColor = "transparent";
             svg.style.overflow = "visible";
@@ -589,21 +606,91 @@ export default function Analytics() {
         </div>
 
         {!loading && (
-          <Surface className="p-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <section aria-labelledby="financial-summary-title">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                <p
+                  id="financial-summary-title"
+                  className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400"
+                >
                   {labels.financialSummary || "Financial Summary"}
                 </p>
-                <p className="mt-2 text-3xl font-black tracking-tight text-slate-950 dark:text-slate-100">
-                  {formatCurrency(financialStats.totalExpenses, labels.currencyLocale || "el-GR")}
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  {labels.financialSummaryPeriod || "Monthly totals and current semester profit"}
                 </p>
               </div>
-              <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300">
-                <CircleDollarSign className="h-6 w-6" />
+              <div className="relative self-start sm:self-auto" data-html2canvas-ignore="true">
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => setResetMenuOpen((open) => !open)}
+                  aria-expanded={resetMenuOpen}
+                  aria-haspopup="menu"
+                  disabled={Boolean(resettingTarget)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {labels.clearFinancialData || "Clear financial data"}
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+                {resetMenuOpen && (
+                  <Popover className="w-72 p-3" align="right">
+                    <p className="px-2 pb-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      {labels.chooseReset || "Choose data to clear"}
+                    </p>
+                    <div className="space-y-1" role="menu">
+                      {resetOptions.map((option) => (
+                        <Button
+                          key={option.target}
+                          variant={option.target === "ALL" ? "danger" : "ghost"}
+                          size="sm"
+                          className="w-full justify-start"
+                          onClick={() => handleResetFinancialData(option)}
+                          disabled={Boolean(resettingTarget)}
+                          role="menuitem"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          {resettingTarget === option.target
+                            ? labels.clearing || "Clearing..."
+                            : option.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </Popover>
+                )}
               </div>
             </div>
-          </Surface>
+            {resetMessage && (
+              <p
+                className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200"
+                data-html2canvas-ignore="true"
+              >
+                {resetMessage}
+              </p>
+            )}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <StatCard
+                icon={TrendingDown}
+                title={labels.totalExpenses || "Expenses"}
+                value={formatCurrency(financialStats.totalExpenses, labels.currencyLocale || "el-GR")}
+                helper={labels.currentMonth || "Current month"}
+                tone="rose"
+              />
+              <StatCard
+                icon={CircleDollarSign}
+                title={labels.totalRevenue || "Revenue"}
+                value={formatCurrency(financialStats.totalRevenue, labels.currencyLocale || "el-GR")}
+                helper={labels.currentMonth || "Current month"}
+                tone="sky"
+              />
+              <StatCard
+                icon={CircleDollarSign}
+                title={labels.totalProfit || "Semester Profit"}
+                value={formatCurrency(financialStats.totalProfit, labels.currencyLocale || "el-GR")}
+                helper={labels.totalProfitHelper || "Resets every six months"}
+                tone={financialStats.totalProfit >= 0 ? "emerald" : "rose"}
+              />
+            </div>
+          </section>
         )}
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
@@ -703,57 +790,6 @@ export default function Analytics() {
             )}
           </SectionCard>
 
-          <SectionCard
-            title={dashboardLabels.financialChartTitle || "Monthly Financial Overview"}
-            description={dashboardLabels.financialChartDescription || "Comparison of task costs and completed harvest revenue."}
-            badge={labels.financialSummary || "Financial Summary"}
-            side={<CircleDollarSign className="h-6 w-6 text-sky-700 dark:text-sky-300" />}
-            className="xl:col-span-2"
-          >
-            {loading ? (
-              <ChartSkeleton />
-            ) : !hasMonthlyFinancialData ? (
-              <ChartEmptyState
-                icon={CircleDollarSign}
-                title={labels.noFinancialData || "No financial data"}
-                description={dashboardLabels.noFinancialData || "Monthly revenue and expenses will appear here."}
-              />
-            ) : (
-              <div className="h-[360px] rounded-3xl bg-transparent dark:bg-slate-900">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={monthlyFinancialData} margin={{ top: 16, right: 24, left: 16, bottom: 8 }}>
-                    <CartesianGrid stroke={isDarkMode ? "#334155" : "#e2e8f0"} strokeDasharray="4 6" vertical={false} />
-                    <XAxis
-                      dataKey="label"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: isDarkMode ? "#cbd5e1" : "#475569", fontSize: 12, fontWeight: 700 }}
-                    />
-                    <YAxis
-                      axisLine={false}
-                      tickLine={false}
-                      tickFormatter={(value) => formatCurrency(value, labels.currencyLocale || "el-GR")}
-                      tick={{ fill: isDarkMode ? "#94a3b8" : "#64748b", fontSize: 12 }}
-                    />
-                    <Tooltip content={<GreekTooltip valueFormatter={(value) => formatCurrency(value, labels.currencyLocale || "el-GR")} />} />
-                    <Legend iconType="circle" />
-                    <Bar
-                      dataKey="expenses"
-                      name={dashboardLabels.expensesSeries || "Cost"}
-                      fill={FINANCIAL_COLORS[0]}
-                      radius={[10, 10, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="revenue"
-                      name={dashboardLabels.revenueSeries || "Profit (Revenue)"}
-                      fill={FINANCIAL_COLORS[1]}
-                      radius={[10, 10, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </SectionCard>
         </div>
       </div>
     </div>

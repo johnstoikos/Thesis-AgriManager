@@ -45,11 +45,12 @@ export default function AiAssistantWidget() {
       ]);
     } catch (error) {
       console.error("Σφάλμα AI Assistant:", error);
+      const backendMessage = error.response?.data?.message;
       setMessages((current) => [
         ...current,
         {
           role: "assistant",
-          text: "Υπήρξε πρόβλημα επικοινωνίας με τον AI βοηθό. Δοκίμασε ξανά σε λίγο.",
+          text: backendMessage || "Υπήρξε πρόβλημα επικοινωνίας με τον AI βοηθό. Δοκίμασε ξανά σε λίγο.",
         },
       ]);
     } finally {
@@ -107,10 +108,10 @@ export default function AiAssistantWidget() {
             type="button"
             onClick={() => setIsOpen(false)}
             variant="ghost"
-            className="h-10 w-10 shrink-0 rounded-xl p-0"
+            className="h-11 w-11 shrink-0 rounded-xl p-0"
             aria-label="Κλείσιμο"
           >
-            <X className="h-5 w-5" />
+            <X className="h-6 w-6" strokeWidth={2.25} />
           </Button>
         </header>
 
