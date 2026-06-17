@@ -17,8 +17,18 @@ const emptyFieldForm = {
   irrigationType: "",
 };
 
-const soilTypeOptions = ["Αργιλώδες", "Αμμώδες", "Πηλώδες", "Ασβεστώδες", "Ιλυώδες"];
-const irrigationTypeOptions = ["Σταγόνα", "Μπεκ", "Ξηρικό"];
+const soilTypeOptions = [
+  { value: "Αργιλώδες", labelKey: "claySoil" },
+  { value: "Αμμώδες", labelKey: "sandySoil" },
+  { value: "Πηλώδες", labelKey: "loamySoil" },
+  { value: "Ασβεστώδες", labelKey: "calcareousSoil" },
+  { value: "Ιλυώδες", labelKey: "siltySoil" },
+];
+const irrigationTypeOptions = [
+  { value: "Σταγόνα", labelKey: "dripIrrigation" },
+  { value: "Μπεκ", labelKey: "sprinklerIrrigation" },
+  { value: "Ξηρικό", labelKey: "dryIrrigation" },
+];
 
 const selectClassName = "h-14 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
 
@@ -27,8 +37,9 @@ function optionalNumber(value) {
 }
 
 export default function Fields() {
-  const { t } = useAppPreferences();
+  const { language, t } = useAppPreferences();
   const labels = t.fields || {};
+  const locale = language === "el" ? "el-GR" : "en-US";
   const [fields, setFields] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -37,6 +48,15 @@ export default function Fields() {
   const [mapSelectionRequest, setMapSelectionRequest] = useState(0);
   
   const [formData, setFormData] = useState(emptyFieldForm);
+
+  const formatFieldArea = (area) => {
+    const numericArea = Number(area || 0);
+    if (language === "en") {
+      return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(numericArea * 1000)} ${labels.squareMetersShort || "m²"}`;
+    }
+
+    return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(numericArea)} ${labels.stremmataShort}`;
+  };
 
   const fetchFields = useCallback(async () => {
     try {
@@ -100,8 +120,8 @@ export default function Fields() {
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     
-    if (!formData.name) return alert("Το όνομα είναι υποχρεωτικό");
-    if (formData.boundary.length === 0) return alert("Πρέπει να σχεδιάσετε το χωράφι στο χάρτη");
+    if (!formData.name) return alert(labels.nameRequired || "Name is required.");
+    if (formData.boundary.length === 0) return alert(labels.boundaryRequired || "You must draw the field on the map.");
 
     const autoCalculatedArea = calculateAreaInStremmata(formData.boundary);
 
@@ -226,7 +246,7 @@ export default function Fields() {
                       }`}
                     >
                       <td className="px-6 py-4 font-medium dark:text-slate-100">{field.name}</td>
-                      <td className="px-6 py-4 dark:text-slate-300">{field.area} στρ.</td>
+                      <td className="px-6 py-4 dark:text-slate-300">{formatFieldArea(field.area)}</td>
                       <td className="px-6 py-4">
                         <div className="flex gap-2">
                           <Button variant="secondary" size="sm" onClick={() => handleEdit(field)}>
@@ -300,7 +320,9 @@ export default function Fields() {
                   >
                     <option value="">{labels.selectPlaceholder || "Επιλογή..."}</option>
                     {soilTypeOptions.map((soilType) => (
-                      <option key={soilType} value={soilType}>{soilType}</option>
+                      <option key={soilType.value} value={soilType.value}>
+                        {labels[soilType.labelKey] || soilType.value}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -328,7 +350,9 @@ export default function Fields() {
                   >
                     <option value="">{labels.selectPlaceholder || "Επιλογή..."}</option>
                     {irrigationTypeOptions.map((irrigationType) => (
-                      <option key={irrigationType} value={irrigationType}>{irrigationType}</option>
+                      <option key={irrigationType.value} value={irrigationType.value}>
+                        {labels[irrigationType.labelKey] || irrigationType.value}
+                      </option>
                     ))}
                   </select>
                 </div>

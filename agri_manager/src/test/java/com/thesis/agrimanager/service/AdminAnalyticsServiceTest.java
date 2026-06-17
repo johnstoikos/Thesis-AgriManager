@@ -41,6 +41,9 @@ class AdminAnalyticsServiceTest {
     @Mock
     private TaskRepository taskRepository;
 
+    @Mock
+    private UserProfitService userProfitService;
+
     @Test
     void globalAnalyticsReturnsSeparateMonthlyExpensesAndRevenue() {
         LocalDate today = LocalDate.now();
@@ -55,6 +58,8 @@ class AdminAnalyticsServiceTest {
                 .thenReturn(List.of(task));
         when(cropRepository.findAllOwnedByFarmers()).thenReturn(List.of(crop));
         when(taskRepository.findAllOwnedByFarmers()).thenReturn(List.of(task));
+        when(userProfitService.isCompletedHarvest(task)).thenReturn(true);
+        when(userProfitService.getHarvestRevenue(task)).thenReturn(new BigDecimal("250.00"));
         when(cropRepository.countOwnedByFarmers()).thenReturn(1L);
         when(taskRepository.countByStatusForFarmers("PENDING")).thenReturn(2L);
         when(taskRepository.countByStatusForFarmers("COMPLETED")).thenReturn(3L);
@@ -86,6 +91,8 @@ class AdminAnalyticsServiceTest {
                 .thenReturn(List.of());
         when(cropRepository.findAllOwnedByFarmers()).thenReturn(List.of(oldCrop));
         when(taskRepository.findAllOwnedByFarmers()).thenReturn(List.of(oldTask));
+        when(userProfitService.isCompletedHarvest(oldTask)).thenReturn(true);
+        when(userProfitService.getHarvestRevenue(oldTask)).thenReturn(new BigDecimal("150.00"));
 
         AdminAnalyticsDTO result = service().getAdminAnalytics(null, "year");
 
@@ -100,10 +107,39 @@ class AdminAnalyticsServiceTest {
     }
 
     @Test
+    void globalAnalyticsIgnoresCropHarvestWhenHarvestTaskWasDeleted() {
+        LocalDate today = LocalDate.now();
+        Field field = field(10L, "ΚΤΗΜΑ 3", 216.29);
+        Crop cropWithHistoricalHarvest = crop(20L, field, today, 1200.0, "3.00");
+
+        when(fieldRepository.findAllOwnedByFarmers()).thenReturn(List.of(field));
+        when(cropRepository.findForAdminAnalytics(any(LocalDate.class), eq(today)))
+                .thenReturn(List.of(cropWithHistoricalHarvest));
+        when(taskRepository.findForAdminAnalytics(any(LocalDate.class), eq(today)))
+                .thenReturn(List.of());
+        when(cropRepository.findAllOwnedByFarmers()).thenReturn(List.of(cropWithHistoricalHarvest));
+        when(taskRepository.findAllOwnedByFarmers()).thenReturn(List.of());
+
+        AdminAnalyticsDTO result = service().getAdminAnalytics(null, "year");
+
+        assertEquals(0, BigDecimal.ZERO.compareTo(result.getTotalRevenue()));
+        assertEquals(0.0, result.getTotalYieldKg());
+        assertEquals(0, BigDecimal.ZERO.compareTo(
+                result.getMonthlyRevenue().get(YearMonth.from(today).toString())
+        ));
+        assertEquals(0, BigDecimal.ZERO.compareTo(
+                result.getFieldsBreakdown().get(0).getFieldRevenue()
+        ));
+    }
+
+    @Test
     void individualAnalyticsUsesFarmerFilteredQueries() {
         Long farmerId = 7L;
-        when(userRepository.findFarmerById(farmerId)).thenReturn(Optional.of(new User()));
+        User farmer = new User();
+        farmer.setUsername("farmer");
+        when(userRepository.findFarmerById(farmerId)).thenReturn(Optional.of(farmer));
         when(fieldRepository.findOwnedByFarmerId(farmerId)).thenReturn(List.of());
+        when(cropRepository.findAllOwnedByFarmerId(farmerId)).thenReturn(List.of());
         when(cropRepository.findForAdminAnalyticsByOwnerId(
                 eq(farmerId),
                 any(LocalDate.class),
@@ -114,13 +150,62 @@ class AdminAnalyticsServiceTest {
                 any(LocalDate.class),
                 any(LocalDate.class)
         )).thenReturn(List.of());
+        when(userProfitService.getSnapshot("farmer")).thenReturn(snapshot(
+                "0.00",
+                "0.00",
+                "0.00"
+        ));
 
         service().getAdminAnalytics(farmerId, "month");
 
         verify(fieldRepository).findOwnedByFarmerId(farmerId);
+        verify(cropRepository).findAllOwnedByFarmerId(farmerId);
         verify(cropRepository).countByFieldOwnerId(farmerId);
         verify(taskRepository).countByStatusAndCropFieldOwnerId("PENDING", farmerId);
         verify(taskRepository).countByStatusAndCropFieldOwnerId("COMPLETED", farmerId);
+    }
+
+    @Test
+    void individualAnalyticsUsesStoredFarmerFinancialSnapshotAndAllCropsForProduction() {
+        Long farmerId = 7L;
+        User farmer = new User();
+        farmer.setUsername("farmer");
+        Field field = field(10L, "ΚΤΗΜΑ 3", 216.29);
+        Crop cropWithoutPlantingDate = crop(20L, field, null, 1200.0, "3.00");
+        Task existingTask = task(30L, cropWithoutPlantingDate, LocalDate.now(), "60.00");
+
+        when(userRepository.findFarmerById(farmerId)).thenReturn(Optional.of(farmer));
+        when(fieldRepository.findOwnedByFarmerId(farmerId)).thenReturn(List.of(field));
+        when(cropRepository.findForAdminAnalyticsByOwnerId(
+                eq(farmerId),
+                any(LocalDate.class),
+                any(LocalDate.class)
+        )).thenReturn(List.of());
+        when(taskRepository.findForAdminAnalyticsByOwnerId(
+                eq(farmerId),
+                any(LocalDate.class),
+                any(LocalDate.class)
+        )).thenReturn(List.of(existingTask));
+        when(cropRepository.findAllOwnedByFarmerId(farmerId))
+                .thenReturn(List.of(cropWithoutPlantingDate));
+        when(cropRepository.countByFieldOwnerId(farmerId)).thenReturn(1L);
+        when(taskRepository.countByStatusAndCropFieldOwnerId("PENDING", farmerId)).thenReturn(0L);
+        when(taskRepository.countByStatusAndCropFieldOwnerId("COMPLETED", farmerId)).thenReturn(2L);
+        when(userProfitService.getSnapshot("farmer")).thenReturn(snapshot(
+                "3600.00",
+                "108.00",
+                "3492.00"
+        ));
+
+        AdminAnalyticsDTO result = service().getAdminAnalytics(farmerId, "year");
+
+        assertEquals(0, new BigDecimal("108.00").compareTo(result.getTotalExpenses()));
+        assertEquals(0, new BigDecimal("3600.00").compareTo(result.getTotalRevenue()));
+        assertEquals(0, new BigDecimal("3492.00").compareTo(result.getNetProfit()));
+        assertEquals(1200.0, result.getTotalYieldKg());
+        assertEquals(0, new BigDecimal("3600.00").compareTo(
+                result.getFieldsBreakdown().get(0).getFieldRevenue()
+        ));
     }
 
     private AdminAnalyticsService service() {
@@ -128,7 +213,25 @@ class AdminAnalyticsServiceTest {
                 userRepository,
                 fieldRepository,
                 cropRepository,
-                taskRepository
+                taskRepository,
+                userProfitService
+        );
+    }
+
+    private UserProfitService.FinancialSnapshot snapshot(
+            String revenue,
+            String expenses,
+            String profit
+    ) {
+        LocalDate monthStart = LocalDate.now().withDayOfMonth(1);
+        LocalDate profitStart = LocalDate.of(LocalDate.now().getYear(), 1, 1);
+        return new UserProfitService.FinancialSnapshot(
+                new BigDecimal(revenue),
+                new BigDecimal(expenses),
+                new BigDecimal(profit),
+                monthStart,
+                profitStart,
+                profitStart.plusMonths(6).minusDays(1)
         );
     }
 
@@ -165,6 +268,9 @@ class AdminAnalyticsServiceTest {
         task.setTaskDate(taskDate);
         task.setCost(new BigDecimal(cost));
         task.setStatus("COMPLETED");
+        task.setCompletionPercentage(100);
+        task.setTaskType("Συγκομιδή");
+        task.setHarvestedYieldAmount(crop.getHarvestYield());
         return task;
     }
 }

@@ -1,5 +1,39 @@
 import { AlertTriangle, BellRing, CloudRain, Droplets, Wind } from "lucide-react";
+import { useAppPreferences } from "../i18n";
 import { Surface } from "./ui";
+
+const ADVISOR_LABELS = {
+  el: {
+    locale: "el-GR",
+    irrigation: "Πότισμα",
+    irrigationMessage: (date) => `Έχεις να κάνεις Πότισμα μέχρι την ${date}`,
+    spraying: "Ψεκασμός",
+    sprayingMessage: (date) => `Υψηλός άνεμος: Έχεις να αναβάλεις τον Ψεκασμό μέχρι την ${date}`,
+    outdoorTasks: "Εξωτερικές εργασίες",
+    outdoorMessage: (time) => `Έχεις να ολοκληρώσεις τις εξωτερικές εργασίες μέχρι την ${time}`,
+    rainChance: "πιθανότητα βροχής",
+    noNotificationsTitle: "Χωρίς ειδοποιήσεις",
+    noNotificationsMessage: "Δεν υπάρχουν επείγουσες εργασίες από τον Smart Notification Advisor.",
+    updated: "Ενημερωμένο",
+    description: "Ειδοποιήσεις με βάση καιρό, έδαφος και προτεραιότητα εργασιών.",
+    analyzing: "Ανάλυση συνθηκών...",
+  },
+  en: {
+    locale: "en-US",
+    irrigation: "Irrigation",
+    irrigationMessage: (date) => `Irrigation should be completed by ${date}`,
+    spraying: "Spraying",
+    sprayingMessage: (date) => `High wind: postpone spraying until ${date}`,
+    outdoorTasks: "Outdoor tasks",
+    outdoorMessage: (time) => `Complete outdoor tasks by ${time}`,
+    rainChance: "chance of rain",
+    noNotificationsTitle: "No notifications",
+    noNotificationsMessage: "There are no urgent tasks from the Smart Notification Advisor.",
+    updated: "Updated",
+    description: "Notifications based on weather, soil, and task priority.",
+    analyzing: "Analyzing conditions...",
+  },
+};
 
 function toNumber(value) {
   const parsed = Number(value);
@@ -17,15 +51,15 @@ function getSoilType(profile = {}, fields = []) {
   );
 }
 
-function formatDate(date) {
-  return new Intl.DateTimeFormat("el-GR", {
+function formatDate(date, locale) {
+  return new Intl.DateTimeFormat(locale, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
   }).format(date);
 }
 
-function getRainDeadline(weather = {}) {
+function getRainDeadline(weather = {}, locale) {
   const candidates = [
     weather.rainExpectedAt,
     weather.expectedRainAt,
@@ -38,7 +72,7 @@ function getRainDeadline(weather = {}) {
   if (rawValue) {
     const parsed = new Date(rawValue);
     if (!Number.isNaN(parsed.getTime())) {
-      return new Intl.DateTimeFormat("el-GR", {
+      return new Intl.DateTimeFormat(locale, {
         hour: "2-digit",
         minute: "2-digit",
       }).format(parsed);
@@ -48,23 +82,23 @@ function getRainDeadline(weather = {}) {
 
   const fallback = new Date();
   fallback.setHours(fallback.getHours() + 3);
-  return new Intl.DateTimeFormat("el-GR", {
+  return new Intl.DateTimeFormat(locale, {
     hour: "2-digit",
     minute: "2-digit",
   }).format(fallback);
 }
 
-function buildNotifications({ weather, profile, fields }) {
+function buildNotifications({ weather, profile, fields, labels }) {
   const windSpeed = toNumber(weather?.windSpeed ?? weather?.windSpeedKmh ?? weather?.wind_kph);
   const rainProbability = toNumber(
     weather?.rainProbability ?? weather?.precipitationProbability ?? weather?.precipitationChance
   );
   const temperature = toNumber(weather?.temperature ?? weather?.tempC ?? weather?.temp);
   const soilType = String(getSoilType(profile, fields));
-  const today = formatDate(new Date());
+  const today = formatDate(new Date(), labels.locale);
   const tomorrowDate = new Date();
   tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-  const tomorrow = formatDate(tomorrowDate);
+  const tomorrow = formatDate(tomorrowDate, labels.locale);
 
   const notifications = [];
 
@@ -73,8 +107,8 @@ function buildNotifications({ weather, profile, fields }) {
       id: "irrigation-alert",
       tone: "info",
       icon: Droplets,
-      title: "Πότισμα",
-      message: `Έχεις να κάνεις Πότισμα μέχρι την ${today}`,
+      title: labels.irrigation,
+      message: labels.irrigationMessage(today),
       meta: `${temperature}°C · ${soilType}`,
     });
   }
@@ -84,8 +118,8 @@ function buildNotifications({ weather, profile, fields }) {
       id: "spraying-delay-alert",
       tone: "warning",
       icon: Wind,
-      title: "Ψεκασμός",
-      message: `⚠️ Υψηλός άνεμος: Έχεις να αναβάλεις τον Ψεκασμό μέχρι την ${tomorrow}`,
+      title: labels.spraying,
+      message: labels.sprayingMessage(tomorrow),
       meta: `${windSpeed} km/h`,
     });
   }
@@ -95,9 +129,9 @@ function buildNotifications({ weather, profile, fields }) {
       id: "rain-deadline-alert",
       tone: "warning",
       icon: CloudRain,
-      title: "Εξωτερικές εργασίες",
-      message: `Έχεις να ολοκληρώσεις τις εξωτερικές εργασίες μέχρι την ${getRainDeadline(weather)}`,
-      meta: `${rainProbability}% πιθανότητα βροχής`,
+      title: labels.outdoorTasks,
+      message: labels.outdoorMessage(getRainDeadline(weather, labels.locale)),
+      meta: `${rainProbability}% ${labels.rainChance}`,
     });
   }
 
@@ -106,9 +140,9 @@ function buildNotifications({ weather, profile, fields }) {
       id: "all-clear",
       tone: "success",
       icon: BellRing,
-      title: "Χωρίς ειδοποιήσεις",
-      message: "Δεν υπάρχουν επείγουσες εργασίες από τον Smart Notification Advisor.",
-      meta: "Ενημερωμένο",
+      title: labels.noNotificationsTitle,
+      message: labels.noNotificationsMessage,
+      meta: labels.updated,
     });
   }
 
@@ -134,7 +168,9 @@ const toneClasses = {
 };
 
 export default function AgriAdvisor({ weather, profile, fields = [], loading = false }) {
-  const notifications = buildNotifications({ weather, profile, fields });
+  const { language } = useAppPreferences();
+  const labels = ADVISOR_LABELS[language] || ADVISOR_LABELS.el;
+  const notifications = buildNotifications({ weather, profile, fields, labels });
 
   return (
     <Surface className="p-5">
@@ -148,7 +184,7 @@ export default function AgriAdvisor({ weather, profile, fields = [], loading = f
           </p>
           <h2 className="mt-1 text-xl font-black text-slate-950 dark:text-slate-100">Notification List</h2>
           <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
-            Ειδοποιήσεις με βάση καιρό, έδαφος και προτεραιότητα εργασιών.
+            {labels.description}
           </p>
         </div>
       </div>
@@ -156,7 +192,7 @@ export default function AgriAdvisor({ weather, profile, fields = [], loading = f
       <div className="mt-5 space-y-3">
         {loading ? (
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60">
-            <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Ανάλυση συνθηκών...</p>
+            <p className="text-sm font-bold text-slate-500 dark:text-slate-400">{labels.analyzing}</p>
           </div>
         ) : (
           notifications.map((notification) => {

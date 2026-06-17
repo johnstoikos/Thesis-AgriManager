@@ -64,6 +64,7 @@ class AiAssistantControllerTest {
         when(cropRepository.findByFieldOwnerUsername("farmer")).thenReturn(List.of(crop));
         when(aiAssistantService.chatWithGroq(
                 org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.anyString()
         )).thenReturn("Απάντηση");
 
@@ -73,12 +74,13 @@ class AiAssistantControllerTest {
                 cropRepository
         );
 
-        var response = controller.chat(new AiChatRequestDTO("Χρειάζεται πότισμα;"));
+        var response = controller.chat(new AiChatRequestDTO("Χρειάζεται πότισμα;", "en"));
 
         ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
         verify(aiAssistantService).chatWithGroq(
                 org.mockito.ArgumentMatchers.eq("Χρειάζεται πότισμα;"),
-                promptCaptor.capture()
+                promptCaptor.capture(),
+                org.mockito.ArgumentMatchers.eq("en")
         );
         verify(fieldRepository).findByOwnerUsername("farmer");
         verify(cropRepository).findByFieldOwnerUsername("farmer");

@@ -20,6 +20,7 @@ import {
   LandPlot,
   Layers3,
   Scale,
+  Search,
   Sprout,
   TrendingDown,
   TrendingUp,
@@ -27,10 +28,12 @@ import {
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import api from "../api/axios";
+import { useAppPreferences } from "../i18n";
 import {
   Button,
   EmptyState,
   ErrorState,
+  FieldInput,
   FieldLabel,
   FieldSelect,
   PageHeader,
@@ -57,33 +60,190 @@ const EMPTY_ANALYTICS = {
 };
 
 const RANGE_OPTIONS = [
-  { value: "month", label: "Μήνας" },
-  { value: "six_months", label: "6μηνο" },
-  { value: "year", label: "Έτος" },
+  { value: "month" },
+  { value: "six_months" },
+  { value: "year" },
 ];
 
 const PIE_COLORS = ["#0f172a", "#0f766e", "#0891b2", "#65a30d", "#d97706", "#7c3aed", "#be123c", "#475569"];
 
-const formatCurrency = (value) =>
-  new Intl.NumberFormat("el-GR", {
+const formatCurrency = (value, locale = "el-GR") =>
+  new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "EUR",
     maximumFractionDigits: 2,
   }).format(Number(value || 0));
 
-const formatNumber = (value, digits = 2) =>
-  new Intl.NumberFormat("el-GR", {
+const formatNumber = (value, digits = 2, locale = "el-GR") =>
+  new Intl.NumberFormat(locale, {
     maximumFractionDigits: digits,
     minimumFractionDigits: 0,
   }).format(Number(value || 0));
 
-const formatMonth = (month) => {
+const formatMonth = (month, locale = "el-GR") => {
   const date = new Date(`${month}-01T00:00:00`);
   if (Number.isNaN(date.getTime())) return month;
-  return date.toLocaleDateString("el-GR", { month: "short", year: "2-digit" });
+  return date.toLocaleDateString(locale, { month: "short", year: "2-digit" });
 };
 
-const getUserLabel = (user) => user.fullName || user.username || `Χρήστης #${user.id}`;
+const getUserLabel = (user, labels) => user.fullName || user.username || labels.userFallback(user.id);
+
+const ADMIN_CROP_LABELS = {
+  el: {
+    userFallback: (id) => `Χρήστης #${id}`,
+    usersLoadError: "Δεν ήταν δυνατή η φόρτωση της λίστας αγροτών.",
+    analyticsLoadError: "Δεν ήταν δυνατή η φόρτωση των στατιστικών.",
+    pdfError: "Δεν ήταν δυνατή η δημιουργία του PDF.",
+    allFarmers: "Όλοι οι αγρότες",
+    rangeOptions: {
+      month: "Μήνας",
+      six_months: "6μηνο",
+      year: "Έτος",
+    },
+    expensesRangeHelper: (range) => `Εργασίες χρονικού εύρους · ${range}`,
+    expensesAllHelper: "Όλες οι εργασίες των αγροτών",
+    revenueRangeHelper: (range) => `Παραγωγή επί τιμή πώλησης · ${range}`,
+    revenueAllHelper: "Όλες οι καλλιέργειες των αγροτών",
+    yieldRangeHelper: (range) => `Παραγωγή χρονικού εύρους · ${range}`,
+    yieldAllHelper: "Συνολική παραγωγή όλων των αγροτών",
+    pageTitle: "Στατιστικά Καλλιεργειών",
+    pageDescription: "Συγκεντρωτική ή εξατομικευμένη εικόνα παραγωγής, οικονομικών και αγροτεμαχίων.",
+    exportPdf: "Εξαγωγή σε PDF",
+    creatingPdf: "Δημιουργία PDF...",
+    userSelection: "Επιλογή Χρήστη",
+    userSearch: "Αναζήτηση Χρήστη",
+    userSearchPlaceholder: "Αναζήτηση με όνομα, username ή email...",
+    noUsersMatch: "Δεν βρέθηκαν χρήστες με αυτή την αναζήτηση",
+    dateRange: "Χρονικό Εύρος",
+    errorTitle: "Σφάλμα Analytics",
+    productionSection: "Παραγωγικά και λειτουργικά στοιχεία",
+    totalFields: "Συνολικά Χωράφια",
+    currentStatus: "Τρέχουσα κατάσταση",
+    totalStremmata: "Συνολικά Στρέμματα",
+    stremmataSum: "Άθροισμα εκτάσεων",
+    activeCrops: "Ενεργές Καλλιέργειες",
+    registeredCrops: "Καταχωρημένες καλλιέργειες",
+    pendingTasks: "Εκκρεμείς Εργασίες",
+    pendingHelper: "Tasks με status PENDING",
+    completedTasks: "Ολοκληρωμένες",
+    completedHelper: "Tasks με status COMPLETED",
+    financeSection: "Οικονομικά και παραγωγή",
+    totalExpenses: "Συνολικά Έξοδα",
+    totalRevenue: "Συνολικά Έσοδα",
+    netProfit: "Καθαρό Κέρδος",
+    profitHelper: "Έσοδα μείον έξοδα",
+    totalYield: "Συνολική Σοδειά",
+    monthlyFinanceTitle: "Έσοδα και Έξοδα ανά Μήνα",
+    noFinanceTitle: "Δεν υπάρχουν οικονομικά δεδομένα",
+    noFinanceDescription: "Το γράφημα θα εμφανιστεί όταν υπάρχουν έσοδα ή έξοδα στο επιλεγμένο χρονικό εύρος.",
+    costExpenses: "Κόστος (Έξοδα)",
+    profitRevenue: "Κέρδος (Έσοδα)",
+    areaDistributionTitle: "Κατανομή Εκτάσεων",
+    areaDistributionDescription: "Στρέμματα ανά χωράφι για την τρέχουσα επιλογή χρήστη.",
+    noAreaTitle: "Δεν υπάρχουν διαθέσιμες εκτάσεις",
+    noAreaDescription: "Το γράφημα θα εμφανιστεί όταν τα χωράφια έχουν καταχωρημένη έκταση.",
+    area: "Έκταση",
+    stremmataShort: "στρ.",
+    squareMetersShort: "m²",
+    fieldAnalysisTitle: "Ανάλυση ανά Χωράφι",
+    fieldAnalysisDescription: (user) => `Εδαφολογικά, παραγωγικά και οικονομικά στοιχεία για: ${user}.`,
+    noFieldsTitle: "Δεν υπάρχουν χωράφια",
+    noFieldsDescription: "Ο επιλεγμένος αγρότης δεν έχει καταχωρημένα χωράφια.",
+    fieldName: "Όνομα Χωραφιού",
+    areaStremmata: "Έκταση (στρ.)",
+    soilType: "Τύπος Εδάφους",
+    harvestKg: "Σοδειά (Kg)",
+    expenses: "Έξοδα",
+    revenue: "Έσοδα",
+    noData: "Δεν υπάρχουν δεδομένα",
+    reportDate: "Ημερομηνία αναφοράς",
+    selectedUser: "Επιλογή χρήστη",
+    financialRange: "Χρονικό εύρος οικονομικών",
+    fields: "Χωράφια",
+    crops: "Καλλιέργειες",
+    pendingPdf: "Εκκρεμείς εργασίες",
+    completedPdf: "Ολοκληρωμένες εργασίες",
+    field: "Χωράφι",
+    harvest: "Σοδειά",
+  },
+  en: {
+    userFallback: (id) => `User #${id}`,
+    usersLoadError: "The farmer list could not be loaded.",
+    analyticsLoadError: "Statistics could not be loaded.",
+    pdfError: "The PDF could not be generated.",
+    allFarmers: "All farmers",
+    rangeOptions: {
+      month: "Month",
+      six_months: "6 months",
+      year: "Year",
+    },
+    expensesRangeHelper: (range) => `Tasks in selected range · ${range}`,
+    expensesAllHelper: "All farmers' tasks",
+    revenueRangeHelper: (range) => `Production multiplied by sale price · ${range}`,
+    revenueAllHelper: "All farmers' crops",
+    yieldRangeHelper: (range) => `Production in selected range · ${range}`,
+    yieldAllHelper: "Total production across all farmers",
+    pageTitle: "Crop Statistics",
+    pageDescription: "Aggregated or user-specific view of production, finances, and fields.",
+    exportPdf: "Export PDF",
+    creatingPdf: "Generating PDF...",
+    userSelection: "User Selection",
+    userSearch: "User Search",
+    userSearchPlaceholder: "Search by name, username, or email...",
+    noUsersMatch: "No users match this search",
+    dateRange: "Date Range",
+    errorTitle: "Analytics Error",
+    productionSection: "Production and Operational Data",
+    totalFields: "Total Fields",
+    currentStatus: "Current status",
+    totalStremmata: "Total Area",
+    stremmataSum: "Sum of all field areas",
+    activeCrops: "Active Crops",
+    registeredCrops: "Registered crops",
+    pendingTasks: "Pending Tasks",
+    pendingHelper: "Tasks with PENDING status",
+    completedTasks: "Completed",
+    completedHelper: "Tasks with COMPLETED status",
+    financeSection: "Finances and Production",
+    totalExpenses: "Total Expenses",
+    totalRevenue: "Total Revenue",
+    netProfit: "Net Profit",
+    profitHelper: "Revenue minus expenses",
+    totalYield: "Total Yield",
+    monthlyFinanceTitle: "Revenue and Expenses per Month",
+    noFinanceTitle: "No financial data",
+    noFinanceDescription: "The chart will appear when the selected range contains revenue or expenses.",
+    costExpenses: "Cost (Expenses)",
+    profitRevenue: "Profit (Revenue)",
+    areaDistributionTitle: "Area Distribution",
+    areaDistributionDescription: "Area per field for the current user selection.",
+    noAreaTitle: "No available area data",
+    noAreaDescription: "The chart will appear when fields have registered area.",
+    area: "Area",
+    stremmataShort: "strem.",
+    squareMetersShort: "m²",
+    fieldAnalysisTitle: "Field Analysis",
+    fieldAnalysisDescription: (user) => `Soil, production, and financial data for: ${user}.`,
+    noFieldsTitle: "No fields found",
+    noFieldsDescription: "The selected farmer has no registered fields.",
+    fieldName: "Field Name",
+    areaStremmata: "Area (strem.)",
+    soilType: "Soil Type",
+    harvestKg: "Yield (Kg)",
+    expenses: "Expenses",
+    revenue: "Revenue",
+    noData: "No data",
+    reportDate: "Report date",
+    selectedUser: "Selected user",
+    financialRange: "Financial date range",
+    fields: "Fields",
+    crops: "Crops",
+    pendingPdf: "Pending tasks",
+    completedPdf: "Completed tasks",
+    field: "Field",
+    harvest: "Yield",
+  },
+};
 
 function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
@@ -102,8 +262,23 @@ function displayValue(value) {
   return value;
 }
 
+function normalizeSearchValue(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
 export default function CropStatistics() {
+  const { language } = useAppPreferences();
+  const labels = ADMIN_CROP_LABELS[language] || ADMIN_CROP_LABELS.el;
+  const locale = language === "en" ? "en-US" : "el-GR";
+  const money = (value) => formatCurrency(value, locale);
+  const number = (value, digits = 2) => formatNumber(value, digits, locale);
+  const formatTotalArea = (stremmata) => {
+    const value = Number(stremmata || 0);
+    if (language === "en") return `${number(value * 1000, 0)} ${labels.squareMetersShort}`;
+    return `${number(value)} ${labels.stremmataShort}`;
+  };
   const [users, setUsers] = useState([]);
+  const [userSearchTerm, setUserSearchTerm] = useState("");
   const [selectedUserId, setSelectedUserId] = useState("");
   const [selectedRange, setSelectedRange] = useState("year");
   const [analytics, setAnalytics] = useState(EMPTY_ANALYTICS);
@@ -130,8 +305,8 @@ export default function CropStatistics() {
           )
         );
       } catch (err) {
-        console.error("Σφάλμα φόρτωσης χρηστών για τα analytics:", err);
-        if (!ignore) setUsersError("Δεν ήταν δυνατή η φόρτωση της λίστας αγροτών.");
+        console.error("Failed to load analytics users:", err);
+        if (!ignore) setUsersError(labels.usersLoadError);
       }
     };
 
@@ -139,7 +314,7 @@ export default function CropStatistics() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [labels.usersLoadError]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -169,8 +344,8 @@ export default function CropStatistics() {
         });
       } catch (err) {
         if (err.code === "ERR_CANCELED") return;
-        console.error("Σφάλμα φόρτωσης admin analytics:", err);
-        setError(err.response?.data?.message || "Δεν ήταν δυνατή η φόρτωση των στατιστικών.");
+        console.error("Failed to load admin analytics:", err);
+        setError(err.response?.data?.message || labels.analyticsLoadError);
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -178,7 +353,7 @@ export default function CropStatistics() {
 
     fetchAnalytics();
     return () => controller.abort();
-  }, [selectedRange, selectedUserId]);
+  }, [labels.analyticsLoadError, selectedRange, selectedUserId]);
 
   const monthlyData = useMemo(() => {
     const months = new Set([
@@ -190,11 +365,11 @@ export default function CropStatistics() {
       .sort((first, second) => first.localeCompare(second))
       .map((month) => ({
         month,
-        label: formatMonth(month),
+        label: formatMonth(month, locale),
         expenses: Number(analytics.monthlyExpenses?.[month] || 0),
         revenue: Number(analytics.monthlyRevenue?.[month] || 0),
       }));
-  }, [analytics.monthlyExpenses, analytics.monthlyRevenue]);
+  }, [analytics.monthlyExpenses, analytics.monthlyRevenue, locale]);
 
   const pieData = useMemo(
     () =>
@@ -209,19 +384,46 @@ export default function CropStatistics() {
   );
 
   const selectedUser = users.find((user) => String(user.id) === selectedUserId);
-  const selectedUserLabel = selectedUser ? getUserLabel(selectedUser) : "Όλοι οι αγρότες";
+  const filteredUsers = useMemo(() => {
+    const query = normalizeSearchValue(userSearchTerm);
+    if (!query) return users;
+
+    return users.filter((user) => {
+      const searchableValues = [
+        user.id,
+        user.username,
+        user.email,
+        user.fullName,
+        user.full_name,
+        getUserLabel(user, labels),
+      ];
+      return searchableValues.some((value) => normalizeSearchValue(value).includes(query));
+    });
+  }, [labels, userSearchTerm, users]);
+  const visibleUsers = useMemo(() => {
+    if (!selectedUser || filteredUsers.some((user) => String(user.id) === selectedUserId)) {
+      return filteredUsers;
+    }
+    return [selectedUser, ...filteredUsers];
+  }, [filteredUsers, selectedUser, selectedUserId]);
+  const hasUserSearch = userSearchTerm.trim().length > 0;
+  const selectUserFromSearch = (userId) => {
+    setSelectedUserId(String(userId));
+    setUserSearchTerm("");
+  };
+  const selectedUserLabel = selectedUser ? getUserLabel(selectedUser, labels) : labels.allFarmers;
   const selectedRangeLabel =
-    RANGE_OPTIONS.find((option) => option.value === selectedRange)?.label || selectedRange;
+    labels.rangeOptions[selectedRange] || selectedRange;
   const showFieldsTable = selectedUserId !== "";
   const expensesHelper = showFieldsTable
-    ? `Εργασίες χρονικού εύρους · ${selectedRangeLabel}`
-    : "Όλες οι εργασίες των αγροτών";
+    ? labels.expensesRangeHelper(selectedRangeLabel)
+    : labels.expensesAllHelper;
   const revenueHelper = showFieldsTable
-    ? `Παραγωγή επί τιμή πώλησης · ${selectedRangeLabel}`
-    : "Όλες οι καλλιέργειες των αγροτών";
+    ? labels.revenueRangeHelper(selectedRangeLabel)
+    : labels.revenueAllHelper;
   const yieldHelper = showFieldsTable
-    ? `Παραγωγή χρονικού εύρους · ${selectedRangeLabel}`
-    : "Συνολική παραγωγή όλων των αγροτών";
+    ? labels.yieldRangeHelper(selectedRangeLabel)
+    : labels.yieldAllHelper;
 
   const exportToPdf = async () => {
     setExporting(true);
@@ -238,14 +440,14 @@ export default function CropStatistics() {
       doc.setTextColor(20, 20, 20);
 
       doc.setFontSize(20);
-      doc.text("AgriManager - Στατιστικά Καλλιεργειών", 40, 44);
+      doc.text(`AgriManager - ${labels.pageTitle}`, 40, 44);
       doc.setDrawColor(25, 25, 25);
       doc.line(40, 56, 802, 56);
 
       doc.setFontSize(10);
-      doc.text(`Ημερομηνία αναφοράς: ${new Date().toLocaleDateString("el-GR")}`, 40, 76);
-      doc.text(`Επιλογή χρήστη: ${selectedUserLabel}`, 40, 92);
-      doc.text(`Χρονικό εύρος οικονομικών: ${selectedRangeLabel}`, 40, 108);
+      doc.text(`${labels.reportDate}: ${new Date().toLocaleDateString(locale)}`, 40, 76);
+      doc.text(`${labels.selectedUser}: ${selectedUserLabel}`, 40, 92);
+      doc.text(`${labels.financialRange}: ${selectedRangeLabel}`, 40, 108);
 
       const tableStyles = {
         font: "LiberationSans",
@@ -264,18 +466,18 @@ export default function CropStatistics() {
       autoTable(doc, {
         startY: 128,
         head: [[
-          "Χωράφια",
-          "Στρέμματα",
-          "Καλλιέργειες",
-          "Εκκρεμείς εργασίες",
-          "Ολοκληρωμένες εργασίες",
+          labels.fields,
+          labels.totalStremmata,
+          labels.crops,
+          labels.pendingPdf,
+          labels.completedPdf,
         ]],
         body: [[
-          formatNumber(analytics.totalFieldsCount, 0),
-          formatNumber(analytics.totalAreaStremmata),
-          formatNumber(analytics.totalCropsCount, 0),
-          formatNumber(analytics.pendingTasksCount, 0),
-          formatNumber(analytics.completedTasksCount, 0),
+          number(analytics.totalFieldsCount, 0),
+          formatTotalArea(analytics.totalAreaStremmata),
+          number(analytics.totalCropsCount, 0),
+          number(analytics.pendingTasksCount, 0),
+          number(analytics.completedTasksCount, 0),
         ]],
         styles: tableStyles,
         headStyles,
@@ -284,12 +486,12 @@ export default function CropStatistics() {
 
       autoTable(doc, {
         startY: doc.lastAutoTable.finalY + 18,
-        head: [["Συνολικά έξοδα", "Συνολικά έσοδα", "Καθαρό κέρδος", "Συνολική σοδειά"]],
+        head: [[labels.totalExpenses, labels.totalRevenue, labels.netProfit, labels.totalYield]],
         body: [[
-          formatCurrency(analytics.totalExpenses),
-          formatCurrency(analytics.totalRevenue),
-          formatCurrency(analytics.netProfit),
-          `${formatNumber(analytics.totalYieldKg)} kg`,
+          money(analytics.totalExpenses),
+          money(analytics.totalRevenue),
+          money(analytics.netProfit),
+          `${number(analytics.totalYieldKg)} kg`,
         ]],
         styles: tableStyles,
         headStyles,
@@ -300,26 +502,26 @@ export default function CropStatistics() {
         autoTable(doc, {
           startY: doc.lastAutoTable.finalY + 22,
           head: [[
-            "Χωράφι",
-            "Έκταση",
-            "Τύπος εδάφους",
+            labels.field,
+            labels.area,
+            labels.soilType,
             "pH",
-            "Σοδειά",
-            "Έσοδα",
-            "Έξοδα",
+            labels.harvest,
+            labels.revenue,
+            labels.expenses,
           ]],
           body:
             analytics.fieldsBreakdown.length > 0
               ? analytics.fieldsBreakdown.map((field) => [
                   field.fieldName,
-                  `${formatNumber(field.area)} στρ.`,
+                  `${number(field.area)} ${labels.stremmataShort}`,
                   displayValue(field.soilType),
                   displayValue(field.soilPh),
-                  `${formatNumber(field.totalYieldKg)} kg`,
-                  formatCurrency(field.fieldRevenue),
-                  formatCurrency(field.fieldExpenses),
+                  `${number(field.totalYieldKg)} kg`,
+                  money(field.fieldRevenue),
+                  money(field.fieldExpenses),
                 ])
-              : [["Δεν υπάρχουν δεδομένα", "-", "-", "-", "-", "-", "-"]],
+              : [[labels.noData, "-", "-", "-", "-", "-", "-"]],
           styles: { ...tableStyles, fontSize: 8, cellPadding: 6 },
           headStyles,
           alternateRowStyles: { fillColor: [245, 245, 245] },
@@ -329,8 +531,8 @@ export default function CropStatistics() {
 
       doc.save(`agrimanager-crop-statistics-${selectedRange}.pdf`);
     } catch (err) {
-      console.error("Σφάλμα εξαγωγής admin analytics PDF:", err);
-      alert("Δεν ήταν δυνατή η δημιουργία του PDF.");
+      console.error("Failed to export admin analytics PDF:", err);
+      alert(labels.pdfError);
     } finally {
       setExporting(false);
     }
@@ -340,12 +542,12 @@ export default function CropStatistics() {
     <div className="mx-auto w-full max-w-7xl space-y-6 px-4 md:px-6">
       <PageHeader
         eyebrow="ADMIN MODULE"
-        title="Στατιστικά Καλλιεργειών"
-        description="Συγκεντρωτική ή εξατομικευμένη εικόνα παραγωγής, οικονομικών και αγροτεμαχίων."
+        title={labels.pageTitle}
+        description={labels.pageDescription}
         actions={
           <Button onClick={exportToPdf} variant="secondary" disabled={loading || exporting}>
             <Download className="h-4 w-4" />
-            {exporting ? "Δημιουργία PDF..." : "Εξαγωγή σε PDF"}
+            {exporting ? labels.creatingPdf : labels.exportPdf}
           </Button>
         }
       />
@@ -353,42 +555,105 @@ export default function CropStatistics() {
       <Surface className="p-5 md:p-6">
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <FieldLabel>Επιλογή Χρήστη</FieldLabel>
+            <FieldLabel>{labels.userSelection}</FieldLabel>
             <FieldSelect
               value={selectedUserId}
               onChange={(event) => setSelectedUserId(event.target.value)}
               disabled={Boolean(usersError)}
             >
-              <option value="">Όλοι οι αγρότες</option>
-              {users.map((user) => (
+              <option value="">{labels.allFarmers}</option>
+              {visibleUsers.map((user) => (
                 <option key={user.id} value={user.id}>
-                  {getUserLabel(user)} ({user.username})
+                  {getUserLabel(user, labels)} ({user.username})
                 </option>
               ))}
+              {visibleUsers.length === 0 && (
+                <option value="" disabled>
+                  {labels.noUsersMatch}
+                </option>
+              )}
             </FieldSelect>
             {usersError && <p className="mt-2 text-xs font-semibold text-rose-600">{usersError}</p>}
           </div>
 
           <div>
-            <FieldLabel>Χρονικό Εύρος</FieldLabel>
+            <FieldLabel>{labels.dateRange}</FieldLabel>
             <FieldSelect value={selectedRange} onChange={(event) => setSelectedRange(event.target.value)}>
               {RANGE_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {labels.rangeOptions[option.value]}
                 </option>
               ))}
             </FieldSelect>
+          </div>
+
+          <div className="md:col-span-2">
+            <FieldLabel>{labels.userSearch}</FieldLabel>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <FieldInput
+                type="search"
+                value={userSearchTerm}
+                onChange={(event) => setUserSearchTerm(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && filteredUsers.length > 0) {
+                    event.preventDefault();
+                    selectUserFromSearch(filteredUsers[0].id);
+                  }
+                }}
+                placeholder={labels.userSearchPlaceholder}
+                disabled={Boolean(usersError)}
+                className="py-3 pl-11 text-sm"
+              />
+            </div>
+            {hasUserSearch && (
+              <div className="mt-3 max-h-56 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                {filteredUsers.length === 0 ? (
+                  <p className="px-3 py-2 text-sm font-semibold text-slate-500 dark:text-slate-400">
+                    {labels.noUsersMatch}
+                  </p>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <button
+                      key={user.id}
+                      type="button"
+                      onClick={() => selectUserFromSearch(user.id)}
+                      className={[
+                        "flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition",
+                        String(user.id) === selectedUserId
+                          ? "bg-emerald-50 text-emerald-900 dark:bg-emerald-400/10 dark:text-emerald-200"
+                          : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800",
+                      ].join(" ")}
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-black">
+                          {getUserLabel(user, labels)} ({user.username})
+                        </span>
+                        {user.email && (
+                          <span className="block truncate text-xs font-semibold text-slate-500 dark:text-slate-400">
+                            {user.email}
+                          </span>
+                        )}
+                      </span>
+                      <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+                        #{user.id}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         </div>
       </Surface>
 
       {error ? (
-        <ErrorState title="Σφάλμα Analytics" description={error} />
+        <ErrorState title={labels.errorTitle} description={error} />
       ) : (
         <>
           <section>
             <h2 className="mb-3 text-sm font-black uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-              Παραγωγικά και λειτουργικά στοιχεία
+              {labels.productionSection}
             </h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
               {loading ? (
@@ -399,11 +664,11 @@ export default function CropStatistics() {
                 ))
               ) : (
                 <>
-                  <StatCard icon={LandPlot} title="Συνολικά Χωράφια" value={formatNumber(analytics.totalFieldsCount, 0)} helper="Τρέχουσα κατάσταση" tone="emerald" />
-                  <StatCard icon={Layers3} title="Συνολικά Στρέμματα" value={`${formatNumber(analytics.totalAreaStremmata)} στρ.`} helper="Άθροισμα εκτάσεων" tone="sky" />
-                  <StatCard icon={Sprout} title="Ενεργές Καλλιέργειες" value={formatNumber(analytics.totalCropsCount, 0)} helper="Καταχωρημένες καλλιέργειες" tone="emerald" />
-                  <StatCard icon={Clock3} title="Εκκρεμείς Εργασίες" value={formatNumber(analytics.pendingTasksCount, 0)} helper="Tasks με status PENDING" tone="amber" />
-                  <StatCard icon={CheckCircle2} title="Ολοκληρωμένες" value={formatNumber(analytics.completedTasksCount, 0)} helper="Tasks με status COMPLETED" tone="emerald" />
+                  <StatCard icon={LandPlot} title={labels.totalFields} value={number(analytics.totalFieldsCount, 0)} helper={labels.currentStatus} tone="emerald" />
+                  <StatCard icon={Layers3} title={labels.totalStremmata} value={formatTotalArea(analytics.totalAreaStremmata)} helper={labels.stremmataSum} tone="sky" />
+                  <StatCard icon={Sprout} title={labels.activeCrops} value={number(analytics.totalCropsCount, 0)} helper={labels.registeredCrops} tone="emerald" />
+                  <StatCard icon={Clock3} title={labels.pendingTasks} value={number(analytics.pendingTasksCount, 0)} helper={labels.pendingHelper} tone="amber" />
+                  <StatCard icon={CheckCircle2} title={labels.completedTasks} value={number(analytics.completedTasksCount, 0)} helper={labels.completedHelper} tone="emerald" />
                 </>
               )}
             </div>
@@ -411,7 +676,7 @@ export default function CropStatistics() {
 
           <section>
             <h2 className="mb-3 text-sm font-black uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-              Οικονομικά και παραγωγή
+              {labels.financeSection}
             </h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {loading ? (
@@ -422,96 +687,101 @@ export default function CropStatistics() {
                 ))
               ) : (
                 <>
-                  <StatCard icon={TrendingDown} title="Συνολικά Έξοδα" value={formatCurrency(analytics.totalExpenses)} helper={expensesHelper} tone="rose" />
-                  <StatCard icon={CircleDollarSign} title="Συνολικά Έσοδα" value={formatCurrency(analytics.totalRevenue)} helper={revenueHelper} tone="sky" />
-                  <StatCard icon={TrendingUp} title="Καθαρό Κέρδος" value={formatCurrency(analytics.netProfit)} helper="Έσοδα μείον έξοδα" tone={Number(analytics.netProfit || 0) >= 0 ? "emerald" : "rose"} />
-                  <StatCard icon={Scale} title="Συνολική Σοδειά" value={`${formatNumber(analytics.totalYieldKg)} kg`} helper={yieldHelper} tone="amber" />
+                  <StatCard icon={TrendingDown} title={labels.totalExpenses} value={money(analytics.totalExpenses)} helper={expensesHelper} tone="rose" />
+                  <StatCard icon={CircleDollarSign} title={labels.totalRevenue} value={money(analytics.totalRevenue)} helper={revenueHelper} tone="sky" />
+                  <StatCard icon={TrendingUp} title={labels.netProfit} value={money(analytics.netProfit)} helper={labels.profitHelper} tone={Number(analytics.netProfit || 0) >= 0 ? "emerald" : "rose"} />
+                  <StatCard icon={Scale} title={labels.totalYield} value={`${number(analytics.totalYieldKg)} kg`} helper={yieldHelper} tone="amber" />
                 </>
               )}
             </div>
           </section>
 
-          <div className="grid gap-6 xl:grid-cols-2">
-            <SectionCard title="Έσοδα και Έξοδα ανά Μήνα" description={`${selectedUserLabel} · ${selectedRangeLabel}`}>
-              {loading ? (
-                <SkeletonLines lines={8} />
-              ) : !hasMonthlyFinancialData ? (
-                <EmptyState
-                  icon={CircleDollarSign}
-                  title="Δεν υπάρχουν οικονομικά δεδομένα"
-                  description="Το γράφημα θα εμφανιστεί όταν υπάρχουν έσοδα ή έξοδα στο επιλεγμένο χρονικό εύρος."
-                  className="border-0 bg-transparent shadow-none"
-                />
-              ) : (
-                <div className="h-[360px] min-w-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={monthlyData} margin={{ top: 12, right: 18, left: 8, bottom: 4 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" vertical={false} />
-                      <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#64748b", fontSize: 12, fontWeight: 700 }} />
-                      <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `${formatNumber(value, 0)} €`} tick={{ fill: "#64748b", fontSize: 12 }} />
-                      <Tooltip formatter={(value, name) => [formatCurrency(value), name]} contentStyle={{ borderRadius: "12px", border: "1px solid #cbd5e1", fontWeight: 700 }} />
-                      <Legend />
-                      <Bar dataKey="expenses" name="Κόστος (Έξοδα)" fill="#94a3b8" radius={[6, 6, 0, 0]} />
-                      <Bar dataKey="revenue" name="Κέρδος (Έσοδα)" fill="#111827" radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </SectionCard>
+          {showFieldsTable && (
+            <div className="grid gap-6 xl:grid-cols-2">
+              <SectionCard
+                title={labels.monthlyFinanceTitle}
+                description={`${selectedUserLabel} · ${selectedRangeLabel}`}
+              >
+                {loading ? (
+                  <SkeletonLines lines={8} />
+                ) : !hasMonthlyFinancialData ? (
+                  <EmptyState
+                    icon={CircleDollarSign}
+                    title={labels.noFinanceTitle}
+                    description={labels.noFinanceDescription}
+                    className="border-0 bg-transparent shadow-none"
+                  />
+                ) : (
+                  <div className="h-[360px] min-w-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={monthlyData} margin={{ top: 12, right: 18, left: 8, bottom: 4 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" vertical={false} />
+                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#64748b", fontSize: 12, fontWeight: 700 }} />
+                        <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `${number(value, 0)} €`} tick={{ fill: "#64748b", fontSize: 12 }} />
+                        <Tooltip formatter={(value, name) => [money(value), name]} contentStyle={{ borderRadius: "12px", border: "1px solid #cbd5e1", fontWeight: 700 }} />
+                        <Legend />
+                        <Bar dataKey="expenses" name={labels.costExpenses} fill="#fb7185" radius={[6, 6, 0, 0]} />
+                        <Bar dataKey="revenue" name={labels.profitRevenue} fill="#22c55e" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </SectionCard>
 
-            <SectionCard title="Κατανομή Εκτάσεων" description="Στρέμματα ανά χωράφι για την τρέχουσα επιλογή χρήστη.">
-              {loading ? (
-                <SkeletonLines lines={8} />
-              ) : pieData.length === 0 ? (
-                <EmptyState icon={LandPlot} title="Δεν υπάρχουν διαθέσιμες εκτάσεις" description="Το γράφημα θα εμφανιστεί όταν τα χωράφια έχουν καταχωρημένη έκταση." className="border-0 bg-transparent shadow-none" />
-              ) : (
-                <div className="h-[360px] min-w-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="48%" innerRadius={64} outerRadius={118} paddingAngle={2}>
-                        {pieData.map((entry, index) => (
-                          <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value) => [`${formatNumber(value)} στρ.`, "Έκταση"]} contentStyle={{ borderRadius: "12px", border: "1px solid #cbd5e1", fontWeight: 700 }} />
-                      <Legend formatter={(value) => <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{value}</span>} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </SectionCard>
-          </div>
+              <SectionCard title={labels.areaDistributionTitle} description={labels.areaDistributionDescription}>
+                {loading ? (
+                  <SkeletonLines lines={8} />
+                ) : pieData.length === 0 ? (
+                  <EmptyState icon={LandPlot} title={labels.noAreaTitle} description={labels.noAreaDescription} className="border-0 bg-transparent shadow-none" />
+                ) : (
+                  <div className="h-[360px] min-w-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="48%" innerRadius={64} outerRadius={118} paddingAngle={2}>
+                          {pieData.map((entry, index) => (
+                            <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value) => [`${number(value)} ${labels.stremmataShort}`, labels.area]} contentStyle={{ borderRadius: "12px", border: "1px solid #cbd5e1", fontWeight: 700 }} />
+                        <Legend formatter={(value) => <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{value}</span>} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </SectionCard>
+            </div>
+          )}
 
           {showFieldsTable && (
-            <SectionCard title="Ανάλυση ανά Χωράφι" description={`Εδαφολογικά, παραγωγικά και οικονομικά στοιχεία για: ${selectedUserLabel}.`}>
+            <SectionCard title={labels.fieldAnalysisTitle} description={labels.fieldAnalysisDescription(selectedUserLabel)}>
               {loading ? (
                 <SkeletonLines lines={8} />
               ) : analytics.fieldsBreakdown.length === 0 ? (
-                <EmptyState icon={LandPlot} title="Δεν υπάρχουν χωράφια" description="Ο επιλεγμένος αγρότης δεν έχει καταχωρημένα χωράφια." className="border-0 bg-transparent shadow-none" />
+                <EmptyState icon={LandPlot} title={labels.noFieldsTitle} description={labels.noFieldsDescription} className="border-0 bg-transparent shadow-none" />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[980px] border-collapse text-left">
                     <thead>
                       <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                        <th className="px-4 py-3 font-black">Όνομα Χωραφιού</th>
-                        <th className="px-4 py-3 text-right font-black">Έκταση (στρ.)</th>
-                        <th className="px-4 py-3 font-black">Τύπος Εδάφους</th>
+                        <th className="px-4 py-3 font-black">{labels.fieldName}</th>
+                        <th className="px-4 py-3 text-right font-black">{labels.areaStremmata}</th>
+                        <th className="px-4 py-3 font-black">{labels.soilType}</th>
                         <th className="px-4 py-3 text-right font-black">pH</th>
-                        <th className="px-4 py-3 text-right font-black">Σοδειά (Kg)</th>
-                        <th className="px-4 py-3 text-right font-black">Έσοδα</th>
-                        <th className="px-4 py-3 text-right font-black">Έξοδα</th>
+                        <th className="px-4 py-3 text-right font-black">{labels.harvestKg}</th>
+                        <th className="px-4 py-3 text-right font-black">{labels.revenue}</th>
+                        <th className="px-4 py-3 text-right font-black">{labels.expenses}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {analytics.fieldsBreakdown.map((field, index) => (
                         <tr key={`${field.fieldName}-${index}`} className="border-b border-slate-100 text-sm text-slate-700 last:border-0 dark:border-slate-800 dark:text-slate-200">
                           <td className="px-4 py-4 font-black text-slate-950 dark:text-slate-100">{field.fieldName}</td>
-                          <td className="px-4 py-4 text-right">{formatNumber(field.area)}</td>
+                          <td className="px-4 py-4 text-right">{number(field.area)}</td>
                           <td className="px-4 py-4">{displayValue(field.soilType)}</td>
                           <td className="px-4 py-4 text-right">{displayValue(field.soilPh)}</td>
-                          <td className="px-4 py-4 text-right">{formatNumber(field.totalYieldKg)}</td>
-                          <td className="px-4 py-4 text-right">{formatCurrency(field.fieldRevenue)}</td>
-                          <td className="px-4 py-4 text-right">{formatCurrency(field.fieldExpenses)}</td>
+                          <td className="px-4 py-4 text-right">{number(field.totalYieldKg)}</td>
+                          <td className="px-4 py-4 text-right">{money(field.fieldRevenue)}</td>
+                          <td className="px-4 py-4 text-right">{money(field.fieldExpenses)}</td>
                         </tr>
                       ))}
                     </tbody>

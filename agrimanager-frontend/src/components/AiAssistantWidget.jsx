@@ -1,21 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 import { Bot, Send, X } from "lucide-react";
 import api from "../api/axios";
+import { useAppPreferences } from "../i18n";
 import { Button } from "./ui";
 
-const initialMessages = [
-  {
-    role: "assistant",
-    text: "Γεια σου. Μπορώ να βοηθήσω με συμβουλές για τα χωράφια, τις καλλιέργειες και τις τρέχουσες συνθήκες σου.",
-  },
-];
-
 export default function AiAssistantWidget() {
+  const { language, t } = useAppPreferences();
+  const labels = t.assistant || {};
+  const welcomeMessage = labels.welcome || "Hi. I can help with advice about your fields, crops, and current conditions.";
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState(initialMessages);
+  const [messages, setMessages] = useState([{ role: "assistant", text: welcomeMessage }]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    setMessages((current) => {
+      if (current.length === 1 && current[0]?.role === "assistant") {
+        return [{ role: "assistant", text: welcomeMessage }];
+      }
+      return current;
+    });
+  }, [welcomeMessage]);
 
   // Κρατάει το chat scrolled στο τελευταίο μήνυμα.
   useEffect(() => {
@@ -35,12 +41,12 @@ export default function AiAssistantWidget() {
     setLoading(true);
 
     try {
-      const response = await api.post("/api/ai/chat", { message: trimmedMessage });
+      const response = await api.post("/api/ai/chat", { message: trimmedMessage, language });
       setMessages((current) => [
         ...current,
         {
           role: "assistant",
-          text: typeof response.data === "string" ? response.data : "Δεν μπόρεσα να διαβάσω την απάντηση του AI.",
+          text: typeof response.data === "string" ? response.data : labels.unreadableResponse,
         },
       ]);
     } catch (error) {
@@ -50,7 +56,7 @@ export default function AiAssistantWidget() {
         ...current,
         {
           role: "assistant",
-          text: backendMessage || "Υπήρξε πρόβλημα επικοινωνίας με τον AI βοηθό. Δοκίμασε ξανά σε λίγο.",
+          text: backendMessage || labels.error || "There was a communication problem with the AI assistant.",
         },
       ]);
     } finally {
@@ -66,8 +72,8 @@ export default function AiAssistantWidget() {
           type="button"
           onClick={() => setIsOpen(true)}
           className="fixed bottom-6 right-6 z-[1400] flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-800 shadow-lg transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
-          aria-label="Άνοιγμα AI Γεωπονικού Βοηθού"
-          title="AI Γεωπονικός Βοηθός"
+          aria-label={labels.open || labels.title}
+          title={labels.title || "AI Assistant"}
         >
           <span className="text-sm font-black tracking-normal">AI</span>
         </button>
@@ -78,7 +84,7 @@ export default function AiAssistantWidget() {
         <button
           type="button"
           className="fixed inset-0 z-[1400] bg-slate-950/30 backdrop-blur-[1px] lg:hidden"
-          aria-label="Κλείσιμο AI Γεωπονικού Βοηθού"
+          aria-label={labels.close || "Close AI Assistant"}
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -99,7 +105,7 @@ export default function AiAssistantWidget() {
             </span>
             <div className="min-w-0">
               <h2 className="truncate text-base font-black text-slate-950 dark:text-slate-100">
-                AI Γεωπονικός Βοηθός
+                {labels.title || "AI Assistant"}
               </h2>
               <p className="truncate text-xs font-semibold text-slate-500 dark:text-slate-400">AgriManager</p>
             </div>
@@ -109,7 +115,7 @@ export default function AiAssistantWidget() {
             onClick={() => setIsOpen(false)}
             variant="ghost"
             className="h-11 w-11 shrink-0 rounded-xl p-0"
-            aria-label="Κλείσιμο"
+            aria-label={labels.closeButton || "Close"}
           >
             <X className="h-6 w-6" strokeWidth={2.25} />
           </Button>
@@ -138,7 +144,7 @@ export default function AiAssistantWidget() {
           {loading && (
             <div className="flex justify-start">
               <div className="rounded-2xl rounded-bl-md border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
-                Το AI σκέφτεται...
+                {labels.thinking || "AI is thinking..."}
               </div>
             </div>
           )}
@@ -158,7 +164,7 @@ export default function AiAssistantWidget() {
                 }
               }}
               rows={2}
-              placeholder="Γράψε την ερώτησή σου..."
+              placeholder={labels.placeholder || "Type your question..."}
               className="min-h-[48px] flex-1 resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/20"
               disabled={loading}
             />
@@ -167,7 +173,7 @@ export default function AiAssistantWidget() {
               variant="primary"
               className="h-12 w-12 shrink-0 rounded-2xl p-0"
               disabled={loading || !input.trim()}
-              aria-label="Αποστολή μηνύματος"
+              aria-label={labels.send || "Send message"}
             >
               <Send className="h-5 w-5" />
             </Button>

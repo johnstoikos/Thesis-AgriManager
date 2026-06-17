@@ -36,6 +36,40 @@ function toOptionalNumber(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function getPolygonStremmata(geoJsonPolygon) {
+  const coordinates = geoJsonPolygon?.coordinates;
+  if (!Array.isArray(coordinates) || !Array.isArray(coordinates[0]) || coordinates[0].length < 4) {
+    return null;
+  }
+
+  try {
+    const squareMeters = turf.area(turf.polygon(coordinates));
+    const stremmata = squareMeters / 1000;
+    return Number.isFinite(stremmata) && stremmata > 0 ? stremmata : null;
+  } catch (err) {
+    console.warn("Αδυναμία υπολογισμού έκτασης καλλιέργειας:", err);
+    return null;
+  }
+}
+
+function getCropAreaStremmata(crop) {
+  const calculatedArea = getPolygonStremmata(crop?.zoneBoundary);
+  if (calculatedArea != null) return calculatedArea;
+
+  const storedArea = toOptionalNumber(crop?.zoneArea);
+  return storedArea != null && storedArea > 0 ? storedArea : 0;
+}
+
+function getCropCoveragePercentage(crop, cropAreaStremmata, field) {
+  const fieldArea = toOptionalNumber(field?.area);
+  if (fieldArea != null && fieldArea > 0 && cropAreaStremmata > 0) {
+    return (cropAreaStremmata / fieldArea) * 100;
+  }
+
+  const storedCoverage = toOptionalNumber(crop?.coveragePercentage);
+  return storedCoverage != null ? storedCoverage : 0;
+}
+
 function WikiInfoModal({ crop, data, loading, error, onClose, labels }) {
   return (
     <ModalShell
@@ -88,8 +122,9 @@ function WikiInfoModal({ crop, data, loading, error, onClose, labels }) {
 }
 
 export default function FieldCrops() {
-  const { t } = useAppPreferences();
+  const { language, t } = useAppPreferences();
   const labels = t.cropsPage || {};
+  const locale = language === "el" ? "el-GR" : "en-US";
   const { fieldId } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -124,6 +159,15 @@ export default function FieldCrops() {
   
   // Στοιχεία φόρμας εργασίας (η θέση αποθηκεύεται στο pendingLocation)
   const [taskFormData, setTaskFormData] = useState(INITIAL_TASK_FORM_DATA);
+
+  const formatArea = (stremmata) => {
+    const numericArea = Number(stremmata || 0);
+    if (language === "en") {
+      return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(numericArea * 1000)} ${labels.squareMetersShort || "m²"}`;
+    }
+
+    return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(numericArea)} ${labels.stremmataShort || "στρ."}`;
+  };
 
   const TASK_TYPE_OPTIONS = [
     { value: "Πότισμα", label: labels.water || "Watering" },
@@ -564,7 +608,7 @@ export default function FieldCrops() {
             &larr; {labels.returnToFields || "Return to Fields"}
           </Button>
           <h2 className="text-4xl font-black text-gray-900 uppercase tracking-tighter dark:text-white">
-            {field?.name} <span className="text-lg font-normal text-gray-400 ml-2 dark:text-slate-400">{field?.area} {labels.stremmataShort || "strem."}</span>
+            {field?.name} <span className="text-lg font-normal text-gray-400 ml-2 dark:text-slate-400">{formatArea(field?.area)}</span>
           </h2>
         </div>
         <Button
@@ -594,6 +638,8 @@ export default function FieldCrops() {
                 <tbody className="divide-y divide-gray-50 dark:divide-slate-800">
                   {crops.map(crop => {
                     const isSelected = String(crop.id) === String(mapSelectedCropId);
+                    const cropAreaStremmata = getCropAreaStremmata(crop);
+                    const cropCoveragePercentage = getCropCoveragePercentage(crop, cropAreaStremmata, field);
                     return (
                       <tr
                         key={crop.id}
@@ -614,10 +660,12 @@ export default function FieldCrops() {
                         <td className="px-5 py-4 font-bold text-gray-800 dark:text-slate-100">
                           {crop.type} <span className="block font-normal text-gray-400 text-xs uppercase dark:text-slate-500">{crop.variety || labels.general || "General"}</span>
                         </td>
-                        <td className="px-4 py-4 font-mono text-sm text-slate-700 dark:text-slate-300">{crop.zoneArea?.toFixed(2)} {labels.stremmataShort || "strem."}</td>
+                        <td className="px-4 py-4 font-mono text-sm text-slate-700 dark:text-slate-300">
+                          {formatArea(cropAreaStremmata)}
+                        </td>
                         <td className="px-4 py-4 text-center">
                           <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-[10px] font-bold">
-                            {crop.coveragePercentage?.toFixed(1)}%
+                            {cropCoveragePercentage.toFixed(1)}%
                           </span>
                         </td>
                         <td className="px-5 py-4">
@@ -626,25 +674,14 @@ export default function FieldCrops() {
                               onClick={() => handleOpenWikiInfo(crop)}
                               variant="secondary"
                               size="sm"
-                              className="!gap-1.5 !rounded-lg !px-2.5 !py-1.5 !text-[11px] border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
                             >
-                              <BookOpen className="h-3 w-3" />
+                              <BookOpen className="h-3.5 w-3.5" />
                               {labels.wikiInfo || "Wiki Info"}
                             </Button>
-                            <Button
-                              onClick={() => handleOpenCropModal(crop)}
-                              variant="secondary"
-                              size="sm"
-                              className="!rounded-lg !px-2.5 !py-1.5 !text-[11px]"
-                            >
+                            <Button onClick={() => handleOpenCropModal(crop)} variant="secondary" size="sm">
                               {labels.edit || "Edit"}
                             </Button>
-                            <Button
-                              onClick={() => handleDeleteCrop(crop.id)}
-                              variant="danger"
-                              size="sm"
-                              className="!rounded-lg !px-2.5 !py-1.5 !text-[11px]"
-                            >
+                            <Button onClick={() => handleDeleteCrop(crop.id)} variant="danger" size="sm">
                               {labels.delete || "Delete"}
                             </Button>
                           </div>

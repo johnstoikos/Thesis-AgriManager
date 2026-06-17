@@ -42,7 +42,7 @@ public class AiAssistantController {
         List<Crop> crops = cropRepository.findByFieldOwnerUsername(username);
         String fieldDataPrompt = buildFieldDataPrompt(username, fields, crops);
 
-        String answer = aiAssistantService.chatWithGroq(request.message(), fieldDataPrompt);
+        String answer = aiAssistantService.chatWithGroq(request.message(), fieldDataPrompt, request.language());
         return ResponseEntity.ok(answer);
     }
 

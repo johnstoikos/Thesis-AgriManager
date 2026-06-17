@@ -4,6 +4,10 @@ import jakarta.validation.constraints.NotBlank;
 
 public record AiChatRequestDTO(
         @NotBlank(message = "Το μήνυμα δεν μπορεί να είναι κενό.")
-        String message
+        String message,
+        String language
 ) {
+    public AiChatRequestDTO(String message) {
+        this(message, null);
+    }
 }

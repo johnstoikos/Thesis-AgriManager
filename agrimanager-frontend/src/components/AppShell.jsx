@@ -31,11 +31,11 @@ import AiAssistantWidget from "./AiAssistantWidget";
 import TaskProgressControl from "./TaskProgressControl";
 import { Button, Popover, Switch } from "./ui";
 
-const formatDate = (value) => {
+const formatDate = (value, language = "el") => {
   if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleDateString("el-GR", {
+  return date.toLocaleDateString(language === "el" ? "el-GR" : "en-US", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -113,7 +113,7 @@ const notificationToneClasses = {
 };
 
 function BellDropdown({ label }) {
-  const { t } = useAppPreferences();
+  const { language, t } = useAppPreferences();
   const [isOpen, setIsOpen] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -175,7 +175,7 @@ function BellDropdown({ label }) {
           <div className="rounded-t-3xl border-b border-slate-200 px-4 py-3 dark:border-slate-800">
             <p className="text-sm font-black text-slate-950 dark:text-slate-100">{label}</p>
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              {tasks.length ? `${tasks.length} επείγουσες εργασίες` : "Δεν υπάρχουν επείγουσες εργασίες"}
+              {tasks.length ? `${tasks.length} ${t.shell.urgentTasks}` : t.shell.noUrgentTasks}
             </p>
           </div>
           <div className="max-h-96 space-y-3 overflow-y-auto p-4">
@@ -200,11 +200,11 @@ function BellDropdown({ label }) {
                             {task.taskType || "Task"}
                           </h3>
                           <span className={`text-[11px] font-black uppercase tracking-wide ${tone.meta}`}>
-                            {formatDate(task.taskDate) || "No date"}
+                            {formatDate(task.taskDate, language) || t.tasks.noDate}
                           </span>
                         </div>
                         <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                          {task.description || "Εκκρεμής εργασία που χρειάζεται έλεγχο."}
+                          {task.description || t.shell.pendingTaskFallback}
                         </p>
                         <TaskProgressControl
                           key={`${task.id}-${task.completionPercentage}-${task.harvestedYieldAmount}`}
@@ -219,7 +219,7 @@ function BellDropdown({ label }) {
                 );
               })
             ) : (
-              <p className="text-sm text-slate-500 dark:text-slate-400">Δεν υπάρχουν ειδοποιήσεις αυτή τη στιγμή.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{t.shell.noNotifications}</p>
             )}
           </div>
         </Popover>
@@ -518,7 +518,7 @@ function CalendarPopover() {
                           </p>
                         </div>
                         <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] font-black text-emerald-700 ring-1 ring-slate-200 dark:bg-slate-950 dark:text-emerald-300 dark:ring-slate-700">
-                          {formatDate(task.taskDate)}
+                          {formatDate(task.taskDate, language)}
                         </span>
                       </div>
                     </div>

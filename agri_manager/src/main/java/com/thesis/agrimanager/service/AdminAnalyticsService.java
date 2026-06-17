@@ -5,6 +5,7 @@ import com.thesis.agrimanager.dto.AdminFieldAnalyticsDTO;
 import com.thesis.agrimanager.model.Crop;
 import com.thesis.agrimanager.model.Field;
 import com.thesis.agrimanager.model.Task;
+import com.thesis.agrimanager.model.User;
 import com.thesis.agrimanager.repository.CropRepository;
 import com.thesis.agrimanager.repository.FieldRepository;
 import com.thesis.agrimanager.repository.TaskRepository;
@@ -25,27 +26,33 @@ public class AdminAnalyticsService {
     private final FieldRepository fieldRepository;
     private final CropRepository cropRepository;
     private final TaskRepository taskRepository;
+    private final UserProfitService userProfitService;
 
     public AdminAnalyticsService(
             UserRepository userRepository,
             FieldRepository fieldRepository,
             CropRepository cropRepository,
-            TaskRepository taskRepository
+            TaskRepository taskRepository,
+            UserProfitService userProfitService
     ) {
         this.userRepository = userRepository;
         this.fieldRepository = fieldRepository;
         this.cropRepository = cropRepository;
         this.taskRepository = taskRepository;
+        this.userProfitService = userProfitService;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public AdminAnalyticsDTO getAdminAnalytics(Long userId, String timeRange) {
         LocalDate endDate = LocalDate.now();
         LocalDate startDate = calculateStartDate(endDate, timeRange);
 
-        if (userId != null && userRepository.findFarmerById(userId).isEmpty()) {
-            throw new IllegalArgumentException("Ο αγρότης με ID " + userId + " δεν βρέθηκε.");
-        }
+        User selectedFarmer = userId == null
+                ? null
+                : userRepository.findFarmerById(userId)
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Ο αγρότης με ID " + userId + " δεν βρέθηκε."
+                        ));
 
         List<Field> fields = userId == null
                 ? fieldRepository.findAllOwnedByFarmers()
@@ -58,7 +65,8 @@ public class AdminAnalyticsService {
                 : taskRepository.findForAdminAnalyticsByOwnerId(userId, startDate, endDate);
         List<Crop> cropsForTotals = userId == null
                 ? cropRepository.findAllOwnedByFarmers()
-                : periodCrops;
+                : cropRepository.findAllOwnedByFarmerId(userId);
+        List<Crop> cropsForFieldBreakdown = userId == null ? List.of() : cropsForTotals;
         List<Task> tasksForTotals = userId == null
                 ? taskRepository.findAllOwnedByFarmers()
                 : periodTasks;
@@ -96,13 +104,27 @@ public class AdminAnalyticsService {
 
         BigDecimal totalRevenue = BigDecimal.ZERO;
         BigDecimal totalExpenses = BigDecimal.ZERO;
+        BigDecimal netProfit;
         double totalYieldKg = 0.0;
 
-        for (Crop crop : cropsForTotals) {
-            double cropYield = crop.getHarvestYield() == null ? 0.0 : crop.getHarvestYield();
-            BigDecimal cropRevenue = calculateRevenue(cropYield, crop.getSellingPricePerKg());
-            totalYieldKg += cropYield;
-            totalRevenue = totalRevenue.add(cropRevenue);
+        if (selectedFarmer == null) {
+            for (Task task : tasksForTotals) {
+                if (!userProfitService.isCompletedHarvest(task)) {
+                    continue;
+                }
+                double harvestedYield = task.getHarvestedYieldAmount() == null
+                        ? 0.0
+                        : task.getHarvestedYieldAmount();
+                totalYieldKg += harvestedYield;
+                totalRevenue = totalRevenue.add(userProfitService.getHarvestRevenue(task));
+            }
+        } else {
+            for (Crop crop : cropsForTotals) {
+                double cropYield = crop.getHarvestYield() == null ? 0.0 : crop.getHarvestYield();
+                BigDecimal cropRevenue = calculateRevenue(cropYield, crop.getSellingPricePerKg());
+                totalYieldKg += cropYield;
+                totalRevenue = totalRevenue.add(cropRevenue);
+            }
         }
 
         for (Task task : tasksForTotals) {
@@ -110,7 +132,7 @@ public class AdminAnalyticsService {
             totalExpenses = totalExpenses.add(taskCost);
         }
 
-        for (Crop crop : periodCrops) {
+        for (Crop crop : cropsForFieldBreakdown) {
             double cropYield = crop.getHarvestYield() == null ? 0.0 : crop.getHarvestYield();
             BigDecimal cropRevenue = calculateRevenue(cropYield, crop.getSellingPricePerKg());
             MutableFieldAnalytics fieldAnalytics = fieldsById.get(crop.getField().getId());
@@ -128,9 +150,36 @@ public class AdminAnalyticsService {
             MutableFieldAnalytics fieldAnalytics = fieldsById.get(task.getCrop().getField().getId());
             if (fieldAnalytics != null) {
                 fieldAnalytics.expenses = fieldAnalytics.expenses.add(taskCost);
+                if (selectedFarmer == null && userProfitService.isCompletedHarvest(task)) {
+                    double harvestedYield = task.getHarvestedYieldAmount() == null
+                            ? 0.0
+                            : task.getHarvestedYieldAmount();
+                    BigDecimal harvestRevenue = userProfitService.getHarvestRevenue(task);
+                    fieldAnalytics.totalYieldKg += harvestedYield;
+                    fieldAnalytics.revenue = fieldAnalytics.revenue.add(harvestRevenue);
+                }
             }
 
             addToMonth(monthlyExpenses, task.getTaskDate(), taskCost);
+            if (selectedFarmer == null && userProfitService.isCompletedHarvest(task)) {
+                addToMonth(monthlyRevenue, task.getTaskDate(), userProfitService.getHarvestRevenue(task));
+            }
+        }
+
+        if (selectedFarmer != null) {
+            UserProfitService.FinancialSnapshot snapshot = userProfitService.getSnapshot(
+                    selectedFarmer.getUsername()
+            );
+            totalRevenue = snapshot.monthlyRevenue();
+            totalExpenses = snapshot.monthlyExpenses();
+            netProfit = snapshot.semesterProfit();
+
+            monthlyExpenses.replaceAll((ignored, amount) -> BigDecimal.ZERO);
+            monthlyRevenue.replaceAll((ignored, amount) -> BigDecimal.ZERO);
+            addToMonth(monthlyExpenses, snapshot.monthlyPeriodStart(), snapshot.monthlyExpenses());
+            addToMonth(monthlyRevenue, snapshot.monthlyPeriodStart(), snapshot.monthlyRevenue());
+        } else {
+            netProfit = totalRevenue.subtract(totalExpenses);
         }
 
         List<AdminFieldAnalyticsDTO> fieldsBreakdown = fieldsById.values().stream()
@@ -148,7 +197,7 @@ public class AdminAnalyticsService {
         return new AdminAnalyticsDTO(
                 totalExpenses,
                 totalRevenue,
-                totalRevenue.subtract(totalExpenses),
+                netProfit,
                 (long) fields.size(),
                 totalAreaStremmata,
                 totalCropsCount,

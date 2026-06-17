@@ -62,11 +62,11 @@ function SettingsDropdown({ onLogout }) {
         type="button"
         onClick={() => setIsOpen((open) => !open)}
         variant="secondary"
-        className="h-10 w-10 rounded-full p-2.5 sm:h-11 sm:w-11"
+        className="h-11 w-11 rounded-full p-2.5 sm:h-12 sm:w-12"
         aria-label={t.shell.settings}
         title={t.shell.settings}
       >
-        <SettingsIcon className="h-5 w-5" />
+        <SettingsIcon className="h-6 w-6" />
       </Button>
 
       {isOpen && (
@@ -134,7 +134,7 @@ function SettingsDropdown({ onLogout }) {
 export default function AdminShell() {
   const navigate = useNavigate();
   const { user, clearAuth } = useAuth();
-  const { language, t } = useAppPreferences();
+  const { language } = useAppPreferences();
   const labels = adminLabels[language] || adminLabels.el;
   const adminName = user?.fullName || user?.username || "Administrator";
   const adminNavItems = [
@@ -181,7 +181,7 @@ export default function AdminShell() {
           ))}
         </nav>
 
-        <div className="mt-auto space-y-4 rounded-3xl border border-white/10 bg-white/10 p-4">
+        <div className="mt-auto rounded-3xl border border-white/10 bg-white/10 p-4">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-cyan-400/15 text-cyan-200">
               <UserCircle2 className="h-7 w-7" />
@@ -191,14 +191,6 @@ export default function AdminShell() {
               <p className="text-xs font-semibold text-slate-300">{labels.admin}</p>
             </div>
           </div>
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs font-bold text-slate-300">{t.shell.settings}</span>
-            <SettingsDropdown onLogout={handleLogout} />
-          </div>
-          <Button type="button" onClick={handleLogout} variant="danger" className="w-full justify-center rounded-xl">
-            <LogOut className="h-4 w-4" />
-            {t.shell.logout}
-          </Button>
         </div>
       </aside>
 
@@ -209,28 +201,29 @@ export default function AdminShell() {
               <Sprout className="h-6 w-6 text-cyan-600 dark:text-cyan-300" />
               <span>Admin</span>
             </NavLink>
-            <nav className="ml-auto flex gap-2 overflow-x-auto lg:hidden">
-              {adminNavItems.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) =>
-                    [
-                      "whitespace-nowrap rounded-xl px-3 py-2 text-xs font-black transition",
-                      isActive
-                        ? "bg-slate-950 text-white dark:bg-cyan-300 dark:text-slate-950"
-                        : "bg-white text-slate-700 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-800",
-                    ].join(" ")
-                  }
-                >
-                  {item.label}
-                </NavLink>
-              ))}
-            </nav>
-            <div className="lg:hidden">
+            <div className="ml-auto flex items-center gap-2">
               <SettingsDropdown onLogout={handleLogout} />
             </div>
           </div>
+          <nav className="mx-auto mt-3 flex max-w-7xl gap-3 overflow-x-auto px-1 pb-1 lg:hidden">
+            {adminNavItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  [
+                    "inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-2xl px-4 py-2.5 text-xs font-black transition",
+                    isActive
+                      ? "bg-slate-950 text-white dark:bg-cyan-300 dark:text-slate-950"
+                      : "bg-white/80 text-slate-600 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-800",
+                  ].join(" ")
+                }
+              >
+                {createElement(item.icon, { className: "h-4 w-4" })}
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
         </header>
 
         <main className="py-6 md:py-8">

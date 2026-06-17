@@ -732,7 +732,7 @@ export default function Analytics() {
                         <Cell key={entry.name} fill={CROP_COLORS[index % CROP_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip content={<GreekTooltip valueSuffix={cropChartUsesArea ? " στρ." : " ζώνες"} />} />
+                    <Tooltip content={<GreekTooltip valueSuffix={cropChartUsesArea ? ` ${labels.stremmataShort}` : ` ${labels.zoneUnit}`} />} />
                     <Legend
                       formatter={(value) => <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">{value}</span>}
                       iconType="circle"

@@ -42,6 +42,16 @@ public interface CropRepository extends JpaRepository<Crop, Long> {
             FROM Crop c
             JOIN FETCH c.field f
             WHERE f.owner.id = :ownerId
+              AND 'ROLE_USER' MEMBER OF f.owner.roles
+              AND 'ROLE_ADMIN' NOT MEMBER OF f.owner.roles
+            """)
+    List<Crop> findAllOwnedByFarmerId(@Param("ownerId") Long ownerId);
+
+    @Query("""
+            SELECT c
+            FROM Crop c
+            JOIN FETCH c.field f
+            WHERE f.owner.id = :ownerId
               AND c.plantingDate BETWEEN :startDate AND :endDate
               AND 'ROLE_USER' MEMBER OF f.owner.roles
               AND 'ROLE_ADMIN' NOT MEMBER OF f.owner.roles

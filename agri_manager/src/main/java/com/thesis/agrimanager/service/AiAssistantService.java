@@ -16,12 +16,23 @@ import java.util.Map;
 @Service
 public class AiAssistantService {
 
-    private static final String SYSTEM_INSTRUCTION = """
+    private static final String GREEK_SYSTEM_INSTRUCTION = """
             Είσαι ο AgriManager AI, ένας έμπειρος και εξειδικευμένος ψηφιακός γεωπόνος.
-            Απάντησε στα ελληνικά, με σύντομο, πρακτικό και επιστημονικό τρόπο.
+            Απάντησε μόνο στα ελληνικά.
+            Διατήρησε σύντομο, πρακτικό και επιστημονικό ύφος.
             Χρησιμοποίησε τα δεδομένα των χωραφιών και των καλλιεργειών του αγρότη.
             Αν λείπουν κρίσιμα δεδομένα, εξήγησε τι χρειάζεται πριν δώσεις ασφαλή σύσταση.
             Μην παρουσιάζεις υποθέσεις ως βεβαιότητες.
+            """;
+
+    private static final String ENGLISH_SYSTEM_INSTRUCTION = """
+            You are AgriManager AI, an experienced digital agronomist.
+            Answer only in English.
+            The farm context may contain Greek labels or values; translate and explain them naturally in English.
+            Keep the answer concise, practical, and scientifically grounded.
+            Use the farmer's field and crop data.
+            If critical data is missing, explain what is needed before giving a safe recommendation.
+            Do not present assumptions as facts.
             """;
 
     private final RestTemplate restTemplate;
@@ -42,6 +53,10 @@ public class AiAssistantService {
     }
 
     public String chatWithGroq(String userMessage, String fieldDataPrompt) {
+        return chatWithGroq(userMessage, fieldDataPrompt, "el");
+    }
+
+    public String chatWithGroq(String userMessage, String fieldDataPrompt, String language) {
         if (groqApiKey == null || groqApiKey.isBlank()) {
             throw new IllegalStateException(
                     "Δεν έχει οριστεί Groq API key. Ρύθμισε τη μεταβλητή περιβάλλοντος GROQ_API_KEY."
@@ -52,13 +67,15 @@ public class AiAssistantService {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(groqApiKey);
 
+        String targetLanguage = resolveTargetLanguage(userMessage, language);
+
         Map<String, Object> requestBody = Map.of(
                 "model", groqModel,
                 "messages", List.of(
-                        Map.of("role", "system", "content", SYSTEM_INSTRUCTION),
+                        Map.of("role", "system", "content", buildSystemInstruction(targetLanguage)),
                         Map.of(
                                 "role", "user",
-                                "content", fieldDataPrompt + "\n\nΕρώτηση αγρότη:\n" + userMessage
+                                "content", buildUserPrompt(fieldDataPrompt, userMessage, targetLanguage)
                         )
                 ),
                 "temperature", 0.3
@@ -74,6 +91,43 @@ public class AiAssistantService {
         } catch (RestClientException ex) {
             throw new RuntimeException("Αδυναμία επικοινωνίας με το Groq API.", ex);
         }
+    }
+
+    private String resolveTargetLanguage(String userMessage, String applicationLanguage) {
+        String message = userMessage == null ? "" : userMessage;
+        boolean hasGreek = message.matches(".*\\p{InGreek}.*");
+        boolean hasLatin = message.matches(".*[A-Za-z].*");
+
+        if (hasGreek && !hasLatin) return "el";
+        if (hasLatin && !hasGreek) return "en";
+        return "en".equalsIgnoreCase(applicationLanguage) ? "en" : "el";
+    }
+
+    private String buildSystemInstruction(String targetLanguage) {
+        return "en".equals(targetLanguage) ? ENGLISH_SYSTEM_INSTRUCTION : GREEK_SYSTEM_INSTRUCTION;
+    }
+
+    private String buildUserPrompt(String fieldDataPrompt, String userMessage, String targetLanguage) {
+        if ("en".equals(targetLanguage)) {
+            return """
+                    Farm context:
+                    %s
+
+                    Farmer question:
+                    %s
+
+                    Reminder: answer only in English.
+                    """.formatted(fieldDataPrompt, userMessage);
+        }
+
+        return """
+                %s
+
+                Ερώτηση αγρότη:
+                %s
+
+                Υπενθύμιση: απάντησε μόνο στα ελληνικά.
+                """.formatted(fieldDataPrompt, userMessage);
     }
 
     private String extractAnswer(JsonNode responseBody) {

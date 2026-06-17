@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, ShieldAlert, Trash2, UsersRound } from "lucide-react";
 import api from "../api/axios";
+import { useAppPreferences } from "../i18n";
 import {
   Button,
   EmptyState,
@@ -20,13 +21,54 @@ function getRoles(user) {
   return user.roles;
 }
 
+const ADMIN_USERS_LABELS = {
+  el: {
+    title: "Διαχείριση Χρηστών",
+    loadingDescription: "Προβολή και διαγραφή εγγεγραμμένων χρηστών της πλατφόρμας.",
+    pageDescription: "Καθαρή λίστα χρηστών με δυνατότητα οριστικής διαγραφής από τον admin.",
+    loadErrorTitle: "Σφάλμα φόρτωσης χρηστών",
+    loadError: "Δεν ήταν δυνατή η φόρτωση των χρηστών.",
+    deleteError: "Δεν ήταν δυνατή η διαγραφή του χρήστη.",
+    retry: "Επανάληψη",
+    refresh: "Ανανέωση",
+    usersTitle: "Χρήστες Πλατφόρμας",
+    usersDescription: "Οι διαχειριστικές κλήσεις προστατεύονται από ROLE_ADMIN στο backend.",
+    emptyTitle: "Δεν υπάρχουν χρήστες",
+    emptyDescription: "Ο πίνακας θα γεμίσει όταν υπάρχουν εγγεγραμμένοι χρήστες.",
+    delete: "Διαγραφή",
+    warning: "Η διαγραφή είναι οριστική και πρέπει να χρησιμοποιείται μόνο όταν είσαι βέβαιος ότι δεν χρειάζονται τα δεδομένα του χρήστη.",
+    confirmDelete: (username) =>
+      `Να διαγραφεί οριστικά ο χρήστης "${username}";\n\nΗ ενέργεια θα διαγράψει και τα σχετικά δεδομένα του.`,
+  },
+  en: {
+    title: "User Management",
+    loadingDescription: "View and delete registered platform users.",
+    pageDescription: "Clean user list with permanent admin deletion.",
+    loadErrorTitle: "User Loading Error",
+    loadError: "Users could not be loaded.",
+    deleteError: "The user could not be deleted.",
+    retry: "Retry",
+    refresh: "Refresh",
+    usersTitle: "Platform Users",
+    usersDescription: "Administrative calls are protected by ROLE_ADMIN on the backend.",
+    emptyTitle: "No users found",
+    emptyDescription: "The table will populate when registered users exist.",
+    delete: "Delete",
+    warning: "Deletion is permanent and should only be used when you are sure the user's data is no longer needed.",
+    confirmDelete: (username) =>
+      `Permanently delete user "${username}"?\n\nThis action will also delete the user's related data.`,
+  },
+};
+
 export default function AdminUsersManagement() {
+  const { language } = useAppPreferences();
+  const labels = ADMIN_USERS_LABELS[language] || ADMIN_USERS_LABELS.el;
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState(null);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     setError("");
 
@@ -42,20 +84,18 @@ export default function AdminUsersManagement() {
       );
     } catch (err) {
       console.error("Σφάλμα φόρτωσης χρηστών:", err);
-      setError("Δεν ήταν δυνατή η φόρτωση των χρηστών.");
+      setError(labels.loadError);
     } finally {
       setLoading(false);
     }
-  };
+  }, [labels.loadError]);
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
 
   const handleDelete = async (user) => {
-    const confirmed = window.confirm(
-      `Να διαγραφεί οριστικά ο χρήστης "${user.username}";\n\nΗ ενέργεια θα διαγράψει και τα σχετικά δεδομένα του.`
-    );
+    const confirmed = window.confirm(labels.confirmDelete(user.username));
 
     if (!confirmed) return;
 
@@ -67,7 +107,7 @@ export default function AdminUsersManagement() {
       setUsers((currentUsers) => currentUsers.filter((currentUser) => currentUser.id !== user.id));
     } catch (err) {
       console.error("Σφάλμα διαγραφής χρήστη:", err);
-      setError(err.response?.data?.message || "Δεν ήταν δυνατή η διαγραφή του χρήστη.");
+      setError(err.response?.data?.message || labels.deleteError);
     } finally {
       setDeletingId(null);
     }
@@ -78,8 +118,8 @@ export default function AdminUsersManagement() {
       <div className="mx-auto w-full max-w-7xl space-y-6 px-4 md:px-6">
         <PageHeader
           eyebrow="ADMIN MODULE"
-          title="Διαχείριση Χρηστών"
-          description="Προβολή και διαγραφή εγγεγραμμένων χρηστών της πλατφόρμας."
+          title={labels.title}
+          description={labels.loadingDescription}
         />
         <Surface className="p-6">
           <SkeletonLines lines={8} />
@@ -93,16 +133,16 @@ export default function AdminUsersManagement() {
       <div className="mx-auto w-full max-w-7xl space-y-6 px-4 md:px-6">
         <PageHeader
           eyebrow="ADMIN MODULE"
-          title="Διαχείριση Χρηστών"
-          description="Προβολή και διαγραφή εγγεγραμμένων χρηστών της πλατφόρμας."
+          title={labels.title}
+          description={labels.loadingDescription}
         />
         <ErrorState
-          title="Σφάλμα φόρτωσης χρηστών"
+          title={labels.loadErrorTitle}
           description={error}
           action={
             <Button type="button" onClick={fetchUsers} variant="secondary">
               <RefreshCw className="h-4 w-4" />
-              Επανάληψη
+              {labels.retry}
             </Button>
           }
         />
@@ -114,12 +154,12 @@ export default function AdminUsersManagement() {
     <div className="mx-auto w-full max-w-7xl space-y-6 px-4 md:px-6">
       <PageHeader
         eyebrow="ADMIN MODULE"
-        title="Διαχείριση Χρηστών"
-        description="Καθαρή λίστα χρηστών με δυνατότητα οριστικής διαγραφής από τον admin."
+        title={labels.title}
+        description={labels.pageDescription}
         actions={
           <Button type="button" onClick={fetchUsers} variant="secondary">
             <RefreshCw className="h-4 w-4" />
-            Ανανέωση
+            {labels.refresh}
           </Button>
         }
       />
@@ -131,14 +171,14 @@ export default function AdminUsersManagement() {
       )}
 
       <SectionCard
-        title="Χρήστες Πλατφόρμας"
-        description="Οι διαχειριστικές κλήσεις προστατεύονται από ROLE_ADMIN στο backend."
+        title={labels.usersTitle}
+        description={labels.usersDescription}
       >
         {users.length === 0 ? (
           <EmptyState
             icon={UsersRound}
-            title="Δεν υπάρχουν χρήστες"
-            description="Ο πίνακας θα γεμίσει όταν υπάρχουν εγγεγραμμένοι χρήστες."
+            title={labels.emptyTitle}
+            description={labels.emptyDescription}
           />
         ) : (
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
@@ -194,7 +234,7 @@ export default function AdminUsersManagement() {
                           ) : (
                             <Trash2 className="h-4 w-4" />
                           )}
-                          Διαγραφή
+                          {labels.delete}
                         </Button>
                       </td>
                     </tr>
@@ -208,7 +248,7 @@ export default function AdminUsersManagement() {
         <div className="mt-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-400/25 dark:bg-amber-500/10 dark:text-amber-200">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
           <p className="font-semibold">
-            Η διαγραφή είναι οριστική και πρέπει να χρησιμοποιείται μόνο όταν είσαι βέβαιος ότι δεν χρειάζονται τα δεδομένα του χρήστη.
+            {labels.warning}
           </p>
         </div>
       </SectionCard>

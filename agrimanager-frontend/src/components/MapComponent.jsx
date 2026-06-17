@@ -6,6 +6,7 @@ import * as turf from '@turf/turf';
 import 'leaflet/dist/leaflet.css';
 import '@geoman-io/leaflet-geoman-free';
 import '@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css';
+import { useAppPreferences } from '../i18n';
 
 // Fix για τα Icons της Leaflet
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -191,6 +192,7 @@ export default function MapComponent({
   selectedCropId, onCropSelect, selectionRequest,
 }) {
   const navigate = useNavigate();
+  const { t } = useAppPreferences();
   const fieldMarkerRefs = useRef(new Map());
   const cropLayerRefs = useRef(new Map());
 
@@ -283,7 +285,7 @@ export default function MapComponent({
               <div className="min-w-32 font-sans text-xs">
                 <strong className="text-sm">{marker.name}</strong>
                 <div className="mt-1">
-                  {marker.field?.area != null ? `${marker.field.area} στρ.` : ""}
+                  {marker.field?.area != null ? `${marker.field.area} ${t.fields.stremmataShort}` : ""}
                 </div>
               </div>
             </Popup>
@@ -300,9 +302,9 @@ export default function MapComponent({
             >
               <Popup>
                 <div className="font-sans text-xs">
-                  <strong>{task.taskType || "Εργασία"}</strong><br/>
-                  {task.description || "Χωρίς περιγραφή"}<br/>
-                  <span>{task.status === "COMPLETED" ? "Ολοκληρωμένη" : "Εκκρεμής"}</span>
+                  <strong>{task.taskType || t.tasks.task}</strong><br/>
+                  {task.description || t.tasks.noDescription}<br/>
+                  <span>{task.status === "COMPLETED" ? t.tasks.completed : t.tasks.pending}</span>
                 </div>
               </Popup>
             </Marker>
