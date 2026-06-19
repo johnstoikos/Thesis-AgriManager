@@ -36,6 +36,7 @@ public class UserService {
 
         user.setPassword(passwordEncoder.encode(registrationDto.getPassword()));
         user.setRoles(Collections.singleton("ROLE_USER"));
+        user.setActive(true);
         user.setTotalProfit(BigDecimal.ZERO);
         user.setMonthlyRevenue(BigDecimal.ZERO);
         user.setMonthlyExpenses(BigDecimal.ZERO);
@@ -54,6 +55,10 @@ public class UserService {
 
         if (!passwordEncoder.matches(loginDto.getPassword(), user.getPassword())) {
             throw new RuntimeException("Λάθος κωδικός πρόσβασης");
+        }
+
+        if (!user.isActive()) {
+            throw new RuntimeException("Ο λογαριασμός σας είναι απενεργοποιημένος. Επικοινωνήστε με τον διαχειριστή.");
         }
 
         return jwtService.generateToken(user.getUsername());

@@ -6,6 +6,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -48,7 +49,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Αν έχουμε username και ο χρήστης δεν είναι ήδη συνδεδεμένος στο SecurityContext
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             if (jwtService.isTokenValid(jwt, username)) {
-                var authorities = userRepository.findByUsername(username)
+                var userOptional = userRepository.findByUsername(username);
+                if (userOptional.isPresent() && !userOptional.get().isActive()) {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                    response.setCharacterEncoding("UTF-8");
+                    response.getWriter().write("{\"message\":\"Ο λογαριασμός σας είναι απενεργοποιημένος. Επικοινωνήστε με τον διαχειριστή.\"}");
+                    return;
+                }
+
+                var authorities = userOptional
                         .map(user -> user.getRoles().stream()
                                 .map(SimpleGrantedAuthority::new)
                                 .toList())

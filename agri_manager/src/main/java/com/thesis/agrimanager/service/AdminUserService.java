@@ -3,6 +3,7 @@ package com.thesis.agrimanager.service;
 import com.thesis.agrimanager.dto.AdminUserDTO;
 import com.thesis.agrimanager.dto.AdminUserStatsDTO;
 import com.thesis.agrimanager.dto.CropDistributionDTO;
+import com.thesis.agrimanager.dto.FieldDTO;
 import com.thesis.agrimanager.dto.MonthlyActivityDTO;
 import com.thesis.agrimanager.model.Field;
 import com.thesis.agrimanager.model.User;
@@ -24,17 +25,20 @@ public class AdminUserService {
     private final FieldRepository fieldRepository;
     private final CropRepository cropRepository;
     private final TaskRepository taskRepository;
+    private final UserProfitService userProfitService;
 
     public AdminUserService(
             UserRepository userRepository,
             FieldRepository fieldRepository,
             CropRepository cropRepository,
-            TaskRepository taskRepository
+            TaskRepository taskRepository,
+            UserProfitService userProfitService
     ) {
         this.userRepository = userRepository;
         this.fieldRepository = fieldRepository;
         this.cropRepository = cropRepository;
         this.taskRepository = taskRepository;
+        this.userProfitService = userProfitService;
     }
 
     @Transactional(readOnly = true)
@@ -64,6 +68,41 @@ public class AdminUserService {
          * καθαρίζει και τις αντίστοιχες εγγραφές στον πίνακα user_roles.
          */
         userRepository.delete(user);
+    }
+
+    @Transactional
+    public AdminUserDTO setUserActive(Long id, boolean active) {
+        User user = userRepository.findFarmerById(id)
+                .orElseThrow(() -> new RuntimeException("Ο αγρότης με ID " + id + " δεν βρέθηκε."));
+
+        user.setActive(active);
+        return toAdminUserDTO(userRepository.save(user));
+    }
+
+    @Transactional(readOnly = true)
+    public List<FieldDTO> getUserFields(Long userId) {
+        userRepository.findFarmerById(userId)
+                .orElseThrow(() -> new RuntimeException("Ο αγρότης με ID " + userId + " δεν βρέθηκε."));
+
+        return fieldRepository.findOwnedByFarmerId(userId).stream()
+                .map(this::toFieldDTO)
+                .toList();
+    }
+
+    @Transactional
+    public void deleteUserField(Long userId, Long fieldId) {
+        User user = userRepository.findFarmerById(userId)
+                .orElseThrow(() -> new RuntimeException("Ο αγρότης με ID " + userId + " δεν βρέθηκε."));
+
+        Field field = fieldRepository.findById(fieldId)
+                .orElseThrow(() -> new RuntimeException("Το χωράφι με ID " + fieldId + " δεν βρέθηκε."));
+
+        if (field.getOwner() == null || !userId.equals(field.getOwner().getId())) {
+            throw new RuntimeException("Το χωράφι δεν ανήκει στον συγκεκριμένο χρήστη.");
+        }
+
+        userProfitService.preserveFinancialsAfterDeletion(user);
+        fieldRepository.delete(field);
     }
 
     @Transactional(readOnly = true)
@@ -106,7 +145,20 @@ public class AdminUserService {
                 user.getUsername(),
                 user.getEmail(),
                 user.getFullName(),
+                user.isActive(),
                 user.getRoles() == null ? Set.of() : Set.copyOf(user.getRoles())
+        );
+    }
+
+    private FieldDTO toFieldDTO(Field field) {
+        return new FieldDTO(
+                field.getId(),
+                field.getName(),
+                field.getArea(),
+                field.getBoundary(),
+                field.getSoilType(),
+                field.getSoilPh(),
+                field.getIrrigationType()
         );
     }
 

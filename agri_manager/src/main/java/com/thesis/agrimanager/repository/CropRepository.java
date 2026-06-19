@@ -32,6 +32,7 @@ public interface CropRepository extends JpaRepository<Crop, Long> {
             SELECT c
             FROM Crop c
             JOIN FETCH c.field f
+            JOIN FETCH f.owner o
             WHERE 'ROLE_USER' MEMBER OF f.owner.roles
               AND 'ROLE_ADMIN' NOT MEMBER OF f.owner.roles
             """)
@@ -41,6 +42,7 @@ public interface CropRepository extends JpaRepository<Crop, Long> {
             SELECT c
             FROM Crop c
             JOIN FETCH c.field f
+            JOIN FETCH f.owner o
             WHERE f.owner.id = :ownerId
               AND 'ROLE_USER' MEMBER OF f.owner.roles
               AND 'ROLE_ADMIN' NOT MEMBER OF f.owner.roles

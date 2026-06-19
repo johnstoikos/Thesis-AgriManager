@@ -37,25 +37,29 @@ public class AiAssistantController {
 
     @PostMapping("/chat")
     public ResponseEntity<String> chat(@Valid @RequestBody AiChatRequestDTO request) {
-        String username = getCurrentUsername();
-        List<Field> fields = fieldRepository.findByOwnerUsername(username);
-        List<Crop> crops = cropRepository.findByFieldOwnerUsername(username);
-        String fieldDataPrompt = buildFieldDataPrompt(username, fields, crops);
+        Authentication authentication = getCurrentAuthentication();
+        String username = authentication.getName();
+        boolean admin = authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+
+        List<Field> fields = admin ? fieldRepository.findAllOwnedByFarmers() : fieldRepository.findByOwnerUsername(username);
+        List<Crop> crops = admin ? cropRepository.findAllOwnedByFarmers() : cropRepository.findByFieldOwnerUsername(username);
+        String fieldDataPrompt = buildFieldDataPrompt(username, fields, crops, admin);
 
         String answer = aiAssistantService.chatWithGroq(request.message(), fieldDataPrompt, request.language());
         return ResponseEntity.ok(answer);
     }
 
-    private String getCurrentUsername() {
+    private Authentication getCurrentAuthentication() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new RuntimeException("Δεν βρέθηκε συνδεδεμένος χρήστης.");
         }
-        return authentication.getName();
+        return authentication;
     }
 
-    private String buildFieldDataPrompt(String username, List<Field> fields, List<Crop> crops) {
-        StringBuilder prompt = new StringBuilder("Δεδομένα αγρότη: ")
+    private String buildFieldDataPrompt(String username, List<Field> fields, List<Crop> crops, boolean admin) {
+        StringBuilder prompt = new StringBuilder(admin ? "Δεδομένα πλατφόρμας για διαχειριστή: " : "Δεδομένα αγρότη: ")
                 .append(valueOrDash(username))
                 .append("\n\nΧωράφια:\n");
 
@@ -65,6 +69,7 @@ public class AiAssistantController {
             for (Field field : fields) {
                 prompt.append("- ")
                         .append(valueOrDash(field.getName()))
+                        .append(admin ? " | Ιδιοκτήτης: " + ownerLabel(field) : "")
                         .append(" | Έκταση: ").append(valueOrDash(field.getArea())).append(" στρέμματα")
                         .append(" | Έδαφος: ").append(valueOrDash(field.getSoilType()))
                         .append(" | pH: ").append(valueOrDash(field.getSoilPh()))
@@ -84,6 +89,7 @@ public class AiAssistantController {
                         .append(" | Ποικιλία: ").append(valueOrDash(crop.getVariety()))
                         .append(" | Χωράφι: ")
                         .append(field == null ? "-" : valueOrDash(field.getName()))
+                        .append(admin ? " | Ιδιοκτήτης: " + ownerLabel(field) : "")
                         .append(" | Ημερομηνία φύτευσης: ").append(valueOrDash(crop.getPlantingDate()))
                         .append(" | Παραγωγή: ").append(valueOrDash(crop.getHarvestYield())).append(" kg")
                         .append(" | Τιμή/kg: ").append(valueOrDash(crop.getSellingPricePerKg())).append(" ευρώ")
@@ -92,6 +98,18 @@ public class AiAssistantController {
         }
 
         return prompt.toString();
+    }
+
+    private String ownerLabel(Field field) {
+        if (field == null || field.getOwner() == null) {
+            return "-";
+        }
+        String fullName = field.getOwner().getFullName();
+        String username = field.getOwner().getUsername();
+        if (fullName != null && !fullName.isBlank()) {
+            return fullName + " (" + valueOrDash(username) + ")";
+        }
+        return valueOrDash(username);
     }
 
     private String valueOrDash(Object value) {

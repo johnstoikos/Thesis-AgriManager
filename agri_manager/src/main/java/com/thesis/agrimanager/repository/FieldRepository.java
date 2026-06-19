@@ -31,6 +31,7 @@ public interface FieldRepository extends JpaRepository<Field, Long> {
     @Query("""
             SELECT f
             FROM Field f
+            JOIN FETCH f.owner o
             WHERE 'ROLE_USER' MEMBER OF f.owner.roles
               AND 'ROLE_ADMIN' NOT MEMBER OF f.owner.roles
             ORDER BY f.name
@@ -40,6 +41,7 @@ public interface FieldRepository extends JpaRepository<Field, Long> {
     @Query("""
             SELECT f
             FROM Field f
+            JOIN FETCH f.owner o
             WHERE f.owner.id = :ownerId
               AND 'ROLE_USER' MEMBER OF f.owner.roles
               AND 'ROLE_ADMIN' NOT MEMBER OF f.owner.roles

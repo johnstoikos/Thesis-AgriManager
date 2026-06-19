@@ -30,6 +30,8 @@ public class User {
     @Column(columnDefinition = "text")
     private String profilePhoto;
 
+    private Boolean active = true;
+
     @Column(precision = 14, scale = 2)
     private BigDecimal totalProfit;
 
@@ -81,6 +83,14 @@ public class User {
         return profilePhoto;
     }
 
+    public Boolean getActive() {
+        return active;
+    }
+
+    public boolean isActive() {
+        return active == null || active;
+    }
+
     public BigDecimal getTotalProfit() {
         return totalProfit;
     }
@@ -127,6 +137,10 @@ public class User {
 
     public void setProfilePhoto(String profilePhoto) {
         this.profilePhoto = profilePhoto;
+    }
+
+    public void setActive(Boolean active) {
+        this.active = active;
     }
 
     public void setTotalProfit(BigDecimal totalProfit) {
