@@ -1,7 +1,6 @@
 package com.thesis.agrimanager.repository;
 
 import com.thesis.agrimanager.model.Task;
-import com.thesis.agrimanager.dto.FinancialStatsDTO;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -59,32 +58,6 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
               AND 'ROLE_ADMIN' NOT MEMBER OF t.crop.field.owner.roles
             """)
     long countOwnedByFarmers();
-
-    @Query("""
-            SELECT t
-            FROM Task t
-            JOIN FETCH t.crop c
-            JOIN FETCH c.field f
-            WHERE t.status = :status
-              AND f.owner.username = :username
-            """)
-    List<Task> findByStatusAndOwnerUsernameWithCropAndField(
-            @Param("status") String status,
-            @Param("username") String username
-    );
-
-    @Query("""
-            SELECT t
-            FROM Task t
-            JOIN FETCH t.crop c
-            JOIN FETCH c.field f
-            WHERE f.owner.username = :username
-              AND t.taskDate IS NOT NULL
-              AND 'ROLE_USER' MEMBER OF f.owner.roles
-              AND 'ROLE_ADMIN' NOT MEMBER OF f.owner.roles
-            ORDER BY t.taskDate
-            """)
-    List<Task> findForFarmerFinancials(@Param("username") String username);
 
     @Query("""
             SELECT t
@@ -153,35 +126,11 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
             SELECT COALESCE(SUM(t.cost), 0)
             FROM Task t
             WHERE t.status = 'COMPLETED'
-              AND 'ROLE_USER' MEMBER OF t.crop.field.owner.roles
-              AND 'ROLE_ADMIN' NOT MEMBER OF t.crop.field.owner.roles
-            """)
-    BigDecimal sumCompletedTaskCost();
-
-    @Query("""
-            SELECT COALESCE(SUM(t.cost), 0)
-            FROM Task t
-            WHERE t.status = 'COMPLETED'
               AND t.crop.field.owner.id = :ownerId
               AND 'ROLE_USER' MEMBER OF t.crop.field.owner.roles
               AND 'ROLE_ADMIN' NOT MEMBER OF t.crop.field.owner.roles
             """)
     BigDecimal sumCompletedTaskCostByOwnerId(@Param("ownerId") Long ownerId);
-
-    @Query("""
-            SELECT new com.thesis.agrimanager.dto.FinancialStatsDTO(
-                f.name,
-                COALESCE(SUM(t.cost), 0)
-            )
-            FROM Task t
-            JOIN t.crop c
-            JOIN c.field f
-            WHERE t.status = 'COMPLETED'
-              AND f.owner.username = :username
-            GROUP BY f.id, f.name
-            ORDER BY f.name
-            """)
-    List<FinancialStatsDTO> sumCompletedTaskCostByFieldAndOwnerUsername(@Param("username") String username);
 
     @Query(value = """
             SELECT TO_CHAR(tasks.task_date, 'YYYY-MM') AS "month",

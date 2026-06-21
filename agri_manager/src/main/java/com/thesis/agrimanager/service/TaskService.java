@@ -23,15 +23,18 @@ public class TaskService {
     private final TaskRepository taskRepository;
     private final CropRepository cropRepository;
     private final UserProfitService userProfitService;
+    private final FinancialRecordService financialRecordService;
 
     public TaskService(
             TaskRepository taskRepository,
             CropRepository cropRepository,
-            UserProfitService userProfitService
+            UserProfitService userProfitService,
+            FinancialRecordService financialRecordService
     ) {
         this.taskRepository = taskRepository;
         this.cropRepository = cropRepository;
         this.userProfitService = userProfitService;
+        this.financialRecordService = financialRecordService;
     }
 
     public TaskDTO saveTask(TaskDTO dto) {
@@ -77,6 +80,8 @@ public class TaskService {
         }
 
         Task savedTask = taskRepository.save(task);
+        financialRecordService.recordHarvestRevenue(savedTask, bookedRevenue);
+        financialRecordService.recordTaskExpense(savedTask, savedTask.getCost());
         userProfitService.recordTask(
                 owner,
                 bookedRevenue,
@@ -178,6 +183,7 @@ public class TaskService {
         Task savedTask = taskRepository.save(task);
         BigDecimal expenseDelta = zeroIfNull(savedTask.getCost()).subtract(previousCost);
         if (expenseDelta.signum() != 0) {
+            financialRecordService.recordTaskExpense(savedTask, expenseDelta);
             userProfitService.adjustExpense(owner, expenseDelta);
         }
         return convertToDTO(savedTask);
@@ -217,9 +223,11 @@ public class TaskService {
         if (harvestTask && previousProgress < 100 && validatedProgress == 100) {
             addHarvestYield(task.getCrop(), task.getHarvestedYieldAmount());
             BigDecimal bookedRevenue = userProfitService.bookHarvestRevenue(task);
+            financialRecordService.recordHarvestRevenue(task, bookedRevenue);
             userProfitService.recordRevenue(owner, bookedRevenue);
         } else if (harvestTask && validatedProgress == 100 && task.getBookedRevenue() == null) {
-            userProfitService.bookHarvestRevenue(task);
+            BigDecimal bookedRevenue = userProfitService.bookHarvestRevenue(task);
+            financialRecordService.recordHarvestRevenue(task, bookedRevenue);
         }
 
         return convertToDTO(taskRepository.save(task));

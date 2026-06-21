@@ -37,6 +37,9 @@ class TaskServiceTest {
     @Mock
     private UserProfitService userProfitService;
 
+    @Mock
+    private FinancialRecordService financialRecordService;
+
     @AfterEach
     void clearSecurityContext() {
         SecurityContextHolder.clearContext();
@@ -99,7 +102,12 @@ class TaskServiceTest {
     void deletingCompletedHarvestPreservesCropYieldAndSellingPrice() {
         Task task = harvestTask(100, 25.5);
         task.setStatus("COMPLETED");
-        TaskService taskService = new TaskService(taskRepository, cropRepository, userProfitService);
+        TaskService taskService = new TaskService(
+                taskRepository,
+                cropRepository,
+                userProfitService,
+                financialRecordService
+        );
         when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
         doAnswer(invocation -> {
             task.getCrop().setHarvestYield(
@@ -222,7 +230,12 @@ class TaskServiceTest {
                             ? BigDecimal.ZERO
                             : harvest.getBookedRevenue();
                 });
-        return new TaskService(taskRepository, cropRepository, userProfitService);
+        return new TaskService(
+                taskRepository,
+                cropRepository,
+                userProfitService,
+                financialRecordService
+        );
     }
 
     private Task harvestTask(int progress, Double harvestedYieldAmount) {

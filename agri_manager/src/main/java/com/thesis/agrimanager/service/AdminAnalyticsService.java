@@ -4,6 +4,8 @@ import com.thesis.agrimanager.dto.AdminAnalyticsDTO;
 import com.thesis.agrimanager.dto.AdminFieldAnalyticsDTO;
 import com.thesis.agrimanager.model.Crop;
 import com.thesis.agrimanager.model.Field;
+import com.thesis.agrimanager.model.FinancialRecord;
+import com.thesis.agrimanager.model.FinancialRecordType;
 import com.thesis.agrimanager.model.Task;
 import com.thesis.agrimanager.model.User;
 import com.thesis.agrimanager.repository.CropRepository;
@@ -27,19 +29,22 @@ public class AdminAnalyticsService {
     private final CropRepository cropRepository;
     private final TaskRepository taskRepository;
     private final UserProfitService userProfitService;
+    private final FinancialRecordService financialRecordService;
 
     public AdminAnalyticsService(
             UserRepository userRepository,
             FieldRepository fieldRepository,
             CropRepository cropRepository,
             TaskRepository taskRepository,
-            UserProfitService userProfitService
+            UserProfitService userProfitService,
+            FinancialRecordService financialRecordService
     ) {
         this.userRepository = userRepository;
         this.fieldRepository = fieldRepository;
         this.cropRepository = cropRepository;
         this.taskRepository = taskRepository;
         this.userProfitService = userProfitService;
+        this.financialRecordService = financialRecordService;
     }
 
     @Transactional
@@ -134,23 +139,19 @@ public class AdminAnalyticsService {
 
         for (Crop crop : cropsForFieldBreakdown) {
             double cropYield = crop.getHarvestYield() == null ? 0.0 : crop.getHarvestYield();
-            BigDecimal cropRevenue = calculateRevenue(cropYield, crop.getSellingPricePerKg());
             MutableFieldAnalytics fieldAnalytics = fieldsById.get(crop.getField().getId());
             if (fieldAnalytics != null) {
                 fieldAnalytics.totalYieldKg += cropYield;
-                fieldAnalytics.revenue = fieldAnalytics.revenue.add(cropRevenue);
             }
-
-            addToMonth(monthlyRevenue, crop.getPlantingDate(), cropRevenue);
         }
 
         for (Task task : periodTasks) {
             BigDecimal taskCost = task.getCost() == null ? BigDecimal.ZERO : task.getCost();
 
             MutableFieldAnalytics fieldAnalytics = fieldsById.get(task.getCrop().getField().getId());
-            if (fieldAnalytics != null) {
+            if (selectedFarmer == null && fieldAnalytics != null) {
                 fieldAnalytics.expenses = fieldAnalytics.expenses.add(taskCost);
-                if (selectedFarmer == null && userProfitService.isCompletedHarvest(task)) {
+                if (userProfitService.isCompletedHarvest(task)) {
                     double harvestedYield = task.getHarvestedYieldAmount() == null
                             ? 0.0
                             : task.getHarvestedYieldAmount();
@@ -166,6 +167,11 @@ public class AdminAnalyticsService {
             }
         }
 
+        List<FinancialRecord> financialRecords = selectedFarmer == null
+                ? List.of()
+                : financialRecordService.getRecords(userId, startDate, endDate);
+        applyFinancialRecords(fieldsById, monthlyExpenses, monthlyRevenue, financialRecords);
+
         if (selectedFarmer != null) {
             UserProfitService.FinancialSnapshot snapshot = userProfitService.getSnapshot(
                     selectedFarmer.getUsername()
@@ -174,10 +180,12 @@ public class AdminAnalyticsService {
             totalExpenses = snapshot.monthlyExpenses();
             netProfit = snapshot.semesterProfit();
 
-            monthlyExpenses.replaceAll((ignored, amount) -> BigDecimal.ZERO);
-            monthlyRevenue.replaceAll((ignored, amount) -> BigDecimal.ZERO);
-            addToMonth(monthlyExpenses, snapshot.monthlyPeriodStart(), snapshot.monthlyExpenses());
-            addToMonth(monthlyRevenue, snapshot.monthlyPeriodStart(), snapshot.monthlyRevenue());
+            if (financialRecords.isEmpty()) {
+                monthlyExpenses.replaceAll((ignored, amount) -> BigDecimal.ZERO);
+                monthlyRevenue.replaceAll((ignored, amount) -> BigDecimal.ZERO);
+                addToMonth(monthlyExpenses, snapshot.monthlyPeriodStart(), snapshot.monthlyExpenses());
+                addToMonth(monthlyRevenue, snapshot.monthlyPeriodStart(), snapshot.monthlyRevenue());
+            }
         } else {
             netProfit = totalRevenue.subtract(totalExpenses);
         }
@@ -257,6 +265,47 @@ public class AdminAnalyticsService {
             return BigDecimal.ZERO;
         }
         return BigDecimal.valueOf(harvestYield).multiply(sellingPricePerKg);
+    }
+
+    private void applyFinancialRecords(
+            Map<Long, MutableFieldAnalytics> fieldsById,
+            Map<String, BigDecimal> monthlyExpenses,
+            Map<String, BigDecimal> monthlyRevenue,
+            List<FinancialRecord> records
+    ) {
+        for (FinancialRecord record : records) {
+            Long fieldId = record.getFieldId();
+            if (fieldId == null) {
+                continue;
+            }
+
+            boolean knownField = fieldsById.containsKey(fieldId);
+            MutableFieldAnalytics fieldAnalytics = fieldsById.computeIfAbsent(
+                    fieldId,
+                    ignored -> new MutableFieldAnalytics(
+                            record.getFieldName() == null ? "Χωράφι #" + fieldId : record.getFieldName(),
+                            null,
+                            null,
+                            0.0
+                    )
+            );
+
+            BigDecimal amount = zeroIfNull(record.getAmount());
+            if (record.getType() == FinancialRecordType.REVENUE) {
+                fieldAnalytics.revenue = fieldAnalytics.revenue.add(amount);
+                if (!knownField && record.getQuantityKg() != null) {
+                    fieldAnalytics.totalYieldKg += record.getQuantityKg();
+                }
+                addToMonth(monthlyRevenue, record.getRecordDate(), amount);
+            } else if (record.getType() == FinancialRecordType.EXPENSE) {
+                fieldAnalytics.expenses = fieldAnalytics.expenses.add(amount);
+                addToMonth(monthlyExpenses, record.getRecordDate(), amount);
+            }
+        }
+    }
+
+    private BigDecimal zeroIfNull(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
     }
 
     private static class MutableFieldAnalytics {

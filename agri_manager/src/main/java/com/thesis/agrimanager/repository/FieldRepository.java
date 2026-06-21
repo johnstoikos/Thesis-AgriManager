@@ -60,9 +60,6 @@ public interface FieldRepository extends JpaRepository<Field, Long> {
     // Για το Security check (findByIdAndOwnerUsername)
     Optional<Field> findByIdAndOwnerUsername(Long id, String username);
 
-    @Query("SELECT COALESCE(SUM(f.area), 0) FROM Field f")
-    Double sumTotalArea();
-
     @Query("""
             SELECT COALESCE(SUM(f.area), 0)
             FROM Field f

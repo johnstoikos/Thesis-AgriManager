@@ -50,10 +50,10 @@ public class UserService {
     }
 
     public String login(LoginDTO loginDto) {
-        User user = userRepository.findByUsername(loginDto.getUsername())
+        User user = userRepository.findByUsername(loginDto.username())
                 .orElseThrow(() -> new RuntimeException("Ο χρήστης δεν βρέθηκε"));
 
-        if (!passwordEncoder.matches(loginDto.getPassword(), user.getPassword())) {
+        if (!passwordEncoder.matches(loginDto.password(), user.getPassword())) {
             throw new RuntimeException("Λάθος κωδικός πρόσβασης");
         }
 

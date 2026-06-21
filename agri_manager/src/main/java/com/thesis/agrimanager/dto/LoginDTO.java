@@ -1,12 +1,11 @@
 package com.thesis.agrimanager.dto;
 
-public class LoginDTO {
-    private String username;
-    private String password;
+import jakarta.validation.constraints.NotBlank;
 
-    // Getters και Setters (χειροκίνητα όπως είπαμε)
-    public String getUsername() { return username; }
-    public void setUsername(String username) { this.username = username; }
-    public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
+public record LoginDTO(
+        @NotBlank(message = "Το username είναι υποχρεωτικό.")
+        String username,
+        @NotBlank(message = "Ο κωδικός πρόσβασης είναι υποχρεωτικός.")
+        String password
+) {
 }

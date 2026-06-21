@@ -44,6 +44,9 @@ class AdminAnalyticsServiceTest {
     @Mock
     private UserProfitService userProfitService;
 
+    @Mock
+    private FinancialRecordService financialRecordService;
+
     @Test
     void globalAnalyticsReturnsSeparateMonthlyExpensesAndRevenue() {
         LocalDate today = LocalDate.now();
@@ -150,6 +153,8 @@ class AdminAnalyticsServiceTest {
                 any(LocalDate.class),
                 any(LocalDate.class)
         )).thenReturn(List.of());
+        when(financialRecordService.getRecords(eq(farmerId), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(List.of());
         when(userProfitService.getSnapshot("farmer")).thenReturn(snapshot(
                 "0.00",
                 "0.00",
@@ -191,6 +196,8 @@ class AdminAnalyticsServiceTest {
         when(cropRepository.countByFieldOwnerId(farmerId)).thenReturn(1L);
         when(taskRepository.countByStatusAndCropFieldOwnerId("PENDING", farmerId)).thenReturn(0L);
         when(taskRepository.countByStatusAndCropFieldOwnerId("COMPLETED", farmerId)).thenReturn(2L);
+        when(financialRecordService.getRecords(eq(farmerId), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(List.of());
         when(userProfitService.getSnapshot("farmer")).thenReturn(snapshot(
                 "3600.00",
                 "108.00",
@@ -203,7 +210,7 @@ class AdminAnalyticsServiceTest {
         assertEquals(0, new BigDecimal("3600.00").compareTo(result.getTotalRevenue()));
         assertEquals(0, new BigDecimal("3492.00").compareTo(result.getNetProfit()));
         assertEquals(1200.0, result.getTotalYieldKg());
-        assertEquals(0, new BigDecimal("3600.00").compareTo(
+        assertEquals(0, BigDecimal.ZERO.compareTo(
                 result.getFieldsBreakdown().get(0).getFieldRevenue()
         ));
     }
@@ -214,7 +221,8 @@ class AdminAnalyticsServiceTest {
                 fieldRepository,
                 cropRepository,
                 taskRepository,
-                userProfitService
+                userProfitService,
+                financialRecordService
         );
     }
 
