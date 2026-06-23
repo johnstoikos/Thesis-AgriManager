@@ -6,6 +6,7 @@ import com.thesis.agrimanager.repository.FieldRepository;
 import com.thesis.agrimanager.repository.CropRepository;
 import com.thesis.agrimanager.repository.TaskRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class StatsService {
@@ -13,27 +14,28 @@ public class StatsService {
     private final CropRepository cropRepository;
     private final TaskRepository taskRepository;
     private final UserProfitService userProfitService;
+    private final FinancialRecordService financialRecordService;
 
     public StatsService(
             FieldRepository fieldRepository,
             CropRepository cropRepository,
             TaskRepository taskRepository,
-            UserProfitService userProfitService
+            UserProfitService userProfitService,
+            FinancialRecordService financialRecordService
     ) {
         this.fieldRepository = fieldRepository;
         this.cropRepository = cropRepository;
         this.taskRepository = taskRepository;
         this.userProfitService = userProfitService;
+        this.financialRecordService = financialRecordService;
     }
 
     public DashboardDTO getDashboardStats(String username) {
         long fields = fieldRepository.countByOwnerUsername(username);
         long crops = cropRepository.countByFieldOwnerUsername(username);
 
-        // Φιλτράρουμε τα tasks που έχουν status "PENDING" για τον συνδεδεμένο χρήστη
         long tasks = taskRepository.countByStatusAndCropFieldOwnerUsername("PENDING", username);
 
-        // Υπολογίζουμε το σύνολο των εκταρίων/στρεμμάτων για τον συνδεδεμένο χρήστη
         double totalArea = fieldRepository.findByOwnerUsername(username).stream()
                 .filter(f -> f.getArea() != null)
                 .mapToDouble(f -> f.getArea())
@@ -46,11 +48,26 @@ public class StatsService {
         return toFarmerStatsDTO(userProfitService.getSnapshot(username));
     }
 
+    @Transactional
     public FarmerStatsDTO resetFinancialStats(
             String username,
             UserProfitService.FinancialResetTarget target
     ) {
-        return toFarmerStatsDTO(userProfitService.resetFinancialData(username, target));
+        FarmerStatsDTO stats = toFarmerStatsDTO(userProfitService.resetFinancialData(username, target));
+        deleteFinancialRecords(username, target);
+        return stats;
+    }
+
+    private void deleteFinancialRecords(
+            String username,
+            UserProfitService.FinancialResetTarget target
+    ) {
+        switch (target) {
+            case REVENUE -> financialRecordService.deleteRevenueRecords(username);
+            case EXPENSES -> financialRecordService.deleteExpenseRecords(username);
+            case ALL -> financialRecordService.deleteAllRecords(username);
+            case PROFIT -> { }
+        }
     }
 
     private FarmerStatsDTO toFarmerStatsDTO(UserProfitService.FinancialSnapshot snapshot) {

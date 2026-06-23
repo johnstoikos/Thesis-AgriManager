@@ -15,7 +15,6 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
-    // Διαβάζει το κλειδί από το application.properties
     @Value("${jwt.secret.key}")
     private String secretKeyString;
 
@@ -24,8 +23,6 @@ public class JwtService {
 
     private Key getSignKey() {
         byte[] keyBytes = Decoders.BASE64.decode(secretKeyString);
-        // Αν το string δεν είναι valid base64 (που το δικό σου δεν είναι),
-        // χρησιμοποιούμε τα bytes του string απευθείας.
         try {
             return Keys.hmacShaKeyFor(keyBytes);
         } catch (Exception e) {

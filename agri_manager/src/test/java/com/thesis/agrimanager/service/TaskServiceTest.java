@@ -20,8 +20,10 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -58,10 +60,14 @@ class TaskServiceTest {
         assertEquals("COMPLETED", task.getStatus());
         assertEquals(25.5, task.getHarvestedYieldAmount());
         assertEquals(125.5, task.getCrop().getHarvestYield());
-        assertEquals(0, new BigDecimal("41.00").compareTo(updatedTask.getNetHarvestProfit()));
+        assertEquals(0, new BigDecimal("41.00").compareTo(updatedTask.netHarvestProfit()));
         verify(cropRepository).save(task.getCrop());
         verify(userProfitService).recordRevenue(
                 task.getCrop().getField().getOwner(),
+                new BigDecimal("51.000")
+        );
+        verify(financialRecordService, times(1)).recordHarvestRevenue(
+                task,
                 new BigDecimal("51.000")
         );
     }
@@ -187,12 +193,94 @@ class TaskServiceTest {
                 template.getCrop().getId()
         ));
 
-        assertEquals(0, new BigDecimal("12.50").compareTo(result.getHourlyCost()));
-        assertEquals(0, new BigDecimal("37.50").compareTo(result.getCost()));
+        assertEquals(0, new BigDecimal("12.50").compareTo(result.hourlyCost()));
+        assertEquals(0, new BigDecimal("37.50").compareTo(result.cost()));
+        verify(financialRecordService).recordTaskExpense(
+                any(Task.class),
+                eq(new BigDecimal("37.50"))
+        );
         verify(userProfitService).recordTask(
                 template.getCrop().getField().getOwner(),
                 BigDecimal.ZERO,
                 new BigDecimal("37.50")
+        );
+    }
+
+    @Test
+    void creatingCompletedHarvestWritesRevenueAndExpenseLedgerRecords() {
+        Task template = harvestTask(0, null);
+        TaskService taskService = serviceForAuthentication("farmer");
+        when(cropRepository.findById(template.getCrop().getId()))
+                .thenReturn(Optional.of(template.getCrop()));
+        when(taskRepository.save(any(Task.class)))
+                .thenAnswer(invocation -> {
+                    Task saved = invocation.getArgument(0);
+                    saved.setId(30L);
+                    return saved;
+                });
+
+        taskService.saveTask(new com.thesis.agrimanager.dto.TaskDTO(
+                null,
+                "Συγκομιδή",
+                "",
+                java.time.LocalDate.now(),
+                "COMPLETED",
+                100,
+                40.0,
+                null,
+                null,
+                new BigDecimal("5.00"),
+                2.0,
+                null,
+                template.getCrop().getId()
+        ));
+
+        verify(financialRecordService).recordHarvestRevenue(
+                any(Task.class),
+                eq(new BigDecimal("80.000"))
+        );
+        verify(financialRecordService).recordTaskExpense(
+                any(Task.class),
+                eq(new BigDecimal("10.00"))
+        );
+    }
+
+    @Test
+    void updatingTaskCostWritesOnlyExpenseDeltaToLedger() {
+        Task task = harvestTask(0, null);
+        task.setTaskType("Ψεκασμός");
+        task.setCost(new BigDecimal("20.00"));
+        TaskService taskService = serviceForAuthentication("farmer");
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        taskService.updateTask(
+                task.getId(),
+                new com.thesis.agrimanager.dto.TaskDTO(
+                        task.getId(),
+                        "Ψεκασμός",
+                        "",
+                        java.time.LocalDate.now(),
+                        "PENDING",
+                        0,
+                        null,
+                        null,
+                        null,
+                        new BigDecimal("15.00"),
+                        2.0,
+                        null,
+                        task.getCrop().getId()
+                ),
+                "farmer"
+        );
+
+        verify(financialRecordService).recordTaskExpense(
+                task,
+                new BigDecimal("10.00")
+        );
+        verify(userProfitService).adjustExpense(
+                task.getCrop().getField().getOwner(),
+                new BigDecimal("10.00")
         );
     }
 

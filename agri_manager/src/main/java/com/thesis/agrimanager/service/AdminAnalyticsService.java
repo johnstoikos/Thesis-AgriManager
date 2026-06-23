@@ -161,9 +161,11 @@ public class AdminAnalyticsService {
                 }
             }
 
-            addToMonth(monthlyExpenses, task.getTaskDate(), taskCost);
-            if (selectedFarmer == null && userProfitService.isCompletedHarvest(task)) {
-                addToMonth(monthlyRevenue, task.getTaskDate(), userProfitService.getHarvestRevenue(task));
+            if (selectedFarmer == null) {
+                addToMonth(monthlyExpenses, task.getTaskDate(), taskCost);
+                if (userProfitService.isCompletedHarvest(task)) {
+                    addToMonth(monthlyRevenue, task.getTaskDate(), userProfitService.getHarvestRevenue(task));
+                }
             }
         }
 

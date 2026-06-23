@@ -1,6 +1,16 @@
 package com.thesis.agrimanager.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import org.locationtech.jts.geom.Polygon;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -18,8 +28,8 @@ public class Crop {
     private String type;
     private String variety;
     private LocalDate plantingDate;
-    private Double harvestYield; // Συνολική παραγωγή σοδειάς σε Kg
-    private BigDecimal sellingPricePerKg; // Τιμή πώλησης ανά Kg σε ευρώ
+    private Double harvestYield;
+    private BigDecimal sellingPricePerKg;
 
     @Column(columnDefinition = "geometry(Polygon, 4326)")
     private Polygon zoneBoundary;
@@ -28,11 +38,8 @@ public class Crop {
     @JoinColumn(name = "field_id")
     private Field field;
 
-    // Προσθήκη CascadeType.ALL και orphanRemoval=true για τη διαδοχική διαγραφή
     @OneToMany(mappedBy = "crop", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Task> tasks = new ArrayList<>(); // Αρχικοποίηση λίστας
-
-    // --- Getters και Setters ---
+    private List<Task> tasks = new ArrayList<>();
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -58,7 +65,6 @@ public class Crop {
     public Polygon getZoneBoundary() { return zoneBoundary; }
     public void setZoneBoundary(Polygon zoneBoundary) { this.zoneBoundary = zoneBoundary; }
 
-    // Προσθήκη Getters/Setters για τα Tasks
     public List<Task> getTasks() { return tasks; }
     public void setTasks(List<Task> tasks) { this.tasks = tasks; }
 }

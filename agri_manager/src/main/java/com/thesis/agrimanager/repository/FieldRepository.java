@@ -11,7 +11,6 @@ import java.util.Optional;
 @Repository
 public interface FieldRepository extends JpaRepository<Field, Long> {
 
-    // Για το getAllFields()
     List<Field> findByOwnerUsername(String username);
 
     long countByOwnerUsername(String username);
@@ -25,7 +24,6 @@ public interface FieldRepository extends JpaRepository<Field, Long> {
             """)
     long countByOwnerId(@Param("ownerId") Long ownerId);
 
-    // Για το getFieldsByUsername()
     List<Field> findByOwnerId(Long ownerId);
 
     @Query("""
@@ -57,7 +55,6 @@ public interface FieldRepository extends JpaRepository<Field, Long> {
             """)
     long countOwnedByFarmers();
 
-    // Για το Security check (findByIdAndOwnerUsername)
     Optional<Field> findByIdAndOwnerUsername(Long id, String username);
 
     @Query("""

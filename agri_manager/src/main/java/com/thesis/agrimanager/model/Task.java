@@ -1,7 +1,15 @@
 package com.thesis.agrimanager.model;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import org.locationtech.jts.geom.Point;
 
 import java.math.BigDecimal;
@@ -15,20 +23,20 @@ public class Task {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String taskType; // π.χ. Πότισμα, Λίπανση, Ψεκασμός
+    private String taskType;
     private String description;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate taskDate; // Χρησιμοποιούμε LocalDate για μόνο ημερομηνία
+    private LocalDate taskDate;
 
-    private String status; // PENDING, COMPLETED
+    private String status;
 
     private Integer completionPercentage;
 
     private Double harvestedYieldAmount;
 
     @Column(precision = 12, scale = 2)
-    private BigDecimal cost; // Συνολικό κόστος: ωριαίο κόστος x ώρες εργασίας
+    private BigDecimal cost;
 
     @Column(precision = 12, scale = 2)
     private BigDecimal hourlyCost;
@@ -36,16 +44,15 @@ public class Task {
     @Column(precision = 14, scale = 2)
     private BigDecimal bookedRevenue;
 
-    private Double laborHours; // Ώρες εργασίας
+    private Double laborHours;
 
     @Column(columnDefinition = "geometry(Point, 4326)")
-    private Point location; // Το σημείο της εργασίας στο χάρτη
+    private Point location;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "crop_id")
     private Crop crop;
 
-    // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -55,12 +62,10 @@ public class Task {
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
 
-    // ΔΙΟΡΘΩΜΕΝΟ: Επιστρέφει LocalDate
     public LocalDate getTaskDate() {
         return taskDate;
     }
 
-    // ΔΙΟΡΘΩΜΕΝΟ: Δέχεται LocalDate
     public void setTaskDate(LocalDate taskDate) {
         this.taskDate = taskDate;
     }

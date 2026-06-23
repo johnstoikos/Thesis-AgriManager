@@ -27,7 +27,17 @@ class CropServiceTest {
 
     @Test
     void creatingCropWithoutSellingPriceIsRejected() {
-        CropDTO crop = new CropDTO();
+        CropDTO crop = new CropDTO(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
 
         assertThrows(IllegalArgumentException.class, () -> service().saveCrop(crop));
 
@@ -36,8 +46,17 @@ class CropServiceTest {
 
     @Test
     void updatingCropWithNonPositiveSellingPriceIsRejected() {
-        CropDTO crop = new CropDTO();
-        crop.setSellingPricePerKg(BigDecimal.ZERO);
+        CropDTO crop = new CropDTO(
+                null,
+                null,
+                null,
+                null,
+                BigDecimal.ZERO,
+                null,
+                null,
+                null,
+                null
+        );
 
         assertThrows(IllegalArgumentException.class, () -> service().updateCrop(1L, crop));
 

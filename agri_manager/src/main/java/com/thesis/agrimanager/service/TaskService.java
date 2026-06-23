@@ -15,7 +15,6 @@ import java.time.LocalDate;
 import java.util.Locale;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -38,26 +37,25 @@ public class TaskService {
     }
 
     public TaskDTO saveTask(TaskDTO dto) {
-        Crop crop = cropRepository.findById(dto.getCropId())
+        Crop crop = cropRepository.findById(dto.cropId())
                 .orElseThrow(() -> new RuntimeException("Crop not found"));
         User owner = crop.getField().getOwner();
         verifyCropOwner(crop);
         userProfitService.ensureInitialized(owner.getUsername());
 
-        // Validation: Το σημείο της εργασίας πρέπει να είναι μέσα στο Crop Zone
-        if (dto.getLocation() != null && !crop.getZoneBoundary().contains(dto.getLocation())) {
+        if (dto.location() != null && !crop.getZoneBoundary().contains(dto.location())) {
             throw new RuntimeException("Το σημείο της εργασίας είναι εκτός της ζώνης καλλιέργειας!");
         }
 
         Task task = new Task();
-        task.setTaskType(dto.getTaskType());
-        task.setDescription(dto.getDescription());
-        task.setTaskDate(dto.getTaskDate());
+        task.setTaskType(dto.taskType());
+        task.setDescription(dto.description());
+        task.setTaskDate(dto.taskDate());
         int initialProgress = normalizeInitialProgress(dto);
-        Double initialYield = isHarvestTask(dto.getTaskType())
-                ? normalizeYieldAmount(dto.getHarvestedYieldAmount())
+        Double initialYield = isHarvestTask(dto.taskType())
+                ? normalizeYieldAmount(dto.harvestedYieldAmount())
                 : null;
-        if (isHarvestTask(dto.getTaskType()) && initialProgress == 100 && initialYield == null) {
+        if (isHarvestTask(dto.taskType()) && initialProgress == 100 && initialYield == null) {
             throw new IllegalArgumentException(
                     "Η ποσότητα συγκομιδής είναι υποχρεωτική για ολοκλήρωση στο 100%."
             );
@@ -65,11 +63,11 @@ public class TaskService {
         task.setCompletionPercentage(initialProgress);
         task.setStatus(initialProgress == 100 ? "COMPLETED" : "PENDING");
         task.setHarvestedYieldAmount(initialYield);
-        applyLaborCost(task, dto.getHourlyCost(), dto.getLaborHours());
-        task.setLocation(dto.getLocation());
+        applyLaborCost(task, dto.hourlyCost(), dto.laborHours());
+        task.setLocation(dto.location());
         task.setCrop(crop);
 
-        if (initialProgress == 100 && isHarvestTask(dto.getTaskType())) {
+        if (initialProgress == 100 && isHarvestTask(dto.taskType())) {
             requireSellingPrice(crop);
         }
 
@@ -93,13 +91,13 @@ public class TaskService {
     public List<TaskDTO> getTasksByCrop(Long cropId) {
         return taskRepository.findByCropId(cropId).stream()
                 .map(this::convertToDTO)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public List<TaskDTO> getUrgentTasks(String username) {
         return taskRepository.findPendingUrgentTasks(username, LocalDate.now()).stream()
                 .map(this::convertToDTO)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     private TaskDTO convertToDTO(Task task) {
@@ -136,20 +134,20 @@ public class TaskService {
         userProfitService.ensureInitialized(owner.getUsername());
 
         int currentProgress = getEffectiveProgress(task);
-        if (currentProgress == 100 && !Objects.equals(task.getTaskType(), dto.getTaskType())) {
+        if (currentProgress == 100 && !Objects.equals(task.getTaskType(), dto.taskType())) {
             throw new IllegalStateException(
                     "Ο τύπος μιας ολοκληρωμένης εργασίας δεν μπορεί να αλλάξει."
             );
         }
 
         Crop crop = task.getCrop();
-        if (dto.getCropId() != null && !dto.getCropId().equals(crop.getId())) {
+        if (dto.cropId() != null && !dto.cropId().equals(crop.getId())) {
             if (currentProgress == 100) {
                 throw new IllegalStateException(
                         "Η καλλιέργεια μιας ολοκληρωμένης εργασίας δεν μπορεί να αλλάξει."
                 );
             }
-            crop = cropRepository.findById(dto.getCropId())
+            crop = cropRepository.findById(dto.cropId())
                     .orElseThrow(() -> new RuntimeException("Crop not found"));
 
             if (!crop.getField().getOwner().getUsername().equals(username)) {
@@ -157,27 +155,27 @@ public class TaskService {
             }
         }
 
-        if (dto.getLocation() != null && !crop.getZoneBoundary().contains(dto.getLocation())) {
+        if (dto.location() != null && !crop.getZoneBoundary().contains(dto.location())) {
             throw new RuntimeException("Το σημείο της εργασίας είναι εκτός της ζώνης καλλιέργειας!");
         }
 
-        task.setTaskType(dto.getTaskType());
-        task.setDescription(dto.getDescription());
-        task.setTaskDate(dto.getTaskDate());
+        task.setTaskType(dto.taskType());
+        task.setDescription(dto.description());
+        task.setTaskDate(dto.taskDate());
         BigDecimal previousCost = zeroIfNull(task.getCost());
-        applyLaborCost(task, dto.getHourlyCost(), dto.getLaborHours());
+        applyLaborCost(task, dto.hourlyCost(), dto.laborHours());
         task.setCrop(crop);
 
-        if (isHarvestTask(dto.getTaskType())) {
-            if (getEffectiveProgress(task) < 100 && dto.getHarvestedYieldAmount() != null) {
-                task.setHarvestedYieldAmount(normalizeYieldAmount(dto.getHarvestedYieldAmount()));
+        if (isHarvestTask(dto.taskType())) {
+            if (getEffectiveProgress(task) < 100 && dto.harvestedYieldAmount() != null) {
+                task.setHarvestedYieldAmount(normalizeYieldAmount(dto.harvestedYieldAmount()));
             }
         } else {
             task.setHarvestedYieldAmount(null);
         }
 
-        if (dto.getLocation() != null) {
-            task.setLocation(dto.getLocation());
+        if (dto.location() != null) {
+            task.setLocation(dto.location());
         }
 
         Task savedTask = taskRepository.save(task);
@@ -254,8 +252,6 @@ public class TaskService {
         taskRepository.delete(task);
 
         if (preserveBookedHarvest) {
-            // Η διαγραφή του task αφαιρεί μόνο το ιστορικό του. Η ήδη καταχωρημένη
-            // σοδειά και η τιμή πώλησης παραμένουν οικονομικά στοιχεία του Crop.
             crop.setHarvestYield(bookedHarvestYield);
             crop.setSellingPricePerKg(bookedSellingPrice);
         }
@@ -281,10 +277,10 @@ public class TaskService {
     }
 
     private int normalizeInitialProgress(TaskDTO dto) {
-        if (dto.getCompletionPercentage() != null) {
-            return validateProgress(dto.getCompletionPercentage());
+        if (dto.completionPercentage() != null) {
+            return validateProgress(dto.completionPercentage());
         }
-        return "COMPLETED".equalsIgnoreCase(dto.getStatus()) ? 100 : 0;
+        return "COMPLETED".equalsIgnoreCase(dto.status()) ? 100 : 0;
     }
 
     private int getEffectiveProgress(Task task) {

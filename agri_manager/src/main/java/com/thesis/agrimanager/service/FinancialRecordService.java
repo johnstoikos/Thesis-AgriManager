@@ -50,6 +50,21 @@ public class FinancialRecordService {
         return financialRecordRepository.findByRecordDateBetween(startDate, endDate);
     }
 
+    @Transactional
+    public void deleteRevenueRecords(String ownerUsername) {
+        financialRecordRepository.deleteByOwnerUsernameAndType(ownerUsername, FinancialRecordType.REVENUE);
+    }
+
+    @Transactional
+    public void deleteExpenseRecords(String ownerUsername) {
+        financialRecordRepository.deleteByOwnerUsernameAndType(ownerUsername, FinancialRecordType.EXPENSE);
+    }
+
+    @Transactional
+    public void deleteAllRecords(String ownerUsername) {
+        financialRecordRepository.deleteByOwnerUsername(ownerUsername);
+    }
+
     private FinancialRecord fromTask(Task task, FinancialRecordType type, BigDecimal amount) {
         Crop crop = task.getCrop();
         Field field = crop.getField();

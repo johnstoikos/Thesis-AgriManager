@@ -86,8 +86,6 @@ public class UserProfitService {
 
     @Transactional
     public void preserveFinancialsAfterDeletion(User owner) {
-        // Τα οικονομικά αποτελούν λογιστικό ιστορικό. Η διαγραφή operational
-        // εγγραφών δεν αναιρεί έσοδα ή έξοδα που έχουν ήδη καταχωριστεί.
         User user = findLockedUser(owner.getUsername());
         prepareCurrentPeriods(user);
         syncOwner(owner, user);

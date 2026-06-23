@@ -1,10 +1,20 @@
 package com.thesis.agrimanager.model;
 
-import jakarta.persistence.*;
 import org.locationtech.jts.geom.Polygon;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import org.n52.jackson.datatype.jts.GeometryDeserializer;
 import org.n52.jackson.datatype.jts.GeometrySerializer;
 
@@ -21,29 +31,24 @@ public class Field {
     @Column(nullable = false)
     private String name;
 
-    // Η σύνδεση με τον χρήστη
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    @JsonIgnore // Για να μην έχουμε infinite loop στο JSON όταν καλούμε το field
+    @JsonIgnore
     private User owner;
 
-    // Γεωμετρικά δεδομένα (SRID 4326 = GPS συντεταγμένες)
     @Column(columnDefinition = "geometry(Polygon, 4326)")
     @JsonSerialize(using = GeometrySerializer.class)
     @JsonDeserialize(using = GeometryDeserializer.class)
     private Polygon boundary;
 
-    private Double area; // Έκταση σε στρέμματα
+    private Double area;
 
-    // Εδαφολογικά/τεχνικά δεδομένα για analytics και AI context
     private String soilType;
     private Double soilPh;
     private String irrigationType;
 
-    // Constructors
     public Field() {}
 
-    // Getters και Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -71,7 +76,6 @@ public class Field {
     @OneToMany(mappedBy = "field", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Crop> crops;
 
-    // Getter και Setter
     public List<Crop> getCrops() { return crops; }
     public void setCrops(List<Crop> crops) { this.crops = crops; }
 }

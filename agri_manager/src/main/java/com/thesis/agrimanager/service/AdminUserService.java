@@ -55,18 +55,10 @@ public class AdminUserService {
                         "Ο αγρότης με ID " + id + " δεν βρέθηκε ή δεν επιτρέπεται η διαγραφή του."
                 ));
 
-        /*
-         * Ο User δεν έχει cascade προς τα fields. Διαγράφουμε πρώτα τα fields του,
-         * ώστε τα υπάρχοντα Field -> Crop -> Task cascades να καθαρίσουν τα FK rows.
-         */
         List<Field> ownedFields = fieldRepository.findByOwnerId(id);
         fieldRepository.deleteAll(ownedFields);
         fieldRepository.flush();
 
-        /*
-         * Το roles είναι @ElementCollection. Με τη διαγραφή του User, η Hibernate
-         * καθαρίζει και τις αντίστοιχες εγγραφές στον πίνακα user_roles.
-         */
         userRepository.delete(user);
     }
 

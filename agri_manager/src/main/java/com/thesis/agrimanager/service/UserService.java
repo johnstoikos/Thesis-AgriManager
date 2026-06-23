@@ -25,16 +25,16 @@ public class UserService {
     }
 
     public User registerNewUser(UserRegistrationDTO registrationDto) {
-        if (userRepository.findByUsername(registrationDto.getUsername()).isPresent()) {        
+        if (userRepository.findByUsername(registrationDto.username()).isPresent()) {
             throw new RuntimeException("Το username χρησιμοποιείται ήδη");
         }
 
         User user = new User();
-        user.setUsername(registrationDto.getUsername());
-        user.setEmail(registrationDto.getEmail());
-        user.setFullName(registrationDto.getFullName());
+        user.setUsername(registrationDto.username());
+        user.setEmail(registrationDto.email());
+        user.setFullName(registrationDto.fullName());
 
-        user.setPassword(passwordEncoder.encode(registrationDto.getPassword()));
+        user.setPassword(passwordEncoder.encode(registrationDto.password()));
         user.setRoles(Collections.singleton("ROLE_USER"));
         user.setActive(true);
         user.setTotalProfit(BigDecimal.ZERO);
@@ -72,13 +72,11 @@ public class UserService {
     public UserProfileDTO updateUserProfile(String username, UserProfileDTO dto) {
         User user = getUserByUsername(username);
 
-        System.out.println("Updating user profile for " + username + " with phone: " + dto.getPhone());
-        user.setFullName(dto.getFullName());
-        user.setPhone(dto.getPhone());
-        user.setProfilePhoto(dto.getProfilePhoto());
+        user.setFullName(dto.fullName());
+        user.setPhone(dto.phone());
+        user.setProfilePhoto(dto.profilePhoto());
 
         User savedUser = userRepository.save(user);
-        System.out.println("Saved user phone: " + savedUser.getPhone());
         return toProfileDTO(savedUser);
     }
 

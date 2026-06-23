@@ -3,6 +3,8 @@ package com.thesis.agrimanager.service;
 import com.thesis.agrimanager.dto.AdminAnalyticsDTO;
 import com.thesis.agrimanager.model.Crop;
 import com.thesis.agrimanager.model.Field;
+import com.thesis.agrimanager.model.FinancialRecord;
+import com.thesis.agrimanager.model.FinancialRecordType;
 import com.thesis.agrimanager.model.Task;
 import com.thesis.agrimanager.model.User;
 import com.thesis.agrimanager.repository.CropRepository;
@@ -70,13 +72,13 @@ class AdminAnalyticsServiceTest {
         AdminAnalyticsDTO result = service().getAdminAnalytics(null, "year");
         String currentMonth = YearMonth.from(today).toString();
 
-        assertEquals(0, new BigDecimal("40.00").compareTo(result.getTotalExpenses()));
-        assertEquals(0, new BigDecimal("250.00").compareTo(result.getTotalRevenue()));
-        assertEquals(0, new BigDecimal("210.00").compareTo(result.getNetProfit()));
-        assertEquals(0, new BigDecimal("40.00").compareTo(result.getMonthlyExpenses().get(currentMonth)));
-        assertEquals(0, new BigDecimal("250.00").compareTo(result.getMonthlyRevenue().get(currentMonth)));
-        assertEquals(1, result.getFieldsBreakdown().size());
-        assertEquals(12.5, result.getPieChartData().get("Βόρειο Χωράφι"));
+        assertEquals(0, new BigDecimal("40.00").compareTo(result.totalExpenses()));
+        assertEquals(0, new BigDecimal("250.00").compareTo(result.totalRevenue()));
+        assertEquals(0, new BigDecimal("210.00").compareTo(result.netProfit()));
+        assertEquals(0, new BigDecimal("40.00").compareTo(result.monthlyExpenses().get(currentMonth)));
+        assertEquals(0, new BigDecimal("250.00").compareTo(result.monthlyRevenue().get(currentMonth)));
+        assertEquals(1, result.fieldsBreakdown().size());
+        assertEquals(12.5, result.pieChartData().get("Βόρειο Χωράφι"));
     }
 
     @Test
@@ -99,13 +101,13 @@ class AdminAnalyticsServiceTest {
 
         AdminAnalyticsDTO result = service().getAdminAnalytics(null, "year");
 
-        assertEquals(0, new BigDecimal("25.00").compareTo(result.getTotalExpenses()));
-        assertEquals(0, new BigDecimal("150.00").compareTo(result.getTotalRevenue()));
-        assertEquals(0, new BigDecimal("125.00").compareTo(result.getNetProfit()));
-        assertEquals(50.0, result.getTotalYieldKg());
+        assertEquals(0, new BigDecimal("25.00").compareTo(result.totalExpenses()));
+        assertEquals(0, new BigDecimal("150.00").compareTo(result.totalRevenue()));
+        assertEquals(0, new BigDecimal("125.00").compareTo(result.netProfit()));
+        assertEquals(50.0, result.totalYieldKg());
         assertEquals(
                 0,
-                BigDecimal.ZERO.compareTo(result.getMonthlyExpenses().get(YearMonth.from(today).toString()))
+                BigDecimal.ZERO.compareTo(result.monthlyExpenses().get(YearMonth.from(today).toString()))
         );
     }
 
@@ -125,13 +127,13 @@ class AdminAnalyticsServiceTest {
 
         AdminAnalyticsDTO result = service().getAdminAnalytics(null, "year");
 
-        assertEquals(0, BigDecimal.ZERO.compareTo(result.getTotalRevenue()));
-        assertEquals(0.0, result.getTotalYieldKg());
+        assertEquals(0, BigDecimal.ZERO.compareTo(result.totalRevenue()));
+        assertEquals(0.0, result.totalYieldKg());
         assertEquals(0, BigDecimal.ZERO.compareTo(
-                result.getMonthlyRevenue().get(YearMonth.from(today).toString())
+                result.monthlyRevenue().get(YearMonth.from(today).toString())
         ));
         assertEquals(0, BigDecimal.ZERO.compareTo(
-                result.getFieldsBreakdown().get(0).getFieldRevenue()
+                result.fieldsBreakdown().get(0).fieldRevenue()
         ));
     }
 
@@ -206,12 +208,69 @@ class AdminAnalyticsServiceTest {
 
         AdminAnalyticsDTO result = service().getAdminAnalytics(farmerId, "year");
 
-        assertEquals(0, new BigDecimal("108.00").compareTo(result.getTotalExpenses()));
-        assertEquals(0, new BigDecimal("3600.00").compareTo(result.getTotalRevenue()));
-        assertEquals(0, new BigDecimal("3492.00").compareTo(result.getNetProfit()));
-        assertEquals(1200.0, result.getTotalYieldKg());
+        assertEquals(0, new BigDecimal("108.00").compareTo(result.totalExpenses()));
+        assertEquals(0, new BigDecimal("3600.00").compareTo(result.totalRevenue()));
+        assertEquals(0, new BigDecimal("3492.00").compareTo(result.netProfit()));
+        assertEquals(1200.0, result.totalYieldKg());
         assertEquals(0, BigDecimal.ZERO.compareTo(
-                result.getFieldsBreakdown().get(0).getFieldRevenue()
+                result.fieldsBreakdown().get(0).fieldRevenue()
+        ));
+    }
+
+    @Test
+    void individualAnalyticsDoesNotDoubleCountTaskExpensesWhenFinancialRecordsExist() {
+        Long farmerId = 7L;
+        LocalDate today = LocalDate.now();
+        String currentMonth = YearMonth.from(today).toString();
+        User farmer = new User();
+        farmer.setUsername("farmer");
+        Field field = field(10L, "ΚΤΗΜΑ 1", 24.33);
+        Crop crop = crop(20L, field, today, 1000.0, "3.00");
+        Task task = task(30L, crop, today, "36.00");
+        FinancialRecord expense = financialRecord(
+                field,
+                FinancialRecordType.EXPENSE,
+                "36.00",
+                today
+        );
+        FinancialRecord revenue = financialRecord(
+                field,
+                FinancialRecordType.REVENUE,
+                "3000.00",
+                today
+        );
+        revenue.setQuantityKg(1000.0);
+
+        when(userRepository.findFarmerById(farmerId)).thenReturn(Optional.of(farmer));
+        when(fieldRepository.findOwnedByFarmerId(farmerId)).thenReturn(List.of(field));
+        when(cropRepository.findForAdminAnalyticsByOwnerId(
+                eq(farmerId),
+                any(LocalDate.class),
+                any(LocalDate.class)
+        )).thenReturn(List.of(crop));
+        when(taskRepository.findForAdminAnalyticsByOwnerId(
+                eq(farmerId),
+                any(LocalDate.class),
+                any(LocalDate.class)
+        )).thenReturn(List.of(task));
+        when(cropRepository.findAllOwnedByFarmerId(farmerId)).thenReturn(List.of(crop));
+        when(financialRecordService.getRecords(eq(farmerId), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(List.of(expense, revenue));
+        when(userProfitService.getSnapshot("farmer")).thenReturn(snapshot(
+                "3000.00",
+                "36.00",
+                "2964.00"
+        ));
+
+        AdminAnalyticsDTO result = service().getAdminAnalytics(farmerId, "year");
+
+        assertEquals(0, new BigDecimal("36.00").compareTo(result.monthlyExpenses().get(currentMonth)));
+        assertEquals(0, new BigDecimal("3000.00").compareTo(result.monthlyRevenue().get(currentMonth)));
+        assertEquals(0, new BigDecimal("36.00").compareTo(
+                result.fieldsBreakdown().get(0).fieldExpenses()
+        ));
+        assertEquals(0, new BigDecimal("3000.00").compareTo(
+                result.fieldsBreakdown().get(0).fieldRevenue()
         ));
     }
 
@@ -280,5 +339,20 @@ class AdminAnalyticsServiceTest {
         task.setTaskType("Συγκομιδή");
         task.setHarvestedYieldAmount(crop.getHarvestYield());
         return task;
+    }
+
+    private FinancialRecord financialRecord(
+            Field field,
+            FinancialRecordType type,
+            String amount,
+            LocalDate recordDate
+    ) {
+        FinancialRecord record = new FinancialRecord();
+        record.setFieldId(field.getId());
+        record.setFieldName(field.getName());
+        record.setType(type);
+        record.setAmount(new BigDecimal(amount));
+        record.setRecordDate(recordDate);
+        return record;
     }
 }

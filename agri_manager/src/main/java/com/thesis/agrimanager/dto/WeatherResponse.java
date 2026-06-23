@@ -6,15 +6,12 @@ import java.util.List;
 import java.util.Map;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class WeatherResponse {
-
-    @JsonProperty("main")
-    private Map<String, Double> main;
-
-    @JsonProperty("weather")
-    private List<Map<String, Object>> weather;
-
-    // Getters για να τραβάμε τα δεδομένα εύκολα
+public record WeatherResponse(
+        @JsonProperty("main")
+        Map<String, Double> main,
+        @JsonProperty("weather")
+        List<Map<String, Object>> weather
+) {
     public Double getTemp() { return main.get("temp"); }
     public Double getHumidity() { return main.get("humidity"); }
     public String getDescription() {

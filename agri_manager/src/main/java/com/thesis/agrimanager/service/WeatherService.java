@@ -23,21 +23,17 @@ public class WeatherService {
     }
 
     public WeatherInfo getWeatherForField(Long fieldId) {
-        // 1. Βρίσκουμε το χωράφι
         Field field = fieldRepository.findById(fieldId)
                 .orElseThrow(() -> new RuntimeException("Field not found"));
 
-        // 2. Παίρνουμε το κέντρο του χωραφιού (Centroid)
         double lat = field.getBoundary().getCentroid().getY();
         double lon = field.getBoundary().getCentroid().getX();
 
-        // 3. URL για OpenWeather (Metric = Κελσίου, Lang el = Ελληνικά)
         String url = String.format(
                 "https://api.openweathermap.org/data/2.5/weather?lat=%f&lon=%f&appid=%s&units=metric&lang=el",
                 lat, lon, apiKey
         );
 
-        // 4. Κλήση και μετατροπή στο ΔΙΚΟ ΣΟΥ WeatherInfo
         WeatherResponse response = restTemplate.getForObject(url, WeatherResponse.class);
 
         if (response != null) {

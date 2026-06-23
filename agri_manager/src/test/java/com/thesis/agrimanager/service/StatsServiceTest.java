@@ -30,6 +30,9 @@ class StatsServiceTest {
     @Mock
     private UserProfitService userProfitService;
 
+    @Mock
+    private FinancialRecordService financialRecordService;
+
     @Test
     void farmerStatsReturnStoredCurrentPeriodValues() {
         when(userProfitService.getSnapshot("farmer"))
@@ -44,12 +47,12 @@ class StatsServiceTest {
 
         FarmerStatsDTO result = service().getFarmerDashboardStats("farmer");
 
-        assertMoney("60.00", result.getTotalRevenue());
-        assertMoney("17.00", result.getTotalExpenses());
-        assertMoney("43.00", result.getTotalProfit());
-        assertEquals(LocalDate.of(2026, 6, 1), result.getMonthlyPeriodStart());
-        assertEquals(LocalDate.of(2026, 1, 1), result.getProfitPeriodStart());
-        assertEquals(LocalDate.of(2026, 6, 30), result.getProfitPeriodEnd());
+        assertMoney("60.00", result.totalRevenue());
+        assertMoney("17.00", result.totalExpenses());
+        assertMoney("43.00", result.totalProfit());
+        assertEquals(LocalDate.of(2026, 6, 1), result.monthlyPeriodStart());
+        assertEquals(LocalDate.of(2026, 1, 1), result.profitPeriodStart());
+        assertEquals(LocalDate.of(2026, 6, 30), result.profitPeriodEnd());
     }
 
     @Test
@@ -71,17 +74,46 @@ class StatsServiceTest {
                 UserProfitService.FinancialResetTarget.EXPENSES
         );
 
-        assertMoney("60.00", result.getTotalRevenue());
-        assertMoney("0.00", result.getTotalExpenses());
-        assertMoney("43.00", result.getTotalProfit());
+        assertMoney("60.00", result.totalRevenue());
+        assertMoney("0.00", result.totalExpenses());
+        assertMoney("43.00", result.totalProfit());
         verify(userProfitService).resetFinancialData(
                 "farmer",
                 UserProfitService.FinancialResetTarget.EXPENSES
         );
+        verify(financialRecordService).deleteExpenseRecords("farmer");
+    }
+
+    @Test
+    void resetAllFinancialStatsDeletesAllLedgerRecords() {
+        when(userProfitService.resetFinancialData(
+                "farmer",
+                UserProfitService.FinancialResetTarget.ALL
+        )).thenReturn(new UserProfitService.FinancialSnapshot(
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 1, 1),
+                LocalDate.of(2026, 6, 30)
+        ));
+
+        service().resetFinancialStats(
+                "farmer",
+                UserProfitService.FinancialResetTarget.ALL
+        );
+
+        verify(financialRecordService).deleteAllRecords("farmer");
     }
 
     private StatsService service() {
-        return new StatsService(fieldRepository, cropRepository, taskRepository, userProfitService);
+        return new StatsService(
+                fieldRepository,
+                cropRepository,
+                taskRepository,
+                userProfitService,
+                financialRecordService
+        );
     }
 
     private void assertMoney(String expected, BigDecimal actual) {

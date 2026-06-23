@@ -30,7 +30,6 @@ public class UserController {
 
     @PutMapping("/profile")
     public UserProfileDTO updateProfile(@Valid @RequestBody UserProfileDTO dto, Principal principal) {
-        System.out.println("Received DTO: " + dto.getPhone());
         return userService.updateUserProfile(principal.getName(), dto);
     }
 

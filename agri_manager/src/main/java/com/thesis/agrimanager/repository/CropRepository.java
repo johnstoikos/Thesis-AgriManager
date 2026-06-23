@@ -8,7 +8,6 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface CropRepository extends JpaRepository<Crop, Long> {
-    // Βρίσκει όλες τις καλλιέργειες ενός συγκεκριμένου χωραφιού
     List<Crop> findByFieldId(Long fieldId);
 
     @Query("SELECT c FROM Crop c JOIN FETCH c.field f WHERE f.owner.username = :username")

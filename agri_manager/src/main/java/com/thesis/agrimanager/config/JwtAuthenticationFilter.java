@@ -46,7 +46,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         jwt = authHeader.substring(7);
         username = jwtService.extractUsername(jwt);
 
-        // Αν έχουμε username και ο χρήστης δεν είναι ήδη συνδεδεμένος στο SecurityContext
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             if (jwtService.isTokenValid(jwt, username)) {
                 var userOptional = userRepository.findByUsername(username);
@@ -69,7 +68,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 );
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                // Ενημερώνουμε το Spring ότι ο χρήστης είναι πλέον authenticated
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         }
