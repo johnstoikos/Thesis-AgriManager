@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../../api/axios";
+import { useAuth } from "../../context/auth-context";
+import { getHomePath } from "../../utils/auth";
 import { Button } from "../ui";
 
 export default function Signup() {
@@ -10,23 +12,37 @@ export default function Signup() {
     email: "",
     // Πρόσθεσε εδώ όποιο άλλο πεδίο έχει το UserRegistrationDTO σου
   });
-  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
+  const { loginWithToken } = useAuth();
 
   const handleSignup = async (e) => {
     e.preventDefault();
     setError("");
-    setMessage("");
+    setSubmitting(true);
     
     try {
-      const response = await api.post("/api/auth/register", formData);
-      setMessage(response.data); // "Επιτυχής εγγραφή! ID: ..."
-      
-      // Μετά από 2 δευτερόλεπτα στείλε τον χρήστη στο login
-      setTimeout(() => navigate("/login"), 2000);
+      await api.post("/api/auth/register", formData);
+      const loginResponse = await api.post("/api/auth/login", {
+        username: formData.username,
+        password: formData.password,
+      });
+      const profile = await loginWithToken(loginResponse.data?.token);
+
+      if (!profile) {
+        setError("Η εγγραφή πέτυχε, αλλά δεν ήταν δυνατή η αυτόματη σύνδεση.");
+        return;
+      }
+
+      navigate(getHomePath(profile), { replace: true });
     } catch (err) {
-      setError(err.response?.data || "Κάτι πήγε στραβά στην εγγραφή.");
+      const backendMessage = typeof err.response?.data === "string"
+        ? err.response.data
+        : err.response?.data?.message;
+      setError(backendMessage || "Κάτι πήγε στραβά στην εγγραφή.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -59,13 +75,12 @@ export default function Signup() {
           />
 
           {error && <p className="text-red-500 text-sm font-semibold">{error}</p>}
-          {message && <p className="text-green-600 text-sm font-semibold">{message}</p>}
-
           <Button
             type="submit" 
             className="w-full"
+            disabled={submitting}
           >
-            Εγγραφή
+            {submitting ? "Εγγραφή..." : "Εγγραφή"}
           </Button>
         </form>
 

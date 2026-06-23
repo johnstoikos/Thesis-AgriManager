@@ -26,7 +26,6 @@ const INITIAL_CROP_FORM_DATA = {
   type: "",
   variety: "",
   zoneBoundary: [],
-  harvestYield: "",
   sellingPricePerKg: "",
 };
 
@@ -294,7 +293,6 @@ export default function FieldCrops() {
         ...crop, 
         variety: crop.variety || "", 
         zoneBoundary: crop.zoneBoundary.coordinates[0],
-        harvestYield: crop.harvestYield ?? "",
         sellingPricePerKg: crop.sellingPricePerKg ?? "",
       });
     } else {
@@ -313,8 +311,6 @@ export default function FieldCrops() {
     const payload = { 
       type: formData.type,
       variety: formData.variety,
-      // Τα οικονομικά της σοδειάς ανήκουν στην καλλιέργεια, όχι στο χωράφι.
-      harvestYield: toOptionalNumber(formData.harvestYield),
       sellingPricePerKg,
       fieldId: parseInt(fieldId), 
       zoneBoundary: { type: "Polygon", coordinates: [formData.zoneBoundary] } 
@@ -406,7 +402,6 @@ export default function FieldCrops() {
         cropId: selectedCrop.id,
       };
 
-      console.log("FINAL PAYLOAD:", taskData);
       if (taskFormData.id) {
         await api.put(`/api/tasks/${taskFormData.id}`, taskData);
       } else {
@@ -721,16 +716,6 @@ export default function FieldCrops() {
               <form onSubmit={handleSubmitCrop} className="space-y-5">
                 <input type="text" required placeholder={labels.cropTypePlaceholder || "Type (e.g. Olives)"} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900 shadow-sm placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-400" value={formData.type || ""} onChange={e => setFormData({...formData, type: e.target.value})} />
                 <input type="text" placeholder={labels.varietyPlaceholder || "Variety"} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900 shadow-sm placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-400" value={formData.variety || ""} onChange={e => setFormData({...formData, variety: e.target.value})} />
-                <FieldInput
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  inputMode="decimal"
-                  placeholder={labels.harvestYieldPlaceholder || "Συνολική Παραγωγή (Kg)"}
-                  className="rounded-xl px-3 py-3 text-sm font-bold"
-                  value={formData.harvestYield || ""}
-                  onChange={e => setFormData({...formData, harvestYield: e.target.value})}
-                />
                 <FieldInput
                   type="number"
                   min="0.01"

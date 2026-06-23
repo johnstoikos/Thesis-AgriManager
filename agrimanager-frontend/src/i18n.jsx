@@ -272,7 +272,7 @@ export const translations = {
       coverage: "Κάλυψη",
       actions: "Ενέργειες",
       general: "Γενική",
-      wikiInfo: "Πληροφορίες (Wiki)",
+      wikiInfo: "Πληροφορίες",
       edit: "Επεξεργασία",
       delete: "Διαγραφή",
       editZone: "Διόρθωση Ζώνης",
@@ -280,7 +280,6 @@ export const translations = {
       zoneDescription: "Συμπληρώστε τα στοιχεία της καλλιέργειας και ορίστε το πολύγωνο στον χάρτη.",
       cropTypePlaceholder: "Τύπος (π.χ. Ελιές)",
       varietyPlaceholder: "Ποικιλία",
-      harvestYieldPlaceholder: "Συνολική Παραγωγή (Kg)",
       sellingPricePerKgPlaceholder: "Τιμή Πώλησης ανά Kg (€)",
       saveZone: "Αποθήκευση Ζώνης",
       tasksTitle: "Εργασίες",
@@ -367,6 +366,7 @@ export const translations = {
     nav: {
       dashboard: "Home",
       fields: "Fields",
+      
       tasks: "Tasks",
       analytics: "Analytics",
       profile: "Profile",
@@ -641,7 +641,6 @@ export const translations = {
       zoneDescription: "Fill in the crop details and define the polygon on the map.",
       cropTypePlaceholder: "Type (e.g. Olives)",
       varietyPlaceholder: "Variety",
-      harvestYieldPlaceholder: "Total Production (Kg)",
       sellingPricePerKgPlaceholder: "Selling Price per Kg (€)",
       saveZone: "Save Zone",
       tasksTitle: "Tasks",

@@ -5,18 +5,11 @@ import { format, getDay, parse, startOfWeek } from "date-fns";
 import { el } from "date-fns/locale";
 import {
   Download,
-  Droplets,
-  Leaf,
   Plus,
   Search,
-  Shield,
-  Sprout,
   Trash2,
   Tractor,
-  Wrench,
 } from "lucide-react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import api from "../api/axios";
 import { useAppPreferences } from "../i18n";
 import {
@@ -31,15 +24,17 @@ import {
   Surface,
 } from "./ui";
 import TaskProgressControl from "./TaskProgressControl";
+import {
+  exportGlobalTasksPdf,
+  formatCurrency,
+  formatLaborHours,
+  formatTaskDate,
+  getTaskIcon,
+  loadGlobalTasksData,
+} from "../utils/globalTasks";
 import { isHarvestTaskType } from "../utils/taskProgress";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 
-const STATUS_COLORS = {
-  PENDING: "bg-orange-100 text-orange-700",
-  COMPLETED: "bg-emerald-100 text-emerald-700",
-};
-
-const COMPLETED_STATUS = "COMPLETED";
 const EMPTY_LABELS = {};
 const TASK_TYPE_VALUES = ["Πότισμα", "Λίπανση", "Ψεκασμός", "Συγκομιδή", "Κλάδεμα", "Άλλο"];
 const TASK_TYPE_LABELS = {
@@ -68,76 +63,6 @@ const calendarLocalizer = dateFnsLocalizer({
   getDay,
   locales,
 });
-function arrayBufferToBase64(buffer) {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  const chunkSize = 0x8000;
-
-  for (let index = 0; index < bytes.length; index += chunkSize) {
-    const chunk = bytes.subarray(index, index + chunkSize);
-    binary += String.fromCharCode(...chunk);
-  }
-
-  return btoa(binary);
-}
-
-function formatTaskDate(date, fallback = "No date", locale = "en-US") {
-  if (!date) return fallback;
-  return new Date(date).toLocaleDateString(locale, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function formatCurrency(value, locale = "el-GR") {
-  const amount = Number(value || 0);
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: "EUR",
-    maximumFractionDigits: 2,
-  }).format(Number.isFinite(amount) ? amount : 0);
-}
-
-function formatLaborHours(value, labels, locale = "el-GR") {
-  if (value == null || value === "") return "-";
-
-  const hours = Number(value);
-  if (!Number.isFinite(hours)) return "-";
-
-  const formattedHours = new Intl.NumberFormat(locale, {
-    maximumFractionDigits: 2,
-  }).format(hours);
-  const unit = hours === 1
-    ? labels.laborHourUnit || "hour"
-    : labels.laborHoursUnit || "hours";
-
-  return `${formattedHours} ${unit}`;
-}
-
-function getTaskIcon(taskType = "") {
-  const type = taskType ? String(taskType).toLowerCase() : "default";
-  if (type.includes("ποτ")) return Droplets;
-  if (type.includes("λιπ")) return Leaf;
-  if (type.includes("ψεκ")) return Shield;
-  if (type.includes("συγ")) return Sprout;
-  if (type.includes("κλαδ")) return Wrench;
-  return Tractor;
-}
-
-function isDeletedTask(task) {
-  return Boolean(
-    task?.deleted === true ||
-      task?.isDeleted === true ||
-      task?.deletedAt ||
-      task?.deleted_at ||
-      task?.status === "DELETED"
-  );
-}
-
-function isValidTask(task) {
-  return Boolean(task && typeof task === "object" && task.id != null && !isDeletedTask(task));
-}
 
 export default function GlobalTasks() {
   const navigate = useNavigate();
@@ -155,68 +80,23 @@ export default function GlobalTasks() {
   const [typeFilter, setTypeFilter] = useState("ALL_TYPES");
   const [search, setSearch] = useState("");
   const viewMode = searchParams.get("view") === "calendar" ? "calendar" : "list";
-  console.log("Current Tasks in State:", tasks.length);
 
   useEffect(() => {
     let ignore = false;
-    const fieldLabel = language === "el" ? "Χωράφι" : "Field";
     const loadErrorMessage =
       language === "el" ? "Αποτυχία φόρτωσης εργασιών. Δοκιμάστε ξανά." : "Failed to load tasks. Please try again.";
-    const unknownCropLabel = language === "el" ? "Άγνωστη καλλιέργεια" : "Unknown crop";
 
     const fetchAllData = async () => {
       setLoading(true);
       setError("");
 
       try {
-        const fieldsRes = await api.get("/api/fields");
+        const result = await loadGlobalTasksData({ language });
         if (ignore) return;
 
-        const fields = Array.isArray(fieldsRes.data) ? fieldsRes.data : [];
-        setFields(fields);
-
-        const cropsByFieldResults = await Promise.allSettled(
-          fields.map((field) => api.get(`/api/crops/field/${field.id}`))
-        );
-
-        const lookup = {};
-        const crops = [];
-
-        cropsByFieldResults.forEach((result, index) => {
-          if (result.status !== "fulfilled") return;
-          const field = fields[index];
-          const fieldCrops = Array.isArray(result.value?.data) ? result.value.data : [];
-          fieldCrops.forEach((crop) => {
-            crops.push(crop);
-            lookup[crop.id] = {
-              cropName: crop.type || unknownCropLabel,
-              fieldId: field.id,
-              fieldName: field.name || `${fieldLabel} #${field.id}`,
-            };
-          });
-        });
-        if (ignore) return;
-        setCropLookup(lookup);
-
-        const tasksByCropResults = await Promise.allSettled(
-          crops.map((crop) => api.get(`/api/tasks/crop/${crop.id}`))
-        );
-        if (ignore) return;
-
-        const mergedTasks = [];
-        tasksByCropResults.forEach((result) => {
-          if (result.status !== "fulfilled") return;
-          const cropTasks = Array.isArray(result.value?.data) ? result.value.data : [];
-          mergedTasks.push(...cropTasks);
-        });
-
-        const uniqueTasksMap = new Map();
-        mergedTasks.forEach((t) => {
-          if (t && t.id) uniqueTasksMap.set(t.id, t);
-        });
-        const finalTasks = Array.from(uniqueTasksMap.values()).filter(isValidTask);
-        console.log("IDs of tasks about to be set in state:", finalTasks.map((t) => t.id));
-        setTasks(finalTasks);
+        setFields(result.fields);
+        setCropLookup(result.cropLookup);
+        setTasks(result.tasks);
       } catch (err) {
         if (ignore) return;
         console.error("Σφάλμα φόρτωσης global tasks:", err);
@@ -276,7 +156,6 @@ export default function GlobalTasks() {
       const byType = typeFilter === "ALL_TYPES" ? true : task.taskType === typeFilter;
       const q = search.trim().toLowerCase();
       const bySearch = q
-      
         ? (task.description || "").toLowerCase().includes(q) || (task.taskType || "").toLowerCase().includes(q)
         : true;
       return byStatus && byType && bySearch;
@@ -323,11 +202,7 @@ export default function GlobalTasks() {
     if (!window.confirm(labels.deleteConfirm || "Are you sure you want to delete this task?")) return;
     try {
       await api.delete(`/api/tasks/${taskId}`);
-      setTasks((prev) => {
-        const filtered = prev.filter((t) => t.id !== taskId);
-        console.log(`Task ${taskId} removed. Remaining in state:`, filtered.length);
-        return filtered;
-      });
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
     } catch (err) {
       if (err?.response?.status === 400) {
         alert(labels.deleteRelationError || "This item cannot be deleted because it is connected to other data.");
@@ -348,105 +223,13 @@ export default function GlobalTasks() {
 
   const exportToPDF = async () => {
     try {
-      const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
-      const fontResponse = await fetch("/fonts/LiberationSans-Regular.ttf");
-      const fontBase64 = arrayBufferToBase64(await fontResponse.arrayBuffer());
-      doc.addFileToVFS("LiberationSans-Regular.ttf", fontBase64);
-      doc.addFont("LiberationSans-Regular.ttf", "LiberationSans", "normal");
-      doc.setFont("LiberationSans", "normal");
-
-      doc.setFontSize(18);
-      doc.text(labels.pdfTitle || "Agricultural Task Calendar - AgriManager", 40, 44);
-      doc.setFontSize(10);
-      doc.text(`${labels.exportDate || "Export date"}: ${new Date().toLocaleDateString(language === "el" ? "el-GR" : "en-US")}`, 40, 64);
-      const exportTasks = tasks.filter(isValidTask);
-      const pendingExportTasks = exportTasks.filter(
-        (task) => String(task.status || "").toUpperCase() !== COMPLETED_STATUS
-      );
-      const completedExportTasks = exportTasks.filter(
-        (task) => String(task.status || "").toUpperCase() === COMPLETED_STATUS
-      );
-      doc.text(`${labels.totalRecords || "Total records"}: ${exportTasks.length}`, 40, 80);
-
-      const createRows = (sectionTasks) => sectionTasks.map((task) => {
-        const cropInfo = cropLookup[task.cropId];
-        return [
-          formatTaskDate(task.taskDate, labels.noDate || "No date", language === "el" ? "el-GR" : "en-US"),
-          cropInfo?.fieldName || labels.unavailable || "Unavailable",
-          cropInfo?.cropName || `${labels.crop || "Crop"} #${task.cropId}`,
-          task.taskType || labels.unknownTaskType || "Unknown type",
-          task.description || labels.noDescription || "No description",
-          formatLaborHours(task.laborHours, labels, language === "el" ? "el-GR" : "en-US"),
-          formatCurrency(task.cost, language === "el" ? "el-GR" : "en-US"),
-          statusLabels[task.status] || task.status || labels.unknown || "Unknown",
-        ];
+      await exportGlobalTasksPdf({
+        tasks,
+        cropLookup,
+        labels,
+        language,
+        statusLabels,
       });
-
-      const tableHead = [[
-        labels.date || "Date",
-        labels.field || "Field",
-        labels.crop || "Crop",
-        labels.taskType || "Task Type",
-        labels.descriptionLabel || "Description",
-        labels.laborTime || "Labor Time",
-        labels.cost || "Cost",
-        labels.status || "Status",
-      ]];
-      const pageHeight = doc.internal.pageSize.getHeight();
-      let nextSectionY = 108;
-
-      const drawTaskSection = (title, sectionTasks, headerColor) => {
-        if (nextSectionY > pageHeight - 90) {
-          doc.addPage();
-          nextSectionY = 44;
-        }
-
-        doc.setFontSize(13);
-        doc.text(`${title} (${sectionTasks.length})`, 40, nextSectionY);
-
-        if (sectionTasks.length === 0) {
-          doc.setFontSize(9);
-          doc.text(labels.noExportRecords || "No records in this section.", 40, nextSectionY + 18);
-          nextSectionY += 42;
-          return;
-        }
-
-        autoTable(doc, {
-          startY: nextSectionY + 10,
-          head: tableHead,
-          body: createRows(sectionTasks),
-          styles: {
-            font: "LiberationSans",
-            fontSize: 9,
-            cellPadding: 6,
-            valign: "middle",
-            lineColor: [226, 232, 240],
-            lineWidth: 0.4,
-          },
-          headStyles: {
-            fillColor: headerColor,
-            textColor: [255, 255, 255],
-            fontStyle: "normal",
-          },
-          alternateRowStyles: { fillColor: [248, 250, 252] },
-          margin: { left: 40, right: 40 },
-        });
-
-        nextSectionY = (doc.lastAutoTable?.finalY || nextSectionY + 40) + 28;
-      };
-
-      drawTaskSection(
-        labels.pendingTasksSection || "Pending tasks",
-        pendingExportTasks,
-        [180, 83, 9]
-      );
-      drawTaskSection(
-        labels.completedTasksSection || "Completed tasks",
-        completedExportTasks,
-        [6, 95, 70]
-      );
-
-      doc.save("agrimanager-imerologio-ergasion.pdf");
     } catch (err) {
       console.error("Σφάλμα εξαγωγής PDF:", err);
       alert(labels.exportError || "PDF export failed.");

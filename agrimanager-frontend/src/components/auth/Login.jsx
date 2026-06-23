@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import api from "../../api/axios";
 import { useAuth } from "../../context/auth-context";
 import { getHomePath } from "../../utils/auth";
@@ -23,8 +23,17 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    const authErrorMessage = sessionStorage.getItem("authErrorMessage");
+    if (authErrorMessage) {
+      setError(authErrorMessage);
+      sessionStorage.removeItem("authErrorMessage");
+    }
+  }, []);
+
   const handleLogin = async (e) => {
     e.preventDefault();
+    setError("");
     try {
       const response = await api.post("/api/auth/login", { username, password });
       const { token } = response.data;
@@ -38,7 +47,10 @@ export default function Login() {
       navigate(getHomePath(profile), { replace: true });
     } catch (err) {
       console.error("Σφάλμα σύνδεσης:", err);
-      setError("Λάθος στοιχεία ή πρόβλημα σύνδεσης");
+      const backendMessage = typeof err.response?.data === "string"
+        ? err.response.data
+        : err.response?.data?.message;
+      setError(backendMessage || "Λάθος στοιχεία ή πρόβλημα σύνδεσης");
     }
   };
 

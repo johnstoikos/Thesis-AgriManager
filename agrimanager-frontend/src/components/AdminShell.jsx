@@ -16,6 +16,7 @@ import {
 import { useAuth } from "../context/auth-context";
 import { useTheme } from "../context/ThemeContext";
 import { useAppPreferences } from "../i18n";
+import AiAssistantWidget from "./AiAssistantWidget";
 import { Button, Popover, Switch } from "./ui";
 
 const adminLabels = {
@@ -230,6 +231,7 @@ export default function AdminShell() {
           <Outlet />
         </main>
       </div>
+      <AiAssistantWidget />
     </div>
   );
 }

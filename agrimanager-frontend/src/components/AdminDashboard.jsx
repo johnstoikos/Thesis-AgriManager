@@ -1,17 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Area,
-  AreaChart,
-  CartesianGrid,
   Cell,
   Pie,
   PieChart,
   ResponsiveContainer,
   Tooltip,
-  XAxis,
-  YAxis,
 } from "recharts";
-import { Activity, CheckCircle2, LandPlot, Sprout, UsersRound } from "lucide-react";
+import { CheckCircle2, LandPlot, Sprout, UsersRound } from "lucide-react";
 import api from "../api/axios";
 import { useAppPreferences } from "../i18n";
 import { EmptyState, ErrorState, PageHeader, SectionCard, SkeletonLines, StatCard, Surface } from "./ui";
@@ -23,13 +18,6 @@ const formatNumber = (value, digits = 0, locale = "el-GR") =>
     maximumFractionDigits: digits,
     minimumFractionDigits: digits,
   }).format(Number(value || 0));
-
-const formatMonth = (value, locale = "el-GR") => {
-  if (!value) return "";
-  const date = new Date(`${value}-01T00:00:00`);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString(locale, { month: "short", year: "2-digit" });
-};
 
 const ADMIN_DASHBOARD_LABELS = {
   el: {
@@ -45,20 +33,13 @@ const ADMIN_DASHBOARD_LABELS = {
     noCropDataDescription: "Το γράφημα θα εμφανιστεί όταν οι αγρότες καταχωρήσουν καλλιέργειες σε χωράφια.",
     area: "Έκταση",
     stremmata: "στρ.",
-    overviewDescription: "System-level εικόνα της εφαρμογής: χρήστες, χωράφια, εργασίες και μηνιαία δραστηριότητα.",
+    overviewDescription: "System-level εικόνα της εφαρμογής: χρήστες, χωράφια και εργασίες.",
     totalUsers: "Συνολικοί Χρήστες",
     totalUsersHelper: "Όλοι οι εγγεγραμμένοι λογαριασμοί",
     totalFields: "Συνολικά Χωράφια",
     totalFieldsHelper: "Χωράφια που υπάρχουν στην πλατφόρμα",
     totalTasks: "Συνολικές Εργασίες",
     totalTasksHelper: "Όλες οι καταχωρημένες εργασίες",
-    activityTitle: "Δραστηριότητα Πλατφόρμας",
-    activityDescription: "Ολοκληρωμένες εργασίες ανά μήνα από όλους τους χρήστες.",
-    months: "μήνες",
-    noActivityTitle: "Δεν υπάρχει ακόμα μηνιαία δραστηριότητα",
-    noActivityDescription: "Το γράφημα θα εμφανιστεί όταν υπάρξουν ολοκληρωμένες εργασίες με ημερομηνία.",
-    tasks: "εργασίες",
-    completed: "Ολοκληρώθηκαν",
   },
   en: {
     cropStatsTitle: "Crop Statistics",
@@ -73,20 +54,13 @@ const ADMIN_DASHBOARD_LABELS = {
     noCropDataDescription: "The chart will appear after farmers register crops in fields.",
     area: "Area",
     stremmata: "strem.",
-    overviewDescription: "System-level view of users, fields, tasks, and monthly activity.",
+    overviewDescription: "System-level view of users, fields, and tasks.",
     totalUsers: "Total Users",
     totalUsersHelper: "All registered accounts",
     totalFields: "Total Fields",
     totalFieldsHelper: "Fields currently registered on the platform",
     totalTasks: "Total Tasks",
     totalTasksHelper: "All registered tasks",
-    activityTitle: "Platform Activity",
-    activityDescription: "Completed tasks per month across all users.",
-    months: "months",
-    noActivityTitle: "No monthly activity yet",
-    noActivityDescription: "The chart will appear after completed tasks have dates.",
-    tasks: "tasks",
-    completed: "Completed",
   },
 };
 
@@ -140,16 +114,6 @@ export default function AdminDashboard({ focus }) {
         value: Number(item.totalAcres || 0),
       })),
     [cropDistribution]
-  );
-
-  const activityData = useMemo(
-    () =>
-      (overview?.monthlyActivity || []).map((item) => ({
-        month: item.month,
-        label: formatMonth(item.month, locale),
-        completedTasksCount: Number(item.completedTasksCount || 0),
-      })),
-    [locale, overview]
   );
 
   if (loading) {
@@ -280,67 +244,6 @@ export default function AdminDashboard({ focus }) {
             />
           </div>
 
-          <SectionCard
-            title={labels.activityTitle}
-            description={labels.activityDescription}
-            side={
-              <div className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-400/10 dark:text-emerald-300 dark:ring-emerald-400/20">
-                <Activity className="h-4 w-4" />
-                {activityData.length} {labels.months}
-              </div>
-            }
-          >
-            {activityData.length === 0 ? (
-              <EmptyState
-                icon={Activity}
-                title={labels.noActivityTitle}
-                description={labels.noActivityDescription}
-              />
-            ) : (
-              <div className="h-[360px] min-w-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={activityData} margin={{ top: 12, right: 18, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="platformActivityGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#0891b2" stopOpacity={0.35} />
-                        <stop offset="95%" stopColor="#0891b2" stopOpacity={0.02} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis
-                      dataKey="label"
-                      tick={{ fill: "#64748b", fontSize: 12, fontWeight: 700 }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      allowDecimals={false}
-                      tick={{ fill: "#64748b", fontSize: 12, fontWeight: 700 }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <Tooltip
-                      formatter={(value) => [`${formatNumber(value, 0, locale)} ${labels.tasks}`, labels.completed]}
-                      labelFormatter={(_, payload) => formatMonth(payload?.[0]?.payload?.month, locale)}
-                      contentStyle={{
-                        borderRadius: "12px",
-                        border: "1px solid rgb(226 232 240)",
-                        fontWeight: 700,
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="completedTasksCount"
-                      stroke="#0891b2"
-                      strokeWidth={3}
-                      fill="url(#platformActivityGradient)"
-                      activeDot={{ r: 6 }}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </SectionCard>
         </>
       )}
     </div>

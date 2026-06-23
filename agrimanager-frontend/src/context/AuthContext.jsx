@@ -103,14 +103,12 @@ export function AuthProvider({ children }) {
       }
 
       try {
-        console.log("Update Payload:", profileData);
         const response = await axios.put("/api/users/profile", profileData, {
           headers: {
             Authorization: `Bearer ${currentToken}`,
           },
         });
         const updatedProfile = response.data || null;
-        console.log("Update Success:", response.data);
         setUser(updatedProfile);
         if (updatedProfile) persistUserProfile(updatedProfile);
         return updatedProfile;
