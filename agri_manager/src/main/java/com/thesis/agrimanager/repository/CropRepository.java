@@ -4,7 +4,6 @@ import com.thesis.agrimanager.model.Crop;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import java.time.LocalDate;
 import java.util.List;
 
 public interface CropRepository extends JpaRepository<Crop, Long> {
@@ -17,52 +16,11 @@ public interface CropRepository extends JpaRepository<Crop, Long> {
             SELECT c
             FROM Crop c
             JOIN FETCH c.field f
-            WHERE c.plantingDate BETWEEN :startDate AND :endDate
-              AND 'ROLE_USER' MEMBER OF f.owner.roles
-              AND 'ROLE_ADMIN' NOT MEMBER OF f.owner.roles
-            ORDER BY c.plantingDate
-            """)
-    List<Crop> findForAdminAnalytics(
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate
-    );
-
-    @Query("""
-            SELECT c
-            FROM Crop c
-            JOIN FETCH c.field f
             JOIN FETCH f.owner o
             WHERE 'ROLE_USER' MEMBER OF f.owner.roles
               AND 'ROLE_ADMIN' NOT MEMBER OF f.owner.roles
             """)
     List<Crop> findAllOwnedByFarmers();
-
-    @Query("""
-            SELECT c
-            FROM Crop c
-            JOIN FETCH c.field f
-            JOIN FETCH f.owner o
-            WHERE f.owner.id = :ownerId
-              AND 'ROLE_USER' MEMBER OF f.owner.roles
-              AND 'ROLE_ADMIN' NOT MEMBER OF f.owner.roles
-            """)
-    List<Crop> findAllOwnedByFarmerId(@Param("ownerId") Long ownerId);
-
-    @Query("""
-            SELECT c
-            FROM Crop c
-            JOIN FETCH c.field f
-            WHERE f.owner.id = :ownerId
-              AND c.plantingDate BETWEEN :startDate AND :endDate
-              AND 'ROLE_USER' MEMBER OF f.owner.roles
-              AND 'ROLE_ADMIN' NOT MEMBER OF f.owner.roles
-            ORDER BY c.plantingDate
-            """)
-    List<Crop> findForAdminAnalyticsByOwnerId(
-            @Param("ownerId") Long ownerId,
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate
-    );
 
     long countByFieldOwnerUsername(String username);
 

@@ -42,6 +42,11 @@ import {
   StatCard,
   Surface,
 } from "./ui";
+import {
+  formatCurrency,
+  formatMonth,
+  formatNumber,
+} from "../utils/analytics";
 
 const EMPTY_ANALYTICS = {
   totalExpenses: 0,
@@ -66,25 +71,6 @@ const RANGE_OPTIONS = [
 ];
 
 const PIE_COLORS = ["#0f172a", "#0f766e", "#0891b2", "#65a30d", "#d97706", "#7c3aed", "#be123c", "#475569"];
-
-const formatCurrency = (value, locale = "el-GR") =>
-  new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: "EUR",
-    maximumFractionDigits: 2,
-  }).format(Number(value || 0));
-
-const formatNumber = (value, digits = 2, locale = "el-GR") =>
-  new Intl.NumberFormat(locale, {
-    maximumFractionDigits: digits,
-    minimumFractionDigits: 0,
-  }).format(Number(value || 0));
-
-const formatMonth = (month, locale = "el-GR") => {
-  const date = new Date(`${month}-01T00:00:00`);
-  if (Number.isNaN(date.getTime())) return month;
-  return date.toLocaleDateString(locale, { month: "short", year: "2-digit" });
-};
 
 const getUserLabel = (user, labels) => user.fullName || user.username || labels.userFallback(user.id);
 

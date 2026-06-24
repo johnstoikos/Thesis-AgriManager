@@ -41,6 +41,11 @@ public class FinancialRecordService {
     }
 
     @Transactional(readOnly = true)
+    public List<FinancialRecord> getRecords(String ownerUsername) {
+        return financialRecordRepository.findByOwnerUsername(ownerUsername);
+    }
+
+    @Transactional(readOnly = true)
     public List<FinancialRecord> getRecords(Long ownerId, LocalDate startDate, LocalDate endDate) {
         return financialRecordRepository.findByOwnerIdAndRecordDateBetween(ownerId, startDate, endDate);
     }
@@ -48,6 +53,11 @@ public class FinancialRecordService {
     @Transactional(readOnly = true)
     public List<FinancialRecord> getRecords(LocalDate startDate, LocalDate endDate) {
         return financialRecordRepository.findByRecordDateBetween(startDate, endDate);
+    }
+
+    @Transactional(readOnly = true)
+    public List<FinancialRecord> getAllRecords() {
+        return financialRecordRepository.findAll();
     }
 
     @Transactional

@@ -17,3 +17,4 @@ public class AgriManagerApplication {
 		return new RestTemplate();
 	}
 }
+

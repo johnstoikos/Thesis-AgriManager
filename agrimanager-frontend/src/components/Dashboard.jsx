@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { CircleDollarSign, LayoutGrid, MapPinned, Sprout, TrendingDown } from "lucide-react";
 import api from "../api/axios";
-import { useAuth } from "../context/auth-context";
 import { useAppPreferences } from "../i18n";
 import MapComponent from "./MapComponent";
 import { PageHeader, SectionCard, StatCard, Surface } from "./ui";
@@ -18,30 +17,12 @@ const formatCurrency = (value) =>
     maximumFractionDigits: 2,
   }).format(Number(value || 0));
 
-function persistAssistantContext({ fields, tasks, weather }) {
-  try {
-    window.localStorage.setItem(
-      "aiAssistantContext",
-      JSON.stringify({ fields, tasks, weather })
-    );
-  } catch (err) {
-    console.warn("Αδυναμία αποθήκευσης context AI:", err);
-  }
-}
-
 export default function Dashboard() {
   const { t } = useAppPreferences();
-  const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [financialStats, setFinancialStats] = useState(EMPTY_FINANCIAL_STATS);
-  const [advisorContext, setAdvisorContext] = useState({
-    weather: null,
-    profile: user || {},
-    fields: [],
-    tasks: [],
-  });
+  const [dashboardFields, setDashboardFields] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [, setAdvisorLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -67,50 +48,23 @@ export default function Dashboard() {
   useEffect(() => {
     let isMounted = true;
 
-    const fetchAdvisorContext = async () => {
-      setAdvisorLoading(true);
+    const fetchMapFields = async () => {
       try {
         const fieldsRes = await api.get("/api/fields");
         const fields = Array.isArray(fieldsRes.data) ? fieldsRes.data : [];
-
-        const [weatherResult, cropsResults] = await Promise.all([
-          fields[0]?.id
-            ? api.get(`/api/weather/field/${fields[0].id}`).catch(() => ({ data: null }))
-            : Promise.resolve({ data: null }),
-          Promise.allSettled(fields.map((field) => api.get(`/api/crops/field/${field.id}`))),
-        ]);
-
-        const crops = cropsResults.flatMap((result) =>
-          result.status === "fulfilled" && Array.isArray(result.value?.data) ? result.value.data : []
-        );
-
-        const taskResults = await Promise.allSettled(crops.map((crop) => api.get(`/api/tasks/crop/${crop.id}`)));
-        const tasks = taskResults.flatMap((result) =>
-          result.status === "fulfilled" && Array.isArray(result.value?.data) ? result.value.data : []
-        );
-
         if (!isMounted) return;
-        const context = {
-          weather: weatherResult.data,
-          profile: user || {},
-          fields,
-          tasks,
-        };
-        setAdvisorContext(context);
-        persistAssistantContext(context);
+        setDashboardFields(fields);
       } catch (err) {
-        console.warn("Αδυναμία φόρτωσης δεδομένων Agri-Assistant:", err);
-      } finally {
-        if (isMounted) setAdvisorLoading(false);
+        console.warn("Αδυναμία φόρτωσης χωραφιών χάρτη:", err);
       }
     };
 
-    fetchAdvisorContext();
+    fetchMapFields();
 
     return () => {
       isMounted = false;
     };
-  }, [user]);
+  }, []);
 
   if (loading) return (
     <div className="mx-auto w-full max-w-6xl px-4 md:px-6">
@@ -145,7 +99,7 @@ export default function Dashboard() {
 
         <SectionCard title={t.dashboard.mapTitle} description={t.dashboard.mapDescription}>
           <div className="w-full overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
-            <MapComponent dashboardFields={advisorContext.fields} />
+            <MapComponent dashboardFields={dashboardFields} />
           </div>
         </SectionCard>
       </div>

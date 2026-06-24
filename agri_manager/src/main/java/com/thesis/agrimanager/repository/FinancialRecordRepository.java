@@ -7,6 +7,8 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface FinancialRecordRepository extends JpaRepository<FinancialRecord, Long> {
+    List<FinancialRecord> findByOwnerUsername(String ownerUsername);
+
     List<FinancialRecord> findByOwnerIdAndRecordDateBetween(Long ownerId, LocalDate startDate, LocalDate endDate);
 
     List<FinancialRecord> findByRecordDateBetween(LocalDate startDate, LocalDate endDate);

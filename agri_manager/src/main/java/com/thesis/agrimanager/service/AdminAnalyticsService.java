@@ -2,7 +2,6 @@ package com.thesis.agrimanager.service;
 
 import com.thesis.agrimanager.dto.AdminAnalyticsDTO;
 import com.thesis.agrimanager.dto.AdminFieldAnalyticsDTO;
-import com.thesis.agrimanager.model.Crop;
 import com.thesis.agrimanager.model.Field;
 import com.thesis.agrimanager.model.FinancialRecord;
 import com.thesis.agrimanager.model.FinancialRecordType;
@@ -62,16 +61,9 @@ public class AdminAnalyticsService {
         List<Field> fields = userId == null
                 ? fieldRepository.findAllOwnedByFarmers()
                 : fieldRepository.findOwnedByFarmerId(userId);
-        List<Crop> periodCrops = userId == null
-                ? cropRepository.findForAdminAnalytics(startDate, endDate)
-                : cropRepository.findForAdminAnalyticsByOwnerId(userId, startDate, endDate);
         List<Task> periodTasks = userId == null
                 ? taskRepository.findForAdminAnalytics(startDate, endDate)
                 : taskRepository.findForAdminAnalyticsByOwnerId(userId, startDate, endDate);
-        List<Crop> cropsForTotals = userId == null
-                ? cropRepository.findAllOwnedByFarmers()
-                : cropRepository.findAllOwnedByFarmerId(userId);
-        List<Crop> cropsForFieldBreakdown = userId == null ? List.of() : cropsForTotals;
         List<Task> tasksForTotals = userId == null
                 ? taskRepository.findAllOwnedByFarmers()
                 : periodTasks;
@@ -112,36 +104,20 @@ public class AdminAnalyticsService {
         BigDecimal netProfit;
         double totalYieldKg = 0.0;
 
-        if (selectedFarmer == null) {
-            for (Task task : tasksForTotals) {
-                if (!userProfitService.isCompletedHarvest(task)) {
-                    continue;
-                }
-                double harvestedYield = task.getHarvestedYieldAmount() == null
-                        ? 0.0
-                        : task.getHarvestedYieldAmount();
-                totalYieldKg += harvestedYield;
-                totalRevenue = totalRevenue.add(userProfitService.getHarvestRevenue(task));
+        for (Task task : tasksForTotals) {
+            if (!userProfitService.isCompletedHarvest(task)) {
+                continue;
             }
-        } else {
-            for (Crop crop : cropsForTotals) {
-                double cropYield = crop.getHarvestYield() == null ? 0.0 : crop.getHarvestYield();
-                BigDecimal cropRevenue = calculateRevenue(cropYield, crop.getSellingPricePerKg());
-                totalYieldKg += cropYield;
-                totalRevenue = totalRevenue.add(cropRevenue);
-            }
+            double harvestedYield = task.getHarvestedYieldAmount() == null
+                    ? 0.0
+                    : task.getHarvestedYieldAmount();
+            totalYieldKg += harvestedYield;
         }
 
         for (Task task : tasksForTotals) {
             BigDecimal taskCost = task.getCost() == null ? BigDecimal.ZERO : task.getCost();
-            totalExpenses = totalExpenses.add(taskCost);
-        }
-
-        for (Crop crop : cropsForFieldBreakdown) {
-            double cropYield = crop.getHarvestYield() == null ? 0.0 : crop.getHarvestYield();
-            MutableFieldAnalytics fieldAnalytics = fieldsById.get(crop.getField().getId());
-            if (fieldAnalytics != null) {
-                fieldAnalytics.totalYieldKg += cropYield;
+            if (selectedFarmer != null) {
+                totalExpenses = totalExpenses.add(taskCost);
             }
         }
 
@@ -149,28 +125,19 @@ public class AdminAnalyticsService {
             BigDecimal taskCost = task.getCost() == null ? BigDecimal.ZERO : task.getCost();
 
             MutableFieldAnalytics fieldAnalytics = fieldsById.get(task.getCrop().getField().getId());
-            if (selectedFarmer == null && fieldAnalytics != null) {
-                fieldAnalytics.expenses = fieldAnalytics.expenses.add(taskCost);
-                if (userProfitService.isCompletedHarvest(task)) {
-                    double harvestedYield = task.getHarvestedYieldAmount() == null
+            if (fieldAnalytics != null) {
+                boolean completedHarvest = userProfitService.isCompletedHarvest(task);
+                if (completedHarvest) {
+                    fieldAnalytics.totalYieldKg += task.getHarvestedYieldAmount() == null
                             ? 0.0
                             : task.getHarvestedYieldAmount();
-                    BigDecimal harvestRevenue = userProfitService.getHarvestRevenue(task);
-                    fieldAnalytics.totalYieldKg += harvestedYield;
-                    fieldAnalytics.revenue = fieldAnalytics.revenue.add(harvestRevenue);
                 }
-            }
 
-            if (selectedFarmer == null) {
-                addToMonth(monthlyExpenses, task.getTaskDate(), taskCost);
-                if (userProfitService.isCompletedHarvest(task)) {
-                    addToMonth(monthlyRevenue, task.getTaskDate(), userProfitService.getHarvestRevenue(task));
-                }
             }
         }
 
         List<FinancialRecord> financialRecords = selectedFarmer == null
-                ? List.of()
+                ? financialRecordService.getRecords(startDate, endDate)
                 : financialRecordService.getRecords(userId, startDate, endDate);
         applyFinancialRecords(fieldsById, monthlyExpenses, monthlyRevenue, financialRecords);
 
@@ -189,6 +156,9 @@ public class AdminAnalyticsService {
                 addToMonth(monthlyRevenue, snapshot.monthlyPeriodStart(), snapshot.monthlyRevenue());
             }
         } else {
+            List<FinancialRecord> totalFinancialRecords = financialRecordService.getAllRecords();
+            totalRevenue = sumFinancialRecords(totalFinancialRecords, FinancialRecordType.REVENUE);
+            totalExpenses = sumFinancialRecords(totalFinancialRecords, FinancialRecordType.EXPENSE);
             netProfit = totalRevenue.subtract(totalExpenses);
         }
 
@@ -262,13 +232,6 @@ public class AdminAnalyticsService {
         );
     }
 
-    private BigDecimal calculateRevenue(double harvestYield, BigDecimal sellingPricePerKg) {
-        if (harvestYield <= 0 || sellingPricePerKg == null) {
-            return BigDecimal.ZERO;
-        }
-        return BigDecimal.valueOf(harvestYield).multiply(sellingPricePerKg);
-    }
-
     private void applyFinancialRecords(
             Map<Long, MutableFieldAnalytics> fieldsById,
             Map<String, BigDecimal> monthlyExpenses,
@@ -304,6 +267,17 @@ public class AdminAnalyticsService {
                 addToMonth(monthlyExpenses, record.getRecordDate(), amount);
             }
         }
+    }
+
+    private BigDecimal sumFinancialRecords(
+            List<FinancialRecord> records,
+            FinancialRecordType type
+    ) {
+        return records.stream()
+                .filter(record -> record.getType() == type)
+                .map(FinancialRecord::getAmount)
+                .map(this::zeroIfNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private BigDecimal zeroIfNull(BigDecimal value) {

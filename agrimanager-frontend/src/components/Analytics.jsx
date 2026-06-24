@@ -9,12 +9,11 @@ import {
   CircleDollarSign,
   Download,
   Layers3,
+  Scale,
   Sprout,
   Trash2,
   TrendingDown,
 } from "lucide-react";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
 import {
   Bar,
   BarChart,
@@ -28,10 +27,18 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import * as turf from "@turf/turf";
 import api from "../api/axios";
 import { Button, EmptyState, ErrorState, Popover, SectionCard, SkeletonLines, StatCard, Surface } from "./ui";
 import { useAppPreferences } from "../i18n";
+import {
+  formatCurrency,
+  formatNumber,
+  formatSquareMeters,
+  getCropStremmata,
+  getFieldSquareMeters,
+  toNumber,
+} from "../utils/analytics";
+import { exportAnalyticsPdf } from "../utils/analyticsPdf";
 
 const CROP_COLORS = ["#059669", "#0f766e", "#84a98c", "#22c55e", "#14b8a6", "#64748b"];
 const TASK_STATUS_COLORS = {
@@ -39,59 +46,6 @@ const TASK_STATUS_COLORS = {
   COMPLETED: "#10b981",
   UNKNOWN: "#64748b",
 };
-
-function formatSquareMeters(value, locale = "en-US") {
-  return new Intl.NumberFormat(locale, {
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
-function formatCurrency(value, locale = "el-GR") {
-  const amount = toNumber(value);
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: "EUR",
-    maximumFractionDigits: 2,
-  }).format(Number.isFinite(amount) ? amount : 0);
-}
-
-function toNumber(value) {
-  if (typeof value === "number") return value;
-  if (typeof value === "string") return Number(value.replace(",", "."));
-  return Number(value);
-}
-
-function getPolygonSquareMeters(geoJsonPolygon) {
-  const coordinates = geoJsonPolygon?.coordinates;
-  if (!Array.isArray(coordinates) || !Array.isArray(coordinates[0]) || coordinates[0].length < 4) {
-    return 0;
-  }
-
-  try {
-    return turf.area(turf.polygon(coordinates));
-  } catch (err) {
-    console.warn("Αδυναμία υπολογισμού έκτασης πολυγώνου:", err);
-    return 0;
-  }
-}
-
-function getFieldSquareMeters(field) {
-  const storedStremmata = toNumber(field.area);
-  if (Number.isFinite(storedStremmata) && storedStremmata > 0) {
-    return storedStremmata * 1000;
-  }
-
-  return getPolygonSquareMeters(field.boundary);
-}
-
-function getCropStremmata(crop) {
-  const storedZoneArea = toNumber(crop.zoneArea);
-  if (Number.isFinite(storedZoneArea) && storedZoneArea > 0) {
-    return storedZoneArea;
-  }
-
-  return getPolygonSquareMeters(crop.zoneBoundary) / 1000;
-}
 
 function ChartSkeleton() {
   return (
@@ -143,6 +97,11 @@ function GreekTooltip({ active, payload, label, valueSuffix = "", valueFormatter
   );
 }
 
+function displayValue(value) {
+  if (value === null || value === undefined || value === "") return "-";
+  return value;
+}
+
 export default function Analytics() {
   const { isDarkMode, t } = useAppPreferences();
   const labels = t.analytics || {};
@@ -154,6 +113,7 @@ export default function Analytics() {
     totalExpenses: 0,
     totalProfit: 0,
   });
+  const [fieldBreakdown, setFieldBreakdown] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [resetMenuOpen, setResetMenuOpen] = useState(false);
@@ -172,12 +132,14 @@ export default function Analytics() {
       setLoading(true);
       setError("");
       try {
-        const [fieldsRes, financialStatsRes] = await Promise.all([
+        const [fieldsRes, financialStatsRes, fieldBreakdownRes] = await Promise.all([
           api.get("/api/fields"),
           api.get("/api/stats/farmer-dashboard"),
+          api.get("/api/stats/field-breakdown"),
         ]);
         const availableFields = Array.isArray(fieldsRes.data) ? fieldsRes.data : [];
         setFields(availableFields);
+        setFieldBreakdown(Array.isArray(fieldBreakdownRes.data) ? fieldBreakdownRes.data : []);
         setFinancialStats({
           totalRevenue: toNumber(financialStatsRes.data?.totalRevenue) || 0,
           totalExpenses: toNumber(financialStatsRes.data?.totalExpenses) || 0,
@@ -270,17 +232,19 @@ export default function Analytics() {
     const completedTasks = tasks.filter((task) => task.status === "COMPLETED").length;
     const totalTasks = tasks.length;
     const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    const totalYieldKg = fieldBreakdown.reduce((sum, field) => sum + (toNumber(field.totalYieldKg) || 0), 0);
 
     return {
       totalFieldSquareMeters,
       activeZones: crops.length,
+      totalYieldKg,
       pendingTasks,
       completedTasks,
       completionPercentage,
       totalFields: fields.length,
       totalTasks,
     };
-  }, [crops.length, tasks, fields]);
+  }, [crops.length, tasks, fields, fieldBreakdown]);
 
   const handleResetFinancialData = async ({ target, label }) => {
     const confirmation = (
@@ -299,6 +263,8 @@ export default function Analytics() {
         totalExpenses: toNumber(response.data?.totalExpenses) || 0,
         totalProfit: toNumber(response.data?.totalProfit) || 0,
       });
+      const fieldBreakdownResponse = await api.get("/api/stats/field-breakdown");
+      setFieldBreakdown(Array.isArray(fieldBreakdownResponse.data) ? fieldBreakdownResponse.data : []);
       setResetMenuOpen(false);
       setResetMessage(
         (labels.resetSuccess || '"{item}" was reset successfully.').replace("{item}", label)
@@ -312,210 +278,14 @@ export default function Analytics() {
   };
 
   const handleExportPDF = async () => {
-    const exportArea = document.getElementById("pdf-export-area");
-    if (!exportArea) return;
-
-    const previousWidth = exportArea.style.width;
-    const previousMinWidth = exportArea.style.minWidth;
-    const previousMaxWidth = exportArea.style.maxWidth;
-    const previousBackground = exportArea.style.backgroundColor;
-    const previousColor = exportArea.style.color;
-    const previousPadding = exportArea.style.padding;
-    const previousBoxSizing = exportArea.style.boxSizing;
-
     try {
-      exportArea.style.width = "1100px";
-      exportArea.style.minWidth = "1100px";
-      exportArea.style.maxWidth = "none";
-      exportArea.style.padding = "40px";
-      exportArea.style.boxSizing = "border-box";
-      exportArea.style.backgroundColor = "#ffffff";
-      exportArea.style.color = "#0f172a";
-
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-
-      const canvas = await html2canvas(exportArea, {
-        backgroundColor: null,
-        logging: false,
-        scale: 2,
-        useCORS: true,
-        width: 1100,
-        windowWidth: 1100,
-        onclone: (clonedDocument) => {
-          const clonedArea = clonedDocument.getElementById("pdf-export-area");
-          if (!clonedArea) return;
-          const problematicColorPattern = /(oklab|oklch)/i;
-
-          const fallbackForProperty = (propertyName) => {
-            const name = propertyName.toLowerCase();
-
-            if (name.includes("background") || name.includes("shadow")) return "#ffffff";
-            if (name.includes("border") || name.includes("outline") || name.includes("stroke")) return "#e2e8f0";
-            return "#0f172a";
-          };
-
-          const sanitizeStyleDeclaration = (element, styles) => {
-            if (!styles) return;
-
-            Array.from(styles).forEach((propertyName) => {
-              const value = styles.getPropertyValue(propertyName);
-              if (!value || !problematicColorPattern.test(value)) return;
-
-              try {
-                element.style.setProperty(
-                  propertyName,
-                  fallbackForProperty(propertyName),
-                  styles.getPropertyPriority(propertyName)
-                );
-              } catch {
-                // Some browser-generated shorthand properties cannot be set directly.
-              }
-            });
-          };
-
-          const sanitizeComputedColors = (element) => {
-            const styles = clonedDocument.defaultView?.getComputedStyle(element);
-            if (!styles) return;
-
-            if (problematicColorPattern.test(styles.color)) {
-              element.style.color = "#1e293b";
-            }
-
-            if (problematicColorPattern.test(styles.backgroundColor)) {
-              element.style.backgroundColor = "#ffffff";
-            }
-
-            if (problematicColorPattern.test(styles.borderColor)) {
-              element.style.borderColor = "#e2e8f0";
-            }
-          };
-
-          clonedDocument.documentElement.style.backgroundColor = "#ffffff";
-          clonedDocument.body.style.backgroundColor = "#ffffff";
-
-          clonedArea.style.width = "1100px";
-          clonedArea.style.minWidth = "1100px";
-          clonedArea.style.maxWidth = "none";
-          clonedArea.style.padding = "40px";
-          clonedArea.style.boxSizing = "border-box";
-          clonedArea.style.backgroundColor = "#ffffff";
-          clonedArea.style.color = "#0f172a";
-
-          clonedDocument.querySelectorAll("*").forEach((node) => {
-            sanitizeStyleDeclaration(node, node.style);
-            sanitizeStyleDeclaration(node, clonedDocument.defaultView?.getComputedStyle(node));
-            sanitizeComputedColors(node);
-          });
-
-          const existingTitle = clonedDocument.querySelector("h1");
-          if (existingTitle && !clonedArea.querySelector("[data-pdf-export-title]")) {
-            const title = clonedDocument.createElement("h1");
-            title.dataset.pdfExportTitle = "true";
-            title.textContent = existingTitle.textContent;
-            title.style.margin = "0 0 24px";
-            title.style.color = "#0f172a";
-            title.style.backgroundColor = "#ffffff";
-            title.style.fontSize = "36px";
-            title.style.fontWeight = "900";
-            title.style.lineHeight = "1.15";
-            clonedArea.prepend(title);
-          }
-
-          clonedArea.querySelectorAll("*").forEach((node) => {
-            node.style.color = "#0f172a";
-            node.style.borderColor = "#e2e8f0";
-            node.style.boxShadow = "none";
-
-            if (!node.closest("svg")) {
-              node.style.backgroundColor = "#ffffff";
-            }
-          });
-
-          clonedArea.querySelectorAll(".recharts-responsive-container, .recharts-wrapper").forEach((node) => {
-            if (node.parentElement) {
-              node.parentElement.style.height = "auto";
-              node.parentElement.style.minHeight = "420px";
-              node.parentElement.style.paddingBottom = "36px";
-              node.parentElement.style.boxSizing = "border-box";
-              node.parentElement.style.overflow = "visible";
-            }
-
-            node.style.height = "380px";
-            node.style.minHeight = "380px";
-            node.style.paddingBottom = "32px";
-            node.style.boxSizing = "border-box";
-            node.style.overflow = "visible";
-          });
-
-          const chartColors = [...CROP_COLORS, ...Object.values(TASK_STATUS_COLORS), "#0f172a", "#94a3b8"];
-          clonedArea.querySelectorAll("svg").forEach((svg) => {
-            svg.style.backgroundColor = "transparent";
-            svg.style.overflow = "visible";
-            svg.setAttribute("fill", "#ffffff");
-            svg.setAttribute("stroke", "#e2e8f0");
-          });
-
-          clonedArea.querySelectorAll("svg *").forEach((node, index) => {
-            const tagName = node.tagName.toLowerCase();
-            const color = chartColors[index % chartColors.length];
-            const currentFill = node.getAttribute("fill");
-            const currentStroke = node.getAttribute("stroke");
-            const isHexColor = (value) => /^#[0-9a-f]{3,8}$/i.test(value || "");
-
-            node.style.removeProperty("fill");
-            node.style.removeProperty("stroke");
-
-            if (tagName === "text" || tagName === "tspan") {
-              node.setAttribute("fill", "#0f172a");
-              node.setAttribute("stroke", "#ffffff");
-              return;
-            }
-
-            if (tagName === "line" || tagName === "polyline") {
-              node.setAttribute("fill", "#ffffff");
-              node.setAttribute("stroke", "#e2e8f0");
-              return;
-            }
-
-            node.setAttribute("fill", isHexColor(currentFill) ? currentFill : color);
-            node.setAttribute("stroke", isHexColor(currentStroke) ? currentStroke : "#ffffff");
-          });
-        },
+      await exportAnalyticsPdf({
+        cropColors: CROP_COLORS,
+        taskStatusColors: TASK_STATUS_COLORS,
       });
-      const imageData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 6;
-      const imageWidth = pageWidth - margin * 2;
-      const imageRatio = canvas.height / canvas.width;
-      const imageHeight = imageWidth * imageRatio;
-
-      let remainingHeight = imageHeight;
-      let position = margin;
-
-      pdf.addImage(imageData, "PNG", margin, position, imageWidth, imageHeight);
-      remainingHeight -= pageHeight - margin * 2;
-
-      while (remainingHeight > 0) {
-        position = remainingHeight - imageHeight + margin;
-        pdf.addPage();
-        pdf.addImage(imageData, "PNG", margin, position, imageWidth, imageHeight);
-        remainingHeight -= pageHeight - margin * 2;
-      }
-
-      pdf.save("AgriManager_Analytics.pdf");
     } catch (err) {
       console.error("Σφάλμα εξαγωγής analytics PDF:", err);
       alert(labels.exportError || "PDF export failed.");
-    } finally {
-      exportArea.style.width = previousWidth;
-      exportArea.style.minWidth = previousMinWidth;
-      exportArea.style.maxWidth = previousMaxWidth;
-      exportArea.style.backgroundColor = previousBackground;
-      exportArea.style.color = previousColor;
-      exportArea.style.padding = previousPadding;
-      exportArea.style.boxSizing = previousBoxSizing;
     }
   };
 
@@ -563,9 +333,9 @@ export default function Analytics() {
       </Surface>
 
       <div id="pdf-export-area" className="space-y-6 bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-100 print:bg-[#f8fafc] print:text-[#0f172a]">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
           {loading ? (
-            Array.from({ length: 4 }).map((_, index) => (
+            Array.from({ length: 5 }).map((_, index) => (
               <Surface key={index} className="p-5">
                 <div className="h-11 w-11 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-700" />
                 <SkeletonLines lines={3} className="mt-5" />
@@ -586,6 +356,13 @@ export default function Analytics() {
                 value={stats.activeZones}
                 helper={labels.activeZonesHelper || "Registered crop zones"}
                 tone="sky"
+              />
+              <StatCard
+                icon={Scale}
+                title={labels.totalYield || "Total Yield"}
+                value={`${formatNumber(stats.totalYieldKg, 2, labels.squareMetersLocale || "el-GR")} kg`}
+                helper={labels.totalYieldHelper || "Completed harvest yield"}
+                tone="amber"
               />
               <StatCard
                 icon={CheckCircle2}
@@ -791,6 +568,51 @@ export default function Analytics() {
           </SectionCard>
 
         </div>
+
+        <SectionCard
+          title={labels.fieldAnalysisTitle || "Field Analysis"}
+          description={labels.fieldAnalysisDescription || "Soil, production, and financial data per field."}
+        >
+          {loading ? (
+            <SkeletonLines lines={8} />
+          ) : fieldBreakdown.length === 0 ? (
+            <EmptyState
+              icon={Layers3}
+              title={labels.noFieldsTitle || "No fields found"}
+              description={labels.noFieldsDescription || "Field analysis will appear when fields are registered."}
+              className="border-0 bg-transparent shadow-none"
+            />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[980px] border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                    <th className="px-4 py-3 font-black">{labels.fieldName || "Field Name"}</th>
+                    <th className="px-4 py-3 text-right font-black">{labels.areaStremmata || "Area (strem.)"}</th>
+                    <th className="px-4 py-3 font-black">{labels.soilType || "Soil Type"}</th>
+                    <th className="px-4 py-3 text-right font-black">pH</th>
+                    <th className="px-4 py-3 text-right font-black">{labels.harvestKg || "Yield (Kg)"}</th>
+                    <th className="px-4 py-3 text-right font-black">{labels.revenue || "Revenue"}</th>
+                    <th className="px-4 py-3 text-right font-black">{labels.expenses || "Expenses"}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fieldBreakdown.map((field, index) => (
+                    <tr key={`${field.fieldName}-${index}`} className="border-b border-slate-100 text-sm text-slate-700 last:border-0 dark:border-slate-800 dark:text-slate-200">
+                      <td className="px-4 py-4 font-black text-slate-950 dark:text-slate-100">{field.fieldName}</td>
+                      <td className="px-4 py-4 text-right">{formatNumber(field.area, 2, labels.currencyLocale || "el-GR")}</td>
+                      <td className="px-4 py-4">{displayValue(field.soilType)}</td>
+                      <td className="px-4 py-4 text-right">{displayValue(field.soilPh)}</td>
+                      <td className="px-4 py-4 text-right">{formatNumber(field.totalYieldKg, 2, labels.currencyLocale || "el-GR")}</td>
+                      <td className="px-4 py-4 text-right">{formatCurrency(field.fieldRevenue, labels.currencyLocale || "el-GR")}</td>
+                      <td className="px-4 py-4 text-right">{formatCurrency(field.fieldExpenses, labels.currencyLocale || "el-GR")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </SectionCard>
       </div>
     </div>
   );

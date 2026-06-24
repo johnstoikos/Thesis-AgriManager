@@ -99,17 +99,3 @@ function AuthRedirect() {
   if (authLoading) return null;
   return <Navigate to={isAuthenticated ? getHomePath(user) : "/login"} replace />;
 }
-
-function MainLayout() {
-  return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar />
-      <main className="flex-1 overflow-y-auto p-6">
-        <Outlet /> {/* Εδώ προβάλλονται οι σελίδες σου */}
-      </main>
-
-      {/* Το Floating AI Widget σου που κάθεται «πάνω» από όλα */}
-      <AiAssistantWidget />
-    </div>
-  );
-}
