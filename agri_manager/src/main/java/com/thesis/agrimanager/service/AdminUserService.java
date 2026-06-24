@@ -1,5 +1,13 @@
 package com.thesis.agrimanager.service;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.thesis.agrimanager.dto.AdminUserDTO;
 import com.thesis.agrimanager.dto.AdminUserStatsDTO;
 import com.thesis.agrimanager.dto.CropDistributionDTO;
@@ -11,13 +19,6 @@ import com.thesis.agrimanager.repository.CropRepository;
 import com.thesis.agrimanager.repository.FieldRepository;
 import com.thesis.agrimanager.repository.TaskRepository;
 import com.thesis.agrimanager.repository.UserRepository;
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AdminUserService {
