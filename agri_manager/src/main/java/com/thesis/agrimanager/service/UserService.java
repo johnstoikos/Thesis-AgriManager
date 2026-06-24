@@ -18,12 +18,14 @@ public class UserService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
+    // Αρχικοποιεί τις εξαρτήσεις.
     public UserService(UserRepository userRepository, JwtService jwtService) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
         this.passwordEncoder = new BCryptPasswordEncoder();
     }
 
+    // Δημιουργεί νέα εγγραφή.
     public User registerNewUser(UserRegistrationDTO registrationDto) {
         if (userRepository.findByUsername(registrationDto.username()).isPresent()) {
             throw new RuntimeException("Το username χρησιμοποιείται ήδη");
@@ -49,6 +51,7 @@ public class UserService {
         return userRepository.save(user);
     }
 
+    // Συνδέει τον χρήστη.
     public String login(LoginDTO loginDto) {
         User user = userRepository.findByUsername(loginDto.username())
                 .orElseThrow(() -> new RuntimeException("Ο χρήστης δεν βρέθηκε"));
@@ -64,11 +67,13 @@ public class UserService {
         return jwtService.generateToken(user.getUsername());
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     public User getUserByUsername(String username) {
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Ο χρήστης " + username + " δεν βρέθηκε!"));
     }
 
+    // Ενημερώνει δεδομένα.
     public UserProfileDTO updateUserProfile(String username, UserProfileDTO dto) {
         User user = getUserByUsername(username);
 
@@ -80,6 +85,7 @@ public class UserService {
         return toProfileDTO(savedUser);
     }
 
+    // Ενημερώνει δεδομένα.
     public void changePassword(String username, String oldPassword, String newPassword) {
         User user = getUserByUsername(username);
 
@@ -91,6 +97,7 @@ public class UserService {
         userRepository.save(user);
     }
 
+    // Μετατρέπει δεδομένα.
     public UserProfileDTO toProfileDTO(User user) {
         return new UserProfileDTO(
                 user.getId(),

@@ -64,6 +64,7 @@ const calendarLocalizer = dateFnsLocalizer({
   locales,
 });
 
+// Εμφανίζει στοιχείο διεπαφής.
 export default function GlobalTasks() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -86,6 +87,7 @@ export default function GlobalTasks() {
     const loadErrorMessage =
       language === "el" ? "Αποτυχία φόρτωσης εργασιών. Δοκιμάστε ξανά." : "Failed to load tasks. Please try again.";
 
+    // Φορτώνει δεδομένα.
     const fetchAllData = async () => {
       setLoading(true);
       setError("");
@@ -186,6 +188,7 @@ export default function GlobalTasks() {
       }));
   }, [filteredTasks, labels.task]);
 
+  // Αποθηκεύει πρόοδο εργασίας.
   const handleProgressSave = async (taskId, { progress, yieldAmount }) => {
     const params = { progress };
     if (yieldAmount !== null) params.yieldAmount = yieldAmount;
@@ -198,6 +201,7 @@ export default function GlobalTasks() {
     return updatedTask;
   };
 
+  // Διαγράφει επιλεγμένη εγγραφή.
   const handleDeleteTask = async (taskId) => {
     if (!window.confirm(labels.deleteConfirm || "Are you sure you want to delete this task?")) return;
     try {
@@ -216,11 +220,13 @@ export default function GlobalTasks() {
     }
   };
 
+  // Ξεκινά νέα εργασία.
   const handleStartNewTask = (fieldId) => {
     setShowFieldPicker(false);
     navigate(`/fields/${fieldId}?newTask=1`);
   };
 
+  // Εξάγει αρχείο PDF.
   const exportToPDF = async () => {
     try {
       await exportGlobalTasksPdf({

@@ -13,15 +13,18 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminStatsController {
     private final AdminStatsService adminStatsService;
 
+    // Αρχικοποιεί τις εξαρτήσεις.
     public AdminStatsController(AdminStatsService adminStatsService) {
         this.adminStatsService = adminStatsService;
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @GetMapping("/overview")
     public AdminOverviewDTO getOverview() {
         return adminStatsService.getOverview();
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @GetMapping("/crops-dist")
     public List<CropDistributionDTO> getCropDistribution() {
         return adminStatsService.getCropDistribution();

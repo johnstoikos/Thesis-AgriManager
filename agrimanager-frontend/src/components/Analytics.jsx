@@ -47,6 +47,7 @@ const TASK_STATUS_COLORS = {
   UNKNOWN: "#64748b",
 };
 
+// Εμφανίζει στοιχείο διεπαφής.
 function ChartSkeleton() {
   return (
     <div className="flex h-[340px] flex-col justify-between rounded-3xl border border-slate-100 bg-slate-50/70 p-6 dark:border-slate-800 dark:bg-slate-900">
@@ -64,6 +65,7 @@ function ChartSkeleton() {
   );
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 function ChartEmptyState({ icon, title, description }) {
   return (
     <div className="flex h-[340px] items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50/70 p-6 dark:border-slate-800 dark:bg-slate-900">
@@ -77,6 +79,7 @@ function ChartEmptyState({ icon, title, description }) {
   );
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 function GreekTooltip({ active, payload, label, valueSuffix = "", valueFormatter }) {
   if (!active || !payload?.length) return null;
 
@@ -97,11 +100,13 @@ function GreekTooltip({ active, payload, label, valueSuffix = "", valueFormatter
   );
 }
 
+// Μορφοποιεί τιμή.
 function displayValue(value) {
   if (value === null || value === undefined || value === "") return "-";
   return value;
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export default function Analytics() {
   const { isDarkMode, t } = useAppPreferences();
   const labels = t.analytics || {};
@@ -128,6 +133,7 @@ export default function Analytics() {
   ];
 
   useEffect(() => {
+    // Φορτώνει δεδομένα.
     const fetchAnalyticsData = async () => {
       setLoading(true);
       setError("");
@@ -246,6 +252,7 @@ export default function Analytics() {
     };
   }, [crops.length, tasks, fields, fieldBreakdown]);
 
+  // Μηδενίζει οικονομικά δεδομένα.
   const handleResetFinancialData = async ({ target, label }) => {
     const confirmation = (
       labels.resetConfirm
@@ -277,6 +284,7 @@ export default function Analytics() {
     }
   };
 
+  // Εξάγει PDF αναφορά.
   const handleExportPDF = async () => {
     try {
       await exportAnalyticsPdf({

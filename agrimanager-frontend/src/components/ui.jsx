@@ -2,10 +2,12 @@ import { createElement } from "react";
 import { createPortal } from "react-dom"; // Προσθήκη για τον Τηλεμεταφορέα
 import { AlertCircle, Inbox } from "lucide-react";
 
+// Συνδυάζει CSS κλάσεις.
 function cn(...classes) {
   return classes.filter(Boolean).join(" ");
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export function Button({
   children,
   className = "",
@@ -45,6 +47,7 @@ export function Button({
   );
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export function Surface({ children, className = "" }) {
   return (
     <div
@@ -58,6 +61,7 @@ export function Surface({ children, className = "" }) {
   );
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export function Popover({ children, className = "", align = "right" }) {
   const alignClasses = {
     right: "right-0",
@@ -77,6 +81,7 @@ export function Popover({ children, className = "", align = "right" }) {
   );
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export function Switch({ checked, onChange, className = "", disabled = false, "aria-label": ariaLabel }) {
   return (
     <button
@@ -102,6 +107,7 @@ export function Switch({ checked, onChange, className = "", disabled = false, "a
   );
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export function PageHeader({ eyebrow, title, description, actions, className = "" }) {
   return (
     <Surface className={cn("p-6 md:p-7", className)}>
@@ -123,6 +129,7 @@ export function PageHeader({ eyebrow, title, description, actions, className = "
   );
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export function StatCard({ icon: Icon, title, value, tone = "emerald", helper }) {
   const tones = {
     emerald: "bg-emerald-100 text-emerald-800 dark:bg-emerald-400/15 dark:text-emerald-300",
@@ -143,6 +150,7 @@ export function StatCard({ icon: Icon, title, value, tone = "emerald", helper })
   );
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export function StatusBadge({ status, children }) {
   const tones = {
     PENDING: "bg-amber-100 text-amber-700 ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-400/30",
@@ -163,6 +171,7 @@ export function StatusBadge({ status, children }) {
   );
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export function EmptyState({
   icon: Icon = Inbox,
   title,
@@ -182,6 +191,7 @@ export function EmptyState({
   );
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export function ErrorState({ title = "Κάτι πήγε στραβά", description, action }) {
   return (
     <Surface className="p-10 text-center">
@@ -195,6 +205,7 @@ export function ErrorState({ title = "Κάτι πήγε στραβά", descripti
   );
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export function SkeletonLines({ lines = 3, className = "" }) {
   return (
     <div className={cn("animate-pulse space-y-3", className)}>
@@ -211,6 +222,7 @@ export function SkeletonLines({ lines = 3, className = "" }) {
   );
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export function SectionCard({ title, description, badge, side, children, className = "" }) {
   return (
     <Surface className={cn("box-border p-5 md:p-6", className)}>
@@ -232,6 +244,7 @@ export function SectionCard({ title, description, badge, side, children, classNa
 }
 
 
+// Εμφανίζει στοιχείο διεπαφής.
 export function ModalShell({ title, description, onClose, children, className = "", size = "xl", cancelText = "Cancel" }) {
   const sizeClasses = {
     md: "max-w-2xl",
@@ -267,10 +280,12 @@ export function ModalShell({ title, description, onClose, children, className = 
   );
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export function FieldLabel({ children }) {
   return <label className="mb-2 block text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{children}</label>;
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export function FieldInput({ className = "", ...props }) {
   return (
     <input
@@ -281,7 +296,7 @@ export function FieldInput({ className = "", ...props }) {
         "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500",
         // Στυλ για Dark mode (Ενεργό)
         "dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-emerald-500 dark:focus:ring-emerald-500/10",
-        // ΔΙΟΡΘΩΣΗ: Στυλ για απενεργοποιημένο πεδίο στο Dark Mode
+        // Στυλ απενεργοποίησης σε dark mode.
         "dark:disabled:bg-slate-900 dark:disabled:text-slate-500 dark:disabled:border-slate-800",
         className
       )}
@@ -290,6 +305,7 @@ export function FieldInput({ className = "", ...props }) {
   );
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export function FieldTextarea({ className = "", ...props }) {
   return (
     <textarea
@@ -302,6 +318,7 @@ export function FieldTextarea({ className = "", ...props }) {
   );
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export function FieldSelect({ className = "", children, ...props }) {
   return (
     <select

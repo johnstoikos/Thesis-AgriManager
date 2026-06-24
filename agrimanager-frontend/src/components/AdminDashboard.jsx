@@ -13,6 +13,7 @@ import { EmptyState, ErrorState, PageHeader, SectionCard, SkeletonLines, StatCar
 
 const COLORS = ["#0891b2", "#16a34a", "#f59e0b", "#e11d48", "#7c3aed", "#0f766e", "#ea580c", "#2563eb"];
 
+// Μορφοποιεί τιμή.
 const formatNumber = (value, digits = 0, locale = "el-GR") =>
   new Intl.NumberFormat(locale, {
     maximumFractionDigits: digits,
@@ -64,6 +65,7 @@ const ADMIN_DASHBOARD_LABELS = {
   },
 };
 
+// Εμφανίζει στοιχείο διεπαφής.
 export default function AdminDashboard({ focus }) {
   const { language } = useAppPreferences();
   const labels = ADMIN_DASHBOARD_LABELS[language] || ADMIN_DASHBOARD_LABELS.el;
@@ -77,6 +79,7 @@ export default function AdminDashboard({ focus }) {
   useEffect(() => {
     let isMounted = true;
 
+    // Φορτώνει δεδομένα.
     const fetchAdminStats = async () => {
       setLoading(true);
       setError(null);

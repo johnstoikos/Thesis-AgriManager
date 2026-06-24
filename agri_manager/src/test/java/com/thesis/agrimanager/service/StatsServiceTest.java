@@ -40,6 +40,7 @@ class StatsServiceTest {
     @Mock
     private FinancialRecordService financialRecordService;
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void farmerStatsReturnStoredCurrentPeriodValues() {
         when(userProfitService.getSnapshot("farmer"))
@@ -62,6 +63,7 @@ class StatsServiceTest {
         assertEquals(LocalDate.of(2026, 6, 30), result.profitPeriodEnd());
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void resettingFinancialStatsReturnsUpdatedValues() {
         when(userProfitService.resetFinancialData(
@@ -91,6 +93,7 @@ class StatsServiceTest {
         verify(financialRecordService).deleteExpenseRecords("farmer");
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void resetAllFinancialStatsDeletesAllLedgerRecords() {
         when(userProfitService.resetFinancialData(
@@ -113,6 +116,7 @@ class StatsServiceTest {
         verify(financialRecordService).deleteAllRecords("farmer");
     }
 
+    // Δημιουργεί δεδομένα δοκιμής.
     @Test
     void fieldBreakdownUsesHarvestTasksForYieldAndLedgerRecordsForFinancials() {
         Field field = new Field();
@@ -162,6 +166,7 @@ class StatsServiceTest {
         assertMoney("75.50", fieldAnalytics.fieldExpenses());
     }
 
+    // Δημιουργεί δεδομένα δοκιμής.
     private StatsService service() {
         return new StatsService(
                 fieldRepository,
@@ -172,6 +177,7 @@ class StatsServiceTest {
         );
     }
 
+    // Δημιουργεί δεδομένα δοκιμής.
     private FinancialRecord financialRecord(
             Field field,
             FinancialRecordType type,
@@ -185,6 +191,7 @@ class StatsServiceTest {
         return record;
     }
 
+    // Ελέγχει αναμενόμενη τιμή.
     private void assertMoney(String expected, BigDecimal actual) {
         assertEquals(0, new BigDecimal(expected).compareTo(actual));
     }

@@ -12,10 +12,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminAnalyticsController {
     private final AdminAnalyticsService adminAnalyticsService;
 
+    // Αρχικοποιεί τις εξαρτήσεις.
     public AdminAnalyticsController(AdminAnalyticsService adminAnalyticsService) {
         this.adminAnalyticsService = adminAnalyticsService;
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @GetMapping
     public AdminAnalyticsDTO getAdminAnalytics(
             @RequestParam(required = false) Long userId,

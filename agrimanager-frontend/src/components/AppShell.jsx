@@ -31,6 +31,7 @@ import AiAssistantWidget from "./AiAssistantWidget";
 import TaskProgressControl from "./TaskProgressControl";
 import { Button, Popover, Switch } from "./ui";
 
+// Μορφοποιεί τιμή.
 const formatDate = (value, language = "el") => {
   if (!value) return null;
   const date = new Date(value);
@@ -53,6 +54,7 @@ const navItems = [
 const iconButtonClass =
   "h-10 w-10 rounded-full p-2.5 text-slate-500 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300 sm:h-12 sm:w-12 sm:p-3";
 
+// Δημιουργεί κλειδί ημερομηνίας.
 const dateKey = (date) => {
   const current = new Date(date);
   if (Number.isNaN(current.getTime())) return "";
@@ -63,8 +65,10 @@ const dateKey = (date) => {
   ].join("-");
 };
 
+// Παρέχει hook εφαρμογής.
 function useOutsideClose(ref, onClose) {
   useEffect(() => {
+    // Κλείνει με εξωτερικό κλικ.
     const handleClickOutside = (event) => {
       if (ref.current && !ref.current.contains(event.target)) {
         onClose();
@@ -75,6 +79,7 @@ function useOutsideClose(ref, onClose) {
   }, [onClose, ref]);
 }
 
+// Επιστρέφει δεδομένα.
 function getNotificationIcon(taskType = "") {
   const type = String(taskType).toLowerCase();
   if (type.includes("ποτ")) return Droplets;
@@ -87,6 +92,7 @@ function getNotificationIcon(taskType = "") {
   return Tractor;
 }
 
+// Επιστρέφει δεδομένα.
 function getNotificationTone(taskType = "") {
   const type = String(taskType).toLowerCase();
   if (type.includes("ψεκ")) return "warning";
@@ -112,6 +118,7 @@ const notificationToneClasses = {
   },
 };
 
+// Εμφανίζει στοιχείο διεπαφής.
 function BellDropdown({ label }) {
   const { language, t } = useAppPreferences();
   const [isOpen, setIsOpen] = useState(false);
@@ -121,6 +128,7 @@ function BellDropdown({ label }) {
 
   useOutsideClose(dropdownRef, () => setIsOpen(false));
 
+  // Φορτώνει δεδομένα.
   const fetchNotifications = async () => {
     setLoading(true);
     try {
@@ -137,6 +145,7 @@ function BellDropdown({ label }) {
     fetchNotifications();
   }, []);
 
+  // Αποθηκεύει πρόοδο εργασίας.
   const handleProgressSave = async (taskId, { progress, yieldAmount }) => {
     const params = { progress };
     if (yieldAmount !== null) params.yieldAmount = yieldAmount;
@@ -228,6 +237,7 @@ function BellDropdown({ label }) {
   );
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 function SettingsDropdown() {
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useAppPreferences();
@@ -238,6 +248,7 @@ function SettingsDropdown() {
 
   useOutsideClose(dropdownRef, () => setIsOpen(false));
 
+  // Αποσυνδέει τον χρήστη.
   const handleLogout = () => {
     clearAuth();
     window.location.href = "/login";
@@ -318,6 +329,7 @@ function SettingsDropdown() {
   );
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 function CalendarPopover() {
   const { language, t } = useAppPreferences();
   const [isOpen, setIsOpen] = useState(false);
@@ -336,6 +348,7 @@ function CalendarPopover() {
     if (!isOpen || loaded) return;
 
     let isMounted = true;
+    // Φορτώνει δεδομένα.
     const fetchTasks = async () => {
       setLoading(true);
       try {
@@ -423,9 +436,11 @@ function CalendarPopover() {
   }, [visibleMonth]);
 
   const formatterLocale = language === "el" ? "el-GR" : "en-US";
+  // Αλλάζει εμφανιζόμενο μήνα.
   const goToPreviousMonth = () => {
     setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1));
   };
+  // Αλλάζει εμφανιζόμενο μήνα.
   const goToNextMonth = () => {
     setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1));
   };
@@ -535,6 +550,7 @@ function CalendarPopover() {
   );
 }
 
+// Εμφανίζει avatar χρήστη.
 function UserAvatar({ profile, className = "h-10 w-10", iconClassName = "h-6 w-6" }) {
   const avatar = profile?.profilePhoto || profile?.avatarUrl || "";
   const name = profile?.fullName || profile?.name || "AgriManager User";
@@ -554,6 +570,7 @@ function UserAvatar({ profile, className = "h-10 w-10", iconClassName = "h-6 w-6
   );
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export default function AppShell() {
   const { t } = useAppPreferences();
   const { user } = useAuth();

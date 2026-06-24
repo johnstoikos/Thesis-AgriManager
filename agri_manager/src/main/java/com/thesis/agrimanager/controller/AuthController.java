@@ -17,10 +17,12 @@ public class AuthController {
 
     private final UserService userService;
 
+    // Αρχικοποιεί τις εξαρτήσεις.
     public AuthController(UserService userService) {
         this.userService = userService;
     }
 
+    // Δημιουργεί νέα εγγραφή.
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@RequestBody UserRegistrationDTO registrationDto) {
         try {
@@ -31,6 +33,7 @@ public class AuthController {
         }
     }
 
+    // Συνδέει τον χρήστη.
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginDTO loginDto) {
         try {

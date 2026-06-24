@@ -18,7 +18,7 @@ import { useAuth } from "./context/auth-context";
 import { AppPreferencesProvider } from "./i18n";
 import { getHomePath, getUserRoles } from "./utils/auth";
 
-// Προστατευμένη διαδρομή με role guard και διαφορετικό shell ανά module.
+// Προστατεύει route πρόσβασης.
 function ProtectedRoute({ allowedRoles, children }) {
   const { authLoading, isAuthenticated, user } = useAuth();
 
@@ -43,6 +43,7 @@ function ProtectedRoute({ allowedRoles, children }) {
   return children;
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export default function App() {
   return (
     <ThemeProvider>
@@ -94,6 +95,7 @@ export default function App() {
   );
 }
 
+// Ανακατευθύνει πιστοποιημένο χρήστη.
 function AuthRedirect() {
   const { authLoading, isAuthenticated, user } = useAuth();
   if (authLoading) return null;

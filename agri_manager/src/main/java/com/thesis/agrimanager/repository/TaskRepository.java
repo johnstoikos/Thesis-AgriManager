@@ -12,14 +12,18 @@ import java.util.List;
 import java.util.Optional;
 
 public interface TaskRepository extends JpaRepository<Task, Long> {
+    // Αναζητά εγγραφές.
     List<Task> findByCropId(Long cropId);
 
+    // Αναζητά εγγραφές.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT t FROM Task t WHERE t.id = :id")
     Optional<Task> findByIdForProgressUpdate(@Param("id") Long id);
 
+    // Μετρά εγγραφές.
     long countByStatusAndCropFieldOwnerUsername(String status, String username);
 
+    // Μετρά εγγραφές.
     @Query("""
             SELECT COUNT(t)
             FROM Task t
@@ -29,6 +33,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
             """)
     long countByCropFieldOwnerId(@Param("ownerId") Long ownerId);
 
+    // Μετρά εγγραφές.
     @Query("""
             SELECT COUNT(t)
             FROM Task t
@@ -42,6 +47,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
             @Param("ownerId") Long ownerId
     );
 
+    // Μετρά εγγραφές.
     @Query("""
             SELECT COUNT(t)
             FROM Task t
@@ -51,6 +57,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
             """)
     long countByStatusForFarmers(@Param("status") String status);
 
+    // Μετρά εγγραφές.
     @Query("""
             SELECT COUNT(t)
             FROM Task t
@@ -59,6 +66,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
             """)
     long countOwnedByFarmers();
 
+    // Αναζητά εγγραφές.
     @Query("""
             SELECT t
             FROM Task t
@@ -70,6 +78,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
             """)
     List<Task> findAllForFarmerProfit(@Param("username") String username);
 
+    // Αναζητά εγγραφές.
     @Query("""
             SELECT t
             FROM Task t
@@ -85,6 +94,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
             @Param("endDate") LocalDate endDate
     );
 
+    // Αναζητά εγγραφές.
     @Query("""
             SELECT t
             FROM Task t
@@ -95,6 +105,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
             """)
     List<Task> findAllOwnedByFarmers();
 
+    // Αναζητά εγγραφές.
     @Query("""
             SELECT t
             FROM Task t
@@ -112,6 +123,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
             @Param("endDate") LocalDate endDate
     );
 
+    // Αναζητά εγγραφές.
     @Query("""
             SELECT t
             FROM Task t
@@ -122,6 +134,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
             """)
     List<Task> findPendingUrgentTasks(@Param("username") String username, @Param("date") LocalDate date);
 
+    // Αθροίζει ποσά.
     @Query("""
             SELECT COALESCE(SUM(t.cost), 0)
             FROM Task t
@@ -132,6 +145,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
             """)
     BigDecimal sumCompletedTaskCostByOwnerId(@Param("ownerId") Long ownerId);
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @Query(value = """
             SELECT TO_CHAR(tasks.task_date, 'YYYY-MM') AS "month",
                    COUNT(*) AS "completedTasksCount"
@@ -152,6 +166,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
             """, nativeQuery = true)
     List<MonthlyActivityProjection> getCompletedTasksByMonth();
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @Query(value = """
             SELECT TO_CHAR(t.task_date, 'YYYY-MM') AS "month",
                    COUNT(*) AS "completedTasksCount"
@@ -179,7 +194,9 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     List<MonthlyActivityProjection> getCompletedTasksByMonthAndOwnerId(@Param("ownerId") Long ownerId);
 
     interface MonthlyActivityProjection {
+        // Επιστρέφει ζητούμενα δεδομένα.
         String getMonth();
+        // Επιστρέφει ζητούμενα δεδομένα.
         Long getCompletedTasksCount();
     }
 }

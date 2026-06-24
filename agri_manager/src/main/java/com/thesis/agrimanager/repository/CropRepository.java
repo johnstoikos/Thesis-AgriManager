@@ -7,11 +7,14 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 public interface CropRepository extends JpaRepository<Crop, Long> {
+    // Αναζητά εγγραφές.
     List<Crop> findByFieldId(Long fieldId);
 
+    // Αναζητά εγγραφές.
     @Query("SELECT c FROM Crop c JOIN FETCH c.field f WHERE f.owner.username = :username")
     List<Crop> findByFieldOwnerUsername(@Param("username") String username);
 
+    // Αναζητά εγγραφές.
     @Query("""
             SELECT c
             FROM Crop c
@@ -22,8 +25,10 @@ public interface CropRepository extends JpaRepository<Crop, Long> {
             """)
     List<Crop> findAllOwnedByFarmers();
 
+    // Μετρά εγγραφές.
     long countByFieldOwnerUsername(String username);
 
+    // Μετρά εγγραφές.
     @Query("""
             SELECT COUNT(c)
             FROM Crop c
@@ -33,6 +38,7 @@ public interface CropRepository extends JpaRepository<Crop, Long> {
             """)
     long countByFieldOwnerId(@Param("ownerId") Long ownerId);
 
+    // Μετρά εγγραφές.
     @Query("""
             SELECT COUNT(c)
             FROM Crop c
@@ -41,6 +47,7 @@ public interface CropRepository extends JpaRepository<Crop, Long> {
             """)
     long countOwnedByFarmers();
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @Query("""
             SELECT c.type AS cropType, COALESCE(SUM(f.area), 0) AS totalAcres
             FROM Crop c
@@ -53,6 +60,7 @@ public interface CropRepository extends JpaRepository<Crop, Long> {
             """)
     List<CropDistributionProjection> getGlobalCropDistribution();
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @Query("""
             SELECT c.type AS cropType, COALESCE(SUM(f.area), 0) AS totalAcres
             FROM Crop c
@@ -68,7 +76,9 @@ public interface CropRepository extends JpaRepository<Crop, Long> {
     List<CropDistributionProjection> getCropDistributionByOwnerId(@Param("ownerId") Long ownerId);
 
     interface CropDistributionProjection {
+        // Επιστρέφει ζητούμενα δεδομένα.
         String getCropType();
+        // Επιστρέφει ζητούμενα δεδομένα.
         Double getTotalAcres();
     }
 }

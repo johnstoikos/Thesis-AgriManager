@@ -8,6 +8,7 @@ const RESIDENTIAL_BUILDINGS =
 const POPULATED_PLACES =
   "^(city|town|village|hamlet|suburb|neighbourhood)$";
 
+// Δημιουργεί βοηθητικό φίλτρο.
 function createPolygonFilter(boundary) {
   if (!Array.isArray(boundary)) return null;
 
@@ -21,7 +22,7 @@ function createPolygonFilter(boundary) {
 
   if (validCoordinates.length < 3) return null;
 
-  // Keep public Overpass queries reasonably small for polygons with many vertices.
+  // Περιορίζει μεγάλα Overpass queries.
   const step = Math.max(1, Math.ceil(validCoordinates.length / 80));
   const simplifiedCoordinates = validCoordinates.filter(
     (_, index) => index % step === 0
@@ -41,6 +42,7 @@ function createPolygonFilter(boundary) {
     .join(" ");
 }
 
+// Ελέγχει εγκυρότητα.
 export async function validateLandUse(lat, lng, boundary = []) {
   const polygonFilter = createPolygonFilter(boundary);
   const polygonQueries = polygonFilter

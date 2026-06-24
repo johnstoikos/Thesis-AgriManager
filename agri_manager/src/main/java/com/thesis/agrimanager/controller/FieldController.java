@@ -25,11 +25,13 @@ public class FieldController {
     private final FieldService fieldService;
     private final UserService userService;
 
+    // Αρχικοποιεί τις εξαρτήσεις.
     public FieldController(FieldService fieldService, UserService userService) {
         this.fieldService = fieldService;
         this.userService = userService;
     }
 
+    // Δημιουργεί νέα εγγραφή.
     @PostMapping
     public ResponseEntity<?> createField(@RequestBody FieldRequest request, Principal principal) {
         User currentUser = userService.getUserByUsername(principal.getName());
@@ -47,6 +49,7 @@ public class FieldController {
         return ResponseEntity.ok(savedField);
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @GetMapping
     public ResponseEntity<List<FieldDTO>> getAllMyFields(Principal principal) {
         String username = principal.getName();
@@ -54,16 +57,19 @@ public class FieldController {
         return ResponseEntity.ok(fieldService.getFieldsByUsername(username));
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @GetMapping("/{id}")
     public ResponseEntity<FieldDTO> getFieldById(@PathVariable Long id) {
         return ResponseEntity.ok(fieldService.getFieldById(id));
     }
 
+    // Ενημερώνει δεδομένα.
     @PutMapping("/{id}")
     public ResponseEntity<FieldDTO> updateField(@PathVariable Long id, @RequestBody FieldRequest request) {
         return ResponseEntity.ok(fieldService.updateField(id, request));
     }
 
+    // Διαγράφει εγγραφές.
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteField(@PathVariable Long id) {
         fieldService.deleteField(id);

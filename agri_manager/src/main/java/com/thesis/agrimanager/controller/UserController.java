@@ -18,21 +18,25 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
     private final UserService userService;
 
+    // Αρχικοποιεί τις εξαρτήσεις.
     public UserController(UserService userService) {
         this.userService = userService;
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @GetMapping("/profile")
     public UserProfileDTO getProfile(Principal principal) {
         User user = userService.getUserByUsername(principal.getName());
         return userService.toProfileDTO(user);
     }
 
+    // Ενημερώνει δεδομένα.
     @PutMapping("/profile")
     public UserProfileDTO updateProfile(@Valid @RequestBody UserProfileDTO dto, Principal principal) {
         return userService.updateUserProfile(principal.getName(), dto);
     }
 
+    // Ενημερώνει δεδομένα.
     @PutMapping("/profile/change-password")
     public ResponseEntity<?> changePassword(Principal principal, @RequestBody Map<String, String> payload) {
         String username = principal.getName();

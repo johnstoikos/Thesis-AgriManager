@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "../api/axios";
 import { AuthContext } from "./auth-context";
 
+// Επιστρέφει δεδομένα.
 const getStoredToken = () => localStorage.getItem("jwt") || sessionStorage.getItem("jwt");
 
+// Αποθηκεύει προφίλ χρήστη.
 const persistUserProfile = (profile) => {
   try {
     localStorage.setItem("profile", JSON.stringify(profile));
@@ -12,6 +14,7 @@ const persistUserProfile = (profile) => {
   }
 };
 
+// Παρέχει context εφαρμογής.
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(() => getStoredToken());
@@ -59,6 +62,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let isMounted = true;
 
+    // Φορτώνει δεδομένα.
     const initializeAuth = async () => {
       const currentToken = getStoredToken();
       if (!currentToken) {

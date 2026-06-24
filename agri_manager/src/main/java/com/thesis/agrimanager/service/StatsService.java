@@ -26,6 +26,7 @@ public class StatsService {
     private final UserProfitService userProfitService;
     private final FinancialRecordService financialRecordService;
 
+    // Αρχικοποιεί τις εξαρτήσεις.
     public StatsService(
             FieldRepository fieldRepository,
             CropRepository cropRepository,
@@ -40,6 +41,7 @@ public class StatsService {
         this.financialRecordService = financialRecordService;
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     public DashboardDTO getDashboardStats(String username) {
         long fields = fieldRepository.countByOwnerUsername(username);
         long crops = cropRepository.countByFieldOwnerUsername(username);
@@ -54,10 +56,12 @@ public class StatsService {
         return new DashboardDTO(fields, crops, tasks, totalArea);
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     public FarmerStatsDTO getFarmerDashboardStats(String username) {
         return toFarmerStatsDTO(userProfitService.getSnapshot(username));
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @Transactional(readOnly = true)
     public List<AdminFieldAnalyticsDTO> getFieldBreakdown(String username) {
         Map<Long, MutableFieldAnalytics> fieldsById = new LinkedHashMap<>();
@@ -124,6 +128,7 @@ public class StatsService {
                 .toList();
     }
 
+    // Μηδενίζει οικονομικά στοιχεία.
     @Transactional
     public FarmerStatsDTO resetFinancialStats(
             String username,
@@ -134,6 +139,7 @@ public class StatsService {
         return stats;
     }
 
+    // Διαγράφει εγγραφές.
     private void deleteFinancialRecords(
             String username,
             UserProfitService.FinancialResetTarget target
@@ -146,6 +152,7 @@ public class StatsService {
         }
     }
 
+    // Μετατρέπει δεδομένα.
     private FarmerStatsDTO toFarmerStatsDTO(UserProfitService.FinancialSnapshot snapshot) {
         return new FarmerStatsDTO(
                 snapshot.monthlyRevenue(),
@@ -157,6 +164,7 @@ public class StatsService {
         );
     }
 
+    // Χειρίζεται μηδενικές τιμές.
     private BigDecimal zeroIfNull(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
     }
@@ -170,6 +178,7 @@ public class StatsService {
         private BigDecimal revenue = BigDecimal.ZERO;
         private BigDecimal expenses = BigDecimal.ZERO;
 
+        // Αρχικοποιεί τις εξαρτήσεις.
         private MutableFieldAnalytics(
                 String name,
                 String soilType,

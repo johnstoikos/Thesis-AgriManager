@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.Set;
 
+// Αρχικοποιεί τις εξαρτήσεις.
 public record UserProfileDTO(
         Long id,
         String username,

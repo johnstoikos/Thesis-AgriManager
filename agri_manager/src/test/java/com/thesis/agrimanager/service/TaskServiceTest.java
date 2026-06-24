@@ -42,11 +42,13 @@ class TaskServiceTest {
     @Mock
     private FinancialRecordService financialRecordService;
 
+    // Καθαρίζει κατάσταση δοκιμής.
     @AfterEach
     void clearSecurityContext() {
         SecurityContextHolder.clearContext();
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void completingHarvestAddsYieldOnlyOnce() {
         Task task = harvestTask(40, null);
@@ -72,6 +74,7 @@ class TaskServiceTest {
         );
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void completingHarvestWithoutYieldIsRejected() {
         Task task = harvestTask(80, null);
@@ -88,6 +91,7 @@ class TaskServiceTest {
         verify(taskRepository, never()).save(any(Task.class));
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void completingHarvestWithoutSellingPriceIsRejected() {
         Task task = harvestTask(80, 25.5);
@@ -104,6 +108,7 @@ class TaskServiceTest {
         verify(taskRepository, never()).save(any(Task.class));
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void deletingCompletedHarvestPreservesCropYieldAndSellingPrice() {
         Task task = harvestTask(100, 25.5);
@@ -134,6 +139,7 @@ class TaskServiceTest {
         );
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void creatingTaskForAnotherFarmersCropIsRejectedBeforeProfitChanges() {
         Task task = harvestTask(0, null);
@@ -164,6 +170,7 @@ class TaskServiceTest {
         verify(taskRepository, never()).save(any(Task.class));
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void creatingTaskCalculatesTotalCostFromHourlyCostAndLaborHours() {
         Task template = harvestTask(0, null);
@@ -206,6 +213,7 @@ class TaskServiceTest {
         );
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void creatingCompletedHarvestWritesRevenueAndExpenseLedgerRecords() {
         Task template = harvestTask(0, null);
@@ -245,6 +253,7 @@ class TaskServiceTest {
         );
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void updatingTaskCostWritesOnlyExpenseDeltaToLedger() {
         Task task = harvestTask(0, null);
@@ -284,12 +293,14 @@ class TaskServiceTest {
         );
     }
 
+    // Δημιουργεί δεδομένα δοκιμής.
     private TaskService serviceFor(Task task) {
         TaskService service = serviceForAuthentication("farmer");
         when(taskRepository.findByIdForProgressUpdate(task.getId())).thenReturn(Optional.of(task));
         return service;
     }
 
+    // Δημιουργεί δεδομένα δοκιμής.
     private TaskService serviceForAuthentication(String username) {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(username, null)
@@ -326,6 +337,7 @@ class TaskServiceTest {
         );
     }
 
+    // Δημιουργεί δεδομένα δοκιμής.
     private Task harvestTask(int progress, Double harvestedYieldAmount) {
         User owner = new User();
         owner.setUsername("farmer");

@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 const ThemeContext = createContext(null);
 
+// Παρέχει context εφαρμογής.
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => localStorage.getItem("agrimanager-theme") || "light");
 
@@ -24,6 +25,7 @@ export function ThemeProvider({ children }) {
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
+// Παρέχει hook εφαρμογής.
 export function useTheme() {
   const context = useContext(ThemeContext);
   if (!context) {

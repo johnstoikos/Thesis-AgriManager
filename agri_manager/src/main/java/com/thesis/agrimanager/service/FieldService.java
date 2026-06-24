@@ -20,6 +20,7 @@ public class FieldService {
     private final UserRepository userRepository;
     private final UserProfitService userProfitService;
 
+    // Αρχικοποιεί τις εξαρτήσεις.
     public FieldService(
             FieldRepository fieldRepository,
             UserRepository userRepository,
@@ -30,6 +31,7 @@ public class FieldService {
         this.userProfitService = userProfitService;
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     public List<FieldDTO> getFieldsByUsername(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -41,6 +43,7 @@ public class FieldService {
                 .toList();
     }
 
+    // Αποθηκεύει εγγραφή.
     public Field saveField(Field field) {
         String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();
 
@@ -51,6 +54,7 @@ public class FieldService {
         return fieldRepository.save(field);
     }
 
+    // Μετατρέπει δεδομένα.
     private FieldDTO convertToDTO(Field field) {
         return new FieldDTO(
                 field.getId(),
@@ -63,6 +67,7 @@ public class FieldService {
         );
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     public FieldDTO getFieldById(Long id) {
         String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();
 
@@ -72,6 +77,7 @@ public class FieldService {
         return convertToDTO(field);
     }
 
+    // Ενημερώνει δεδομένα.
     public FieldDTO updateField(Long id, FieldRequest request) {
         String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();
 
@@ -87,12 +93,14 @@ public class FieldService {
         return convertToDTO(updatedField);
     }
 
+    // Εφαρμόζει δεδομένα.
     private void applyFieldContext(Field field, FieldRequest request) {
         field.setSoilType(request.soilType());
         field.setSoilPh(request.soilPh());
         field.setIrrigationType(request.irrigationType());
     }
 
+    // Διαγράφει εγγραφές.
     @Transactional
     public void deleteField(Long id) {
         String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();

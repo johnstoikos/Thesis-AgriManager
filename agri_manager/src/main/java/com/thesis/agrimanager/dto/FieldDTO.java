@@ -11,6 +11,7 @@ public record FieldDTO(
         Double soilPh,
         String irrigationType
 ) {
+    // Αρχικοποιεί τις εξαρτήσεις.
     public FieldDTO(Long id, String name, Double area, Polygon boundary) {
         this(id, name, area, boundary, null, null, null);
     }

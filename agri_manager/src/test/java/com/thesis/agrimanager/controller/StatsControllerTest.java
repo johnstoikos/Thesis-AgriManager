@@ -21,6 +21,7 @@ class StatsControllerTest {
     @Mock
     private StatsService statsService;
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void resetsFinancialDataForAuthenticatedUser() {
         Principal principal = () -> "farmer";

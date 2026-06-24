@@ -2,6 +2,7 @@ import { createContext, useContext } from "react";
 
 export const AuthContext = createContext(null);
 
+// Παρέχει hook εφαρμογής.
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {

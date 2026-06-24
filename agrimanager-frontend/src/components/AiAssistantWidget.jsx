@@ -4,6 +4,7 @@ import api from "../api/axios";
 import { useAppPreferences } from "../i18n";
 import { Button } from "./ui";
 
+// Εμφανίζει στοιχείο διεπαφής.
 export default function AiAssistantWidget() {
   const { language, t } = useAppPreferences();
   const labels = t.assistant || {};
@@ -30,6 +31,7 @@ export default function AiAssistantWidget() {
     }
   }, [isOpen, messages, loading]);
 
+  // Υποβάλλει φόρμα.
   const handleSubmit = async (event) => {
     event.preventDefault();
 

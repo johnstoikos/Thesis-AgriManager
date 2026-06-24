@@ -21,35 +21,42 @@ import org.springframework.web.bind.annotation.RestController;
 public class TaskController {
     private final TaskService taskService;
 
+    // Αρχικοποιεί τις εξαρτήσεις.
     public TaskController(TaskService taskService) {
         this.taskService = taskService;
     }
 
+    // Δημιουργεί νέα εγγραφή.
     @PostMapping
     public TaskDTO createTask(@RequestBody TaskDTO dto) {
         return taskService.saveTask(dto);
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @GetMapping("/crop/{cropId}")
     public List<TaskDTO> getTasksByCrop(@PathVariable Long cropId) {
         return taskService.getTasksByCrop(cropId);
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @GetMapping("/notifications")
     public List<TaskDTO> getNotifications(Principal principal) {
         return taskService.getUrgentTasks(principal.getName());
     }
 
+    // Ενημερώνει δεδομένα.
     @PutMapping("/{id}")
     public TaskDTO updateTask(@PathVariable Long id, @RequestBody TaskDTO dto, Principal principal) {
         return taskService.updateTask(id, dto, principal.getName());
     }
 
+    // Ολοκληρώνει εργασία.
     @PatchMapping("/{id}/complete")
     public TaskDTO completeTask(@PathVariable Long id) {
         return taskService.completeTask(id);
     }
 
+    // Ενημερώνει δεδομένα.
     @PatchMapping("/{id}/progress")
     public TaskDTO updateTaskProgress(
             @PathVariable Long id,
@@ -59,6 +66,7 @@ public class TaskController {
         return taskService.updateTaskProgress(id, progress, yieldAmount);
     }
 
+    // Διαγράφει εγγραφές.
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTask(@PathVariable Long id, Principal principal) {
         taskService.deleteTask(id, principal.getName());

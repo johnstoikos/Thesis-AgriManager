@@ -1,8 +1,10 @@
+// Ελέγχει εγκυρότητα.
 export function isHarvestTaskType(taskType) {
   const normalizedType = String(taskType || "").trim().toLocaleLowerCase("el-GR");
   return normalizedType === "harvest" || normalizedType.includes("συγκομιδ");
 }
 
+// Επιστρέφει δεδομένα.
 export function getTaskProgress(task) {
   const storedProgress = Number(task?.completionPercentage);
   if (Number.isFinite(storedProgress)) {

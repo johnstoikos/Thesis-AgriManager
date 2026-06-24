@@ -7,6 +7,7 @@ import org.locationtech.jts.geom.Point;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+// Αρχικοποιεί τις εξαρτήσεις.
 public record TaskDTO(
         Long id,
         String taskType,

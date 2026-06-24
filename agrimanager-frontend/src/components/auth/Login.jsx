@@ -7,6 +7,7 @@ import { getHomePath } from "../../utils/auth";
 import { useAppPreferences } from "../../i18n";
 import { Button, Switch } from "../ui";
 
+// Εμφανίζει στοιχείο διεπαφής.
 export function AuthPreferences() {
   const { language, setLanguage, theme, toggleTheme, t } = useAppPreferences();
   const isDark = theme === "dark";
@@ -49,6 +50,7 @@ export function AuthPreferences() {
   );
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export function AuthLayout({ children }) {
   const { t } = useAppPreferences();
 
@@ -72,6 +74,7 @@ export function AuthLayout({ children }) {
   );
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export default function Login() {
   const navigate = useNavigate();
   const { loginWithToken } = useAuth();
@@ -86,6 +89,7 @@ export default function Login() {
     sessionStorage.removeItem("authErrorMessage");
   }, []);
 
+  // Υποβάλλει φόρμα.
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");

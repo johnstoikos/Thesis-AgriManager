@@ -25,6 +25,7 @@ class CropServiceTest {
     @Mock
     private UserProfitService userProfitService;
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void creatingCropWithoutSellingPriceIsRejected() {
         CropDTO crop = new CropDTO(
@@ -44,6 +45,7 @@ class CropServiceTest {
         verify(cropRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void updatingCropWithNonPositiveSellingPriceIsRejected() {
         CropDTO crop = new CropDTO(
@@ -63,6 +65,7 @@ class CropServiceTest {
         verify(cropRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
+    // Δημιουργεί δεδομένα δοκιμής.
     private CropService service() {
         return new CropService(cropRepository, fieldRepository, userProfitService);
     }

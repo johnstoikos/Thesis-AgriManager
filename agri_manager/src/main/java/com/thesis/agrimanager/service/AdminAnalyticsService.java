@@ -30,6 +30,7 @@ public class AdminAnalyticsService {
     private final UserProfitService userProfitService;
     private final FinancialRecordService financialRecordService;
 
+    // Αρχικοποιεί τις εξαρτήσεις.
     public AdminAnalyticsService(
             UserRepository userRepository,
             FieldRepository fieldRepository,
@@ -46,6 +47,7 @@ public class AdminAnalyticsService {
         this.financialRecordService = financialRecordService;
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @Transactional
     public AdminAnalyticsDTO getAdminAnalytics(Long userId, String timeRange) {
         LocalDate endDate = LocalDate.now();
@@ -191,6 +193,7 @@ public class AdminAnalyticsService {
         );
     }
 
+    // Υπολογίζει τιμή.
     private LocalDate calculateStartDate(LocalDate endDate, String timeRange) {
         String normalizedRange = timeRange == null || timeRange.isBlank() ? "year" : timeRange;
         return switch (normalizedRange) {
@@ -203,6 +206,7 @@ public class AdminAnalyticsService {
         };
     }
 
+    // Προετοιμάζει δεδομένα.
     private Map<String, BigDecimal> initializeMonthlySeries(LocalDate startDate, LocalDate endDate) {
         Map<String, BigDecimal> monthlySeries = new LinkedHashMap<>();
         YearMonth currentMonth = YearMonth.from(startDate);
@@ -216,6 +220,7 @@ public class AdminAnalyticsService {
         return monthlySeries;
     }
 
+    // Καταγράφει οικονομική μεταβολή.
     private void addToMonth(
             Map<String, BigDecimal> monthlySeries,
             LocalDate date,
@@ -232,6 +237,7 @@ public class AdminAnalyticsService {
         );
     }
 
+    // Εφαρμόζει δεδομένα.
     private void applyFinancialRecords(
             Map<Long, MutableFieldAnalytics> fieldsById,
             Map<String, BigDecimal> monthlyExpenses,
@@ -269,6 +275,7 @@ public class AdminAnalyticsService {
         }
     }
 
+    // Αθροίζει ποσά.
     private BigDecimal sumFinancialRecords(
             List<FinancialRecord> records,
             FinancialRecordType type
@@ -280,6 +287,7 @@ public class AdminAnalyticsService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
+    // Χειρίζεται μηδενικές τιμές.
     private BigDecimal zeroIfNull(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
     }
@@ -293,6 +301,7 @@ public class AdminAnalyticsService {
         private BigDecimal revenue = BigDecimal.ZERO;
         private BigDecimal expenses = BigDecimal.ZERO;
 
+        // Αρχικοποιεί τις εξαρτήσεις.
         private MutableFieldAnalytics(
                 String name,
                 String soilType,

@@ -21,10 +21,12 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
 
+    // Αρχικοποιεί τις εξαρτήσεις.
     public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
     }
 
+    // Δηλώνει bean ρύθμισης.
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -45,6 +47,7 @@ public class SecurityConfig {
         return http.build();
     }
 
+    // Δηλώνει bean ρύθμισης.
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();

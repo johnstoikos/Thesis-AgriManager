@@ -18,6 +18,7 @@ public class AdminStatsService {
     private final TaskRepository taskRepository;
     private final CropRepository cropRepository;
 
+    // Αρχικοποιεί τις εξαρτήσεις.
     public AdminStatsService(
             UserRepository userRepository,
             FieldRepository fieldRepository,
@@ -30,6 +31,7 @@ public class AdminStatsService {
         this.cropRepository = cropRepository;
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @Transactional(readOnly = true)
     public AdminOverviewDTO getOverview() {
         List<MonthlyActivityDTO> monthlyActivity = taskRepository.getCompletedTasksByMonth().stream()
@@ -47,6 +49,7 @@ public class AdminStatsService {
         );
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @Transactional(readOnly = true)
     public List<CropDistributionDTO> getCropDistribution() {
         return cropRepository.getGlobalCropDistribution().stream()

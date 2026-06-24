@@ -17,6 +17,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 class AiAssistantServiceTest {
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void rejectsRequestWhenGroqApiKeyIsMissing() {
         AiAssistantService service = new AiAssistantService(
@@ -37,6 +38,7 @@ class AiAssistantServiceTest {
         );
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void sendsGroqChatCompletionRequestAndReturnsAssistantContent() {
         RestTemplate restTemplate = new RestTemplate();
@@ -82,6 +84,7 @@ class AiAssistantServiceTest {
         server.verify();
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void sendsEnglishOnlyInstructionWhenFarmerWritesInEnglish() {
         RestTemplate restTemplate = new RestTemplate();

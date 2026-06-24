@@ -8,6 +8,7 @@ const DEFAULT_TASK_STATUS_COLORS = {
   UNKNOWN: "#64748b",
 };
 
+// Εξάγει αρχείο PDF.
 export async function exportAnalyticsPdf({
   elementId = "pdf-export-area",
   filename = "AgriManager_Analytics.pdf",
@@ -48,6 +49,7 @@ export async function exportAnalyticsPdf({
         if (!clonedArea) return;
         const problematicColorPattern = /(oklab|oklch)/i;
 
+        // Επιστρέφει εφεδρική τιμή.
         const fallbackForProperty = (propertyName) => {
           const name = propertyName.toLowerCase();
 
@@ -56,6 +58,7 @@ export async function exportAnalyticsPdf({
           return "#0f172a";
         };
 
+        // Καθαρίζει CSS τιμές.
         const sanitizeStyleDeclaration = (element, styles) => {
           if (!styles) return;
 
@@ -75,6 +78,7 @@ export async function exportAnalyticsPdf({
           });
         };
 
+        // Καθαρίζει CSS τιμές.
         const sanitizeComputedColors = (element) => {
           const styles = clonedDocument.defaultView?.getComputedStyle(element);
           if (!styles) return;
@@ -162,6 +166,7 @@ export async function exportAnalyticsPdf({
           const color = chartColors[index % chartColors.length];
           const currentFill = node.getAttribute("fill");
           const currentStroke = node.getAttribute("stroke");
+          // Ελέγχει εγκυρότητα.
           const isHexColor = (value) => /^#[0-9a-f]{3,8}$/i.test(value || "");
 
           node.style.removeProperty("fill");

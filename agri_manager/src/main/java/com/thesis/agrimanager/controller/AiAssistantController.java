@@ -25,6 +25,7 @@ public class AiAssistantController {
     private final FieldRepository fieldRepository;
     private final CropRepository cropRepository;
 
+    // Αρχικοποιεί τις εξαρτήσεις.
     public AiAssistantController(
             AiAssistantService aiAssistantService,
             FieldRepository fieldRepository,
@@ -35,6 +36,7 @@ public class AiAssistantController {
         this.cropRepository = cropRepository;
     }
 
+    // Στέλνει μήνυμα στον βοηθό.
     @PostMapping("/chat")
     public ResponseEntity<String> chat(@Valid @RequestBody AiChatRequestDTO request) {
         Authentication authentication = getCurrentAuthentication();
@@ -50,6 +52,7 @@ public class AiAssistantController {
         return ResponseEntity.ok(answer);
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     private Authentication getCurrentAuthentication() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -58,6 +61,7 @@ public class AiAssistantController {
         return authentication;
     }
 
+    // Δημιουργεί περιεχόμενο.
     private String buildFieldDataPrompt(String username, List<Field> fields, List<Crop> crops, boolean admin) {
         StringBuilder prompt = new StringBuilder(admin ? "Δεδομένα πλατφόρμας για διαχειριστή: " : "Δεδομένα αγρότη: ")
                 .append(valueOrDash(username))
@@ -100,6 +104,7 @@ public class AiAssistantController {
         return prompt.toString();
     }
 
+    // Μορφοποιεί ετικέτα ιδιοκτήτη.
     private String ownerLabel(Field field) {
         if (field == null || field.getOwner() == null) {
             return "-";
@@ -112,6 +117,7 @@ public class AiAssistantController {
         return valueOrDash(username);
     }
 
+    // Επιστρέφει τιμή ή παύλα.
     private String valueOrDash(Object value) {
         if (value == null || value.toString().isBlank()) {
             return "-";

@@ -32,10 +32,12 @@ const irrigationTypeOptions = [
 
 const selectClassName = "h-14 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
 
+// Μετατρέπει προαιρετικό αριθμό.
 function optionalNumber(value) {
   return value === "" || value === null || value === undefined ? null : Number(value);
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export default function Fields() {
   const { language, t } = useAppPreferences();
   const labels = t.fields || {};
@@ -49,6 +51,7 @@ export default function Fields() {
   
   const [formData, setFormData] = useState(emptyFieldForm);
 
+  // Μορφοποιεί τιμή.
   const formatFieldArea = (area) => {
     const numericArea = Number(area || 0);
     if (language === "en") {
@@ -80,6 +83,7 @@ export default function Fields() {
     fetchFields();
   }, [fetchFields]);
 
+  // Υπολογίζει εμβαδό χωραφιού.
   const calculateAreaInStremmata = (boundaryCoords) => {
     if (!boundaryCoords || boundaryCoords.length < 4) return "";
     try {
@@ -91,6 +95,7 @@ export default function Fields() {
     }
   };
 
+  // Φορτώνει δεδομένα επεξεργασίας.
   const handleEdit = (field) => {
     setFormData({
       id: field.id,
@@ -104,6 +109,7 @@ export default function Fields() {
     setShowModal(true);
   };
 
+  // Διαγράφει επιλεγμένη εγγραφή.
   const handleDelete = async (id) => {
     if (window.confirm(labels.deleteConfirm || "Είσαι σίγουρος για τη διαγραφή;")) {
       try {
@@ -117,6 +123,7 @@ export default function Fields() {
     }
   };
 
+  // Υποβάλλει φόρμα.
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     
@@ -132,7 +139,7 @@ export default function Fields() {
         type: "Polygon",
         coordinates: [formData.boundary]
       },
-      // Τα παρακάτω πεδία εμπλουτίζουν το context που θα χρησιμοποιήσει ο AI Assistant.
+      // Εμπλουτίζουν το AI context.
       soilType: formData.soilType || null,
       soilPh: optionalNumber(formData.soilPh),
       irrigationType: formData.irrigationType || null,
@@ -164,6 +171,7 @@ export default function Fields() {
     }
   };
 
+  // Ενημερώνει χειροκίνητες συντεταγμένες.
   const handleManualCoordsChange = (text) => {
     try {
       const lines = text.split("\n").filter(line => line.trim() !== "");
@@ -184,6 +192,7 @@ export default function Fields() {
   };
 
   const navigate = useNavigate();
+  // Εστιάζει στοιχείο στον χάρτη.
   const focusFieldOnMap = (fieldId) => {
     setSelectedFieldId(fieldId);
     setMapSelectionRequest((request) => request + 1);

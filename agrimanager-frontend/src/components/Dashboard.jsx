@@ -10,6 +10,7 @@ const EMPTY_FINANCIAL_STATS = {
   totalExpenses: 0,
 };
 
+// Μορφοποιεί τιμή.
 const formatCurrency = (value) =>
   new Intl.NumberFormat("el-GR", {
     style: "currency",
@@ -17,6 +18,7 @@ const formatCurrency = (value) =>
     maximumFractionDigits: 2,
   }).format(Number(value || 0));
 
+// Εμφανίζει στοιχείο διεπαφής.
 export default function Dashboard() {
   const { t } = useAppPreferences();
   const [stats, setStats] = useState(null);
@@ -48,6 +50,7 @@ export default function Dashboard() {
   useEffect(() => {
     let isMounted = true;
 
+    // Φορτώνει δεδομένα.
     const fetchMapFields = async () => {
       try {
         const fieldsRes = await api.get("/api/fields");

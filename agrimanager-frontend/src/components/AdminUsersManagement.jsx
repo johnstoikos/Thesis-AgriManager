@@ -12,15 +12,18 @@ import {
   Surface,
 } from "./ui";
 
+// Επιστρέφει δεδομένα.
 function getFullName(user) {
   return user.fullName || user.full_name || "-";
 }
 
+// Επιστρέφει δεδομένα.
 function getRoles(user) {
   if (!Array.isArray(user.roles)) return [];
   return user.roles;
 }
 
+// Ελέγχει εγκυρότητα.
 function isUserActive(user) {
   return user.active !== false;
 }
@@ -104,6 +107,7 @@ const ADMIN_USERS_LABELS = {
   },
 };
 
+// Εμφανίζει στοιχείο διεπαφής.
 export default function AdminUsersManagement() {
   const { language } = useAppPreferences();
   const labels = ADMIN_USERS_LABELS[language] || ADMIN_USERS_LABELS.el;
@@ -143,6 +147,7 @@ export default function AdminUsersManagement() {
     fetchUsers();
   }, [fetchUsers]);
 
+  // Διαγράφει επιλεγμένη εγγραφή.
   const handleDelete = async (user) => {
     const confirmed = window.confirm(labels.confirmDelete(user.username));
 
@@ -167,6 +172,7 @@ export default function AdminUsersManagement() {
     }
   };
 
+  // Αλλάζει κατάσταση χρήστη.
   const handleStatusToggle = async (user) => {
     const currentlyActive = isUserActive(user);
     const confirmed = window.confirm(
@@ -192,6 +198,7 @@ export default function AdminUsersManagement() {
     }
   };
 
+  // Εμφανίζει χωράφια χρήστη.
   const handleToggleFields = async (user) => {
     if (expandedUserId === user.id) {
       setExpandedUserId(null);
@@ -218,6 +225,7 @@ export default function AdminUsersManagement() {
     }
   };
 
+  // Διαγράφει επιλεγμένη εγγραφή.
   const handleDeleteField = async (user, field) => {
     const confirmed = window.confirm(labels.confirmDeleteField(field.name || `#${field.id}`));
     if (!confirmed) return;

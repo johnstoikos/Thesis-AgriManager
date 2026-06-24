@@ -10,12 +10,15 @@ import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
+    // Αναζητά εγγραφές.
     Optional<User> findByUsername(String username);
 
+    // Αναζητά εγγραφές.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT u FROM User u WHERE u.username = :username")
     Optional<User> findByUsernameForFinancialUpdate(@Param("username") String username);
 
+    // Αναζητά εγγραφές.
     @Query("""
             SELECT DISTINCT u
             FROM User u
@@ -25,6 +28,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
             """)
     List<User> findAllFarmers();
 
+    // Αναζητά εγγραφές.
     @Query("""
             SELECT u
             FROM User u
@@ -34,6 +38,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
             """)
     Optional<User> findFarmerById(@Param("id") Long id);
 
+    // Μετρά εγγραφές.
     @Query("""
             SELECT COUNT(u)
             FROM User u

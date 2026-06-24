@@ -5,6 +5,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import java.util.Map;
 
+// Επιστρέφει ζητούμενα δεδομένα.
+// Επιστρέφει ζητούμενα δεδομένα.
+// Επιστρέφει ζητούμενα δεδομένα.
+// Επιστρέφει ζητούμενα δεδομένα.
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record WeatherResponse(
         @JsonProperty("main")

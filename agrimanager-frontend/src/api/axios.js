@@ -4,11 +4,12 @@ const api = axios.create({
   baseURL: 'http://localhost:8080',
 });
 
+// Επιστρέφει δεδομένα.
 const getStoredToken = () => localStorage.getItem('jwt') || sessionStorage.getItem('jwt');
 
 api.interceptors.request.use(
   (config) => {
-    // Αν το URL περιέχει "login", μη στέλνεις Authorization header
+    // Παραλείπει Authorization στο login.
     if (config.url?.includes('/api/auth/login')) {
       return config;
     }

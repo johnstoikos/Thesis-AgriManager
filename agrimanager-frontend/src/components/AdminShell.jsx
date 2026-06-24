@@ -36,8 +36,10 @@ const adminLabels = {
   },
 };
 
+// Παρέχει hook εφαρμογής.
 function useOutsideClose(ref, onClose) {
   useEffect(() => {
+    // Κλείνει με εξωτερικό κλικ.
     const handleClickOutside = (event) => {
       if (ref.current && !ref.current.contains(event.target)) {
         onClose();
@@ -48,6 +50,7 @@ function useOutsideClose(ref, onClose) {
   }, [onClose, ref]);
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 function SettingsDropdown({ onLogout }) {
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useAppPreferences();
@@ -132,6 +135,7 @@ function SettingsDropdown({ onLogout }) {
   );
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export default function AdminShell() {
   const navigate = useNavigate();
   const { user, clearAuth } = useAuth();
@@ -144,6 +148,7 @@ export default function AdminShell() {
     { to: "/admin/users", label: labels.users, icon: UsersRound },
   ];
 
+  // Αποσυνδέει τον χρήστη.
   const handleLogout = () => {
     clearAuth();
     navigate("/login", { replace: true });

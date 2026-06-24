@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { getTaskProgress, isHarvestTaskType } from "../utils/taskProgress";
 
+// Εμφανίζει στοιχείο διεπαφής.
 export default function TaskProgressControl({ task, onSave, labels = {}, compact = false }) {
   const [draftProgress, setDraftProgress] = useState(() => getTaskProgress(task));
   const [draftYield, setDraftYield] = useState(task.harvestedYieldAmount ?? "");
@@ -11,6 +12,7 @@ export default function TaskProgressControl({ task, onSave, labels = {}, compact
   const harvestTask = isHarvestTaskType(task.taskType);
   const completed = task.status === "COMPLETED" || getTaskProgress(task) === 100;
 
+  // Αποθηκεύει προφίλ χρήστη.
   const persistProgress = async (nextProgress, nextYield = draftYield) => {
     if (saving) return;
 

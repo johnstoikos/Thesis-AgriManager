@@ -27,6 +27,7 @@ public class AdminUserService {
     private final TaskRepository taskRepository;
     private final UserProfitService userProfitService;
 
+    // Αρχικοποιεί τις εξαρτήσεις.
     public AdminUserService(
             UserRepository userRepository,
             FieldRepository fieldRepository,
@@ -41,6 +42,7 @@ public class AdminUserService {
         this.userProfitService = userProfitService;
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @Transactional(readOnly = true)
     public List<AdminUserDTO> getAllUsers() {
         return userRepository.findAllFarmers().stream()
@@ -48,6 +50,7 @@ public class AdminUserService {
                 .toList();
     }
 
+    // Διαγράφει εγγραφές.
     @Transactional
     public void deleteUser(Long id) {
         User user = userRepository.findFarmerById(id)
@@ -62,6 +65,7 @@ public class AdminUserService {
         userRepository.delete(user);
     }
 
+    // Ενημερώνει τιμή πεδίου.
     @Transactional
     public AdminUserDTO setUserActive(Long id, boolean active) {
         User user = userRepository.findFarmerById(id)
@@ -71,6 +75,7 @@ public class AdminUserService {
         return toAdminUserDTO(userRepository.save(user));
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @Transactional(readOnly = true)
     public List<FieldDTO> getUserFields(Long userId) {
         userRepository.findFarmerById(userId)
@@ -81,6 +86,7 @@ public class AdminUserService {
                 .toList();
     }
 
+    // Διαγράφει εγγραφές.
     @Transactional
     public void deleteUserField(Long userId, Long fieldId) {
         User user = userRepository.findFarmerById(userId)
@@ -97,6 +103,7 @@ public class AdminUserService {
         fieldRepository.delete(field);
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @Transactional(readOnly = true)
     public AdminUserStatsDTO getUserStats(Long id) {
         User user = userRepository.findFarmerById(id)
@@ -131,6 +138,7 @@ public class AdminUserService {
         );
     }
 
+    // Μετατρέπει δεδομένα.
     private AdminUserDTO toAdminUserDTO(User user) {
         return new AdminUserDTO(
                 user.getId(),
@@ -142,6 +150,7 @@ public class AdminUserService {
         );
     }
 
+    // Μετατρέπει δεδομένα.
     private FieldDTO toFieldDTO(Field field) {
         return new FieldDTO(
                 field.getId(),
@@ -154,6 +163,7 @@ public class AdminUserService {
         );
     }
 
+    // Μετατρέπει δεδομένα.
     private List<String> toSortedRoles(Set<String> roles) {
         if (roles == null || roles.isEmpty()) return List.of();
         List<String> sortedRoles = new ArrayList<>(roles);

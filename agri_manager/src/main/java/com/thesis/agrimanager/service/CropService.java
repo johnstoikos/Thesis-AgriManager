@@ -18,6 +18,7 @@ public class CropService {
     private final FieldRepository fieldRepository;
     private final UserProfitService userProfitService;
 
+    // Αρχικοποιεί τις εξαρτήσεις.
     public CropService(
             CropRepository cropRepository,
             FieldRepository fieldRepository,
@@ -28,6 +29,7 @@ public class CropService {
         this.userProfitService = userProfitService;
     }
 
+    // Αποθηκεύει εγγραφή.
     public CropDTO saveCrop(CropDTO cropDTO) {
         validateSellingPrice(cropDTO.sellingPricePerKg());
         String currentUsername = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
@@ -54,6 +56,7 @@ public class CropService {
         return convertToDTO(savedCrop);
     }
 
+    // Ενημερώνει δεδομένα.
     public CropDTO updateCrop(Long id, CropDTO cropDTO) {
         validateSellingPrice(cropDTO.sellingPricePerKg());
         String currentUsername = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
@@ -81,6 +84,7 @@ public class CropService {
         return convertToDTO(updatedCrop);
     }
 
+    // Διαγράφει εγγραφές.
     @Transactional
     public void deleteCrop(Long id) {
         Crop crop = cropRepository.findById(id)
@@ -95,12 +99,14 @@ public class CropService {
         cropRepository.delete(crop);
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     public List<CropDTO> getCropsByField(Long fieldId) {
         return cropRepository.findByFieldId(fieldId).stream()
                 .map(this::convertToDTO)
                 .toList();
     }
 
+    // Μετατρέπει δεδομένα.
     private CropDTO convertToDTO(Crop crop) {
         Double zoneArea = null;
         Double coveragePercentage = null;
@@ -124,6 +130,7 @@ public class CropService {
         );
     }
 
+    // Ελέγχει εγκυρότητα.
     private void validateSellingPrice(BigDecimal sellingPricePerKg) {
         if (sellingPricePerKg == null || sellingPricePerKg.signum() <= 0) {
             throw new IllegalArgumentException(

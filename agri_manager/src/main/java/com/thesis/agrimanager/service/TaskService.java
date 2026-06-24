@@ -24,6 +24,7 @@ public class TaskService {
     private final UserProfitService userProfitService;
     private final FinancialRecordService financialRecordService;
 
+    // Αρχικοποιεί τις εξαρτήσεις.
     public TaskService(
             TaskRepository taskRepository,
             CropRepository cropRepository,
@@ -36,6 +37,7 @@ public class TaskService {
         this.financialRecordService = financialRecordService;
     }
 
+    // Αποθηκεύει εγγραφή.
     public TaskDTO saveTask(TaskDTO dto) {
         Crop crop = cropRepository.findById(dto.cropId())
                 .orElseThrow(() -> new RuntimeException("Crop not found"));
@@ -88,18 +90,21 @@ public class TaskService {
         return convertToDTO(savedTask);
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     public List<TaskDTO> getTasksByCrop(Long cropId) {
         return taskRepository.findByCropId(cropId).stream()
                 .map(this::convertToDTO)
                 .toList();
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     public List<TaskDTO> getUrgentTasks(String username) {
         return taskRepository.findPendingUrgentTasks(username, LocalDate.now()).stream()
                 .map(this::convertToDTO)
                 .toList();
     }
 
+    // Μετατρέπει δεδομένα.
     private TaskDTO convertToDTO(Task task) {
         return new TaskDTO(
                 task.getId(),
@@ -118,10 +123,12 @@ public class TaskService {
         );
     }
 
+    // Ολοκληρώνει εργασία.
     public TaskDTO completeTask(Long taskId) {
         return updateTaskProgress(taskId, 100, null);
     }
 
+    // Ενημερώνει δεδομένα.
     public TaskDTO updateTask(Long taskId, TaskDTO dto, String username) {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task not found"));
@@ -187,6 +194,7 @@ public class TaskService {
         return convertToDTO(savedTask);
     }
 
+    // Ενημερώνει δεδομένα.
     public TaskDTO updateTaskProgress(
             Long taskId,
             Integer progress,
@@ -231,6 +239,7 @@ public class TaskService {
         return convertToDTO(taskRepository.save(task));
     }
 
+    // Διαγράφει εγγραφές.
     public void deleteTask(Long taskId, String username) {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Η εργασία δεν βρέθηκε"));
@@ -257,6 +266,7 @@ public class TaskService {
         }
     }
 
+    // Αναζητά εγγραφές.
     private Task findOwnedTaskForProgressUpdate(Long taskId) {
         Task task = taskRepository.findByIdForProgressUpdate(taskId)
                 .orElseThrow(() -> new RuntimeException("Task not found"));
@@ -264,10 +274,12 @@ public class TaskService {
         return task;
     }
 
+    // Ελέγχει εγκυρότητα.
     private void verifyTaskOwner(Task task) {
         verifyCropOwner(task.getCrop());
     }
 
+    // Ελέγχει εγκυρότητα.
     private void verifyCropOwner(Crop crop) {
         String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();
         String ownerUsername = crop.getField().getOwner().getUsername();
@@ -276,6 +288,7 @@ public class TaskService {
         }
     }
 
+    // Προετοιμάζει δεδομένα.
     private int normalizeInitialProgress(TaskDTO dto) {
         if (dto.completionPercentage() != null) {
             return validateProgress(dto.completionPercentage());
@@ -283,6 +296,7 @@ public class TaskService {
         return "COMPLETED".equalsIgnoreCase(dto.status()) ? 100 : 0;
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     private int getEffectiveProgress(Task task) {
         if (task.getCompletionPercentage() != null) {
             return task.getCompletionPercentage();
@@ -290,6 +304,7 @@ public class TaskService {
         return "COMPLETED".equalsIgnoreCase(task.getStatus()) ? 100 : 0;
     }
 
+    // Ελέγχει εγκυρότητα.
     private int validateProgress(Integer progress) {
         if (progress == null || progress < 0 || progress > 100) {
             throw new IllegalArgumentException("Το ποσοστό ολοκλήρωσης πρέπει να είναι από 0 έως 100.");
@@ -297,6 +312,7 @@ public class TaskService {
         return progress;
     }
 
+    // Προετοιμάζει δεδομένα.
     private Double normalizeYieldAmount(Double yieldAmount) {
         if (yieldAmount == null) {
             return null;
@@ -307,12 +323,14 @@ public class TaskService {
         return yieldAmount;
     }
 
+    // Καταγράφει οικονομική μεταβολή.
     private void addHarvestYield(Crop crop, double harvestedYield) {
         double currentYield = crop.getHarvestYield() == null ? 0.0 : crop.getHarvestYield();
         crop.setHarvestYield(currentYield + harvestedYield);
         cropRepository.save(crop);
     }
 
+    // Εκτελεί βοηθητική λειτουργία.
     private void requireSellingPrice(Crop crop) {
         if (crop.getSellingPricePerKg() == null || crop.getSellingPricePerKg().signum() <= 0) {
             throw new IllegalArgumentException(
@@ -321,6 +339,7 @@ public class TaskService {
         }
     }
 
+    // Υπολογίζει τιμή.
     private BigDecimal calculateNetHarvestProfit(Task task) {
         if (!userProfitService.isCompletedHarvest(task)) {
             return null;
@@ -330,6 +349,7 @@ public class TaskService {
                 .subtract(zeroIfNull(task.getCost()));
     }
 
+    // Εφαρμόζει δεδομένα.
     private void applyLaborCost(Task task, BigDecimal hourlyCost, Double laborHours) {
         if (hourlyCost == null && laborHours == null) {
             task.setHourlyCost(null);
@@ -358,6 +378,7 @@ public class TaskService {
         task.setCost(totalCost);
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     private BigDecimal getEffectiveHourlyCost(Task task) {
         if (task.getHourlyCost() != null) {
             return task.getHourlyCost();
@@ -371,10 +392,12 @@ public class TaskService {
                 .divide(BigDecimal.valueOf(task.getLaborHours()), 2, RoundingMode.HALF_UP);
     }
 
+    // Χειρίζεται μηδενικές τιμές.
     private BigDecimal zeroIfNull(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
     }
 
+    // Ελέγχει συνθήκη.
     private boolean isHarvestTask(String taskType) {
         if (taskType == null) {
             return false;

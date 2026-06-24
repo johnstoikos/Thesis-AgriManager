@@ -13,6 +13,7 @@ import { useAppPreferences } from "../i18n";
 import { useAuth } from "../context/auth-context";
 import api from "../api/axios"; // <--- Βεβαιώσου ότι το axios γίνεται import για να κάνουμε το call
 
+// Εμφανίζει στοιχείο διεπαφής.
 export default function Profile() {
   const { t } = useAppPreferences();
   const { updateUser, user } = useAuth();
@@ -33,11 +34,13 @@ export default function Profile() {
     profilePhoto: user?.profilePhoto || user?.avatarUrl || "",
   });
 
+  // Ενημερώνει πεδίο φόρμας.
   const updateField = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setShowSaved(false);
   };
 
+  // Υποβάλλει φόρμα.
   const handleSave = async () => {
     if (!/^\d{10}$/.test(formData.phone)) {
       alert("Το τηλέφωνο πρέπει να αποτελείται από ακριβώς 10 ψηφία");
@@ -67,7 +70,7 @@ export default function Profile() {
     window.setTimeout(() => setShowSaved(false), 3000);
   };
 
-  // Η ΝΕΑ ΣΥΝΑΡΤΗΣΗ ΠΟΥ ΚΑΛΕΙ ΤΟ BACKEND ΓΙΑ ΑΛΛΑΓΗ PASSWORD
+  // Αλλάζει password μέσω backend.
   const handlePasswordSubmit = async () => {
     if (!passwordForm.oldPassword || !passwordForm.newPassword) {
       alert("Παρακαλώ συμπληρώστε όλα τα πεδία");
@@ -92,6 +95,7 @@ export default function Profile() {
     }
   };
 
+  // Ενημερώνει εικόνα προφίλ.
   const handleImageChange = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;

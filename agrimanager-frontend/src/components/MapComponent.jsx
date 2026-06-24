@@ -24,6 +24,7 @@ const yellowIcon = new L.Icon({
     iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
 });
 
+// Επιστρέφει δεδομένα.
 function getTaskMarkerMeta(taskType = "") {
   const type = taskType ? String(taskType).toLowerCase() : "default";
   if (type.includes("ποτ")) return { color: "#2563eb", label: "Π" };
@@ -34,6 +35,7 @@ function getTaskMarkerMeta(taskType = "") {
   return { color: "#64748b", label: "Ε" };
 }
 
+// Επιστρέφει δεδομένα.
 function getTaskIcon(taskType) {
   const { color, label } = getTaskMarkerMeta(taskType);
   return L.divIcon({
@@ -108,7 +110,7 @@ function GeomanControls({ onPolygonComplete, boundary }) {
   return null;
 }
 
-// --- 3. Χειριστής κλικ για Εργασίες (Points) ---
+// Χειρίζεται κλικ εργασιών.
 function TaskClickHandler({ isAddingTask, onPointSelect }) {
   useMapEvents({
     click(e) {
@@ -140,6 +142,7 @@ function MapEvents({ boundary, parentBoundary, focusedLocation, hasSelectedLayer
   return null;
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 function SelectedLayerController({
   selectedDashboardFieldId,
   selectedCropId,
@@ -210,7 +213,7 @@ export default function MapComponent({
               position = [center[1], center[0]];
             }
           } catch {
-            // ignore turf failure and fallback to first coordinate
+            // Επιστρέφει στην πρώτη συντεταγμένη.
           }
 
           if (!position && Array.isArray(coords[0]) && coords[0].length >= 2) {

@@ -19,17 +19,20 @@ public class UserProfitService {
     private final TaskRepository taskRepository;
     private final Clock clock;
 
+    // Αρχικοποιεί τις εξαρτήσεις.
     @Autowired
     public UserProfitService(UserRepository userRepository, TaskRepository taskRepository) {
         this(userRepository, taskRepository, Clock.systemDefaultZone());
     }
 
+    // Αρχικοποιεί τις εξαρτήσεις.
     UserProfitService(UserRepository userRepository, TaskRepository taskRepository, Clock clock) {
         this.userRepository = userRepository;
         this.taskRepository = taskRepository;
         this.clock = clock;
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @Transactional
     public FinancialSnapshot getSnapshot(String username) {
         User user = findLockedUser(username);
@@ -38,11 +41,13 @@ public class UserProfitService {
         return snapshot(user);
     }
 
+    // Προετοιμάζει δεδομένα.
     @Transactional
     public BigDecimal ensureInitialized(String username) {
         return getSnapshot(username).semesterProfit();
     }
 
+    // Καταγράφει οικονομική μεταβολή.
     @Transactional
     public FinancialSnapshot recordTask(
             User owner,
@@ -65,11 +70,13 @@ public class UserProfitService {
         return snapshot(user);
     }
 
+    // Καταγράφει οικονομική μεταβολή.
     @Transactional
     public FinancialSnapshot recordRevenue(User owner, BigDecimal revenue) {
         return recordTask(owner, revenue, BigDecimal.ZERO);
     }
 
+    // Καταγράφει οικονομική μεταβολή.
     @Transactional
     public FinancialSnapshot adjustExpense(User owner, BigDecimal expenseDelta) {
         User user = findLockedUser(owner.getUsername());
@@ -84,6 +91,7 @@ public class UserProfitService {
         return snapshot(user);
     }
 
+    // Διατηρεί οικονομικά στοιχεία.
     @Transactional
     public void preserveFinancialsAfterDeletion(User owner) {
         User user = findLockedUser(owner.getUsername());
@@ -92,6 +100,7 @@ public class UserProfitService {
         userRepository.save(user);
     }
 
+    // Μηδενίζει οικονομικά στοιχεία.
     @Transactional
     public FinancialSnapshot resetFinancialData(String username, FinancialResetTarget target) {
         User user = findLockedUser(username);
@@ -112,12 +121,14 @@ public class UserProfitService {
         return snapshot(user);
     }
 
+    // Καταγράφει οικονομική μεταβολή.
     public BigDecimal bookHarvestRevenue(Task task) {
         BigDecimal revenue = calculateHarvestRevenue(task);
         task.setBookedRevenue(revenue);
         return revenue;
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     public BigDecimal getHarvestRevenue(Task task) {
         if (task.getBookedRevenue() != null) {
             return task.getBookedRevenue();
@@ -125,17 +136,20 @@ public class UserProfitService {
         return calculateHarvestRevenue(task);
     }
 
+    // Ελέγχει συνθήκη.
     public boolean isCompletedHarvest(Task task) {
         return isHarvestTask(task.getTaskType())
                 && ("COMPLETED".equalsIgnoreCase(task.getStatus())
                 || Integer.valueOf(100).equals(task.getCompletionPercentage()));
     }
 
+    // Αναζητά εγγραφές.
     private User findLockedUser(String username) {
         return userRepository.findByUsernameForFinancialUpdate(username)
                 .orElseThrow(() -> new RuntimeException("Ο χρήστης " + username + " δεν βρέθηκε."));
     }
 
+    // Προετοιμάζει δεδομένα.
     private void prepareCurrentPeriods(User user) {
         LocalDate today = LocalDate.now(clock);
         LocalDate currentMonthStart = today.withDayOfMonth(1);
@@ -179,6 +193,7 @@ public class UserProfitService {
         user.setTotalProfit(zeroIfNull(user.getTotalProfit()));
     }
 
+    // Υπολογίζει τιμή.
     private BigDecimal calculateRevenue(List<Task> tasks, LocalDate start, LocalDate end) {
         return tasks.stream()
                 .filter(task -> isWithinPeriod(task, start, end))
@@ -191,6 +206,7 @@ public class UserProfitService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
+    // Υπολογίζει τιμή.
     private BigDecimal calculateExpenses(List<Task> tasks, LocalDate start, LocalDate end) {
         return tasks.stream()
                 .filter(task -> isWithinPeriod(task, start, end))
@@ -199,15 +215,18 @@ public class UserProfitService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
+    // Ελέγχει συνθήκη.
     private boolean isWithinPeriod(Task task, LocalDate start, LocalDate end) {
         LocalDate taskDate = task.getTaskDate();
         return taskDate != null && !taskDate.isBefore(start) && !taskDate.isAfter(end);
     }
 
+    // Εκτελεί βοηθητική λειτουργία.
     private LocalDate semesterStart(LocalDate date) {
         return LocalDate.of(date.getYear(), date.getMonthValue() <= 6 ? 1 : 7, 1);
     }
 
+    // Εκτελεί βοηθητική λειτουργία.
     private FinancialSnapshot snapshot(User user) {
         LocalDate profitStart = user.getProfitPeriodStart();
         return new FinancialSnapshot(
@@ -220,6 +239,7 @@ public class UserProfitService {
         );
     }
 
+    // Εκτελεί βοηθητική λειτουργία.
     private void syncOwner(User owner, User storedUser) {
         owner.setMonthlyRevenue(storedUser.getMonthlyRevenue());
         owner.setMonthlyExpenses(storedUser.getMonthlyExpenses());
@@ -228,6 +248,7 @@ public class UserProfitService {
         owner.setProfitPeriodStart(storedUser.getProfitPeriodStart());
     }
 
+    // Υπολογίζει τιμή.
     private BigDecimal calculateHarvestRevenue(Task task) {
         if (!isCompletedHarvest(task)
                 || task.getHarvestedYieldAmount() == null
@@ -238,6 +259,7 @@ public class UserProfitService {
                 .multiply(task.getCrop().getSellingPricePerKg());
     }
 
+    // Ελέγχει συνθήκη.
     private boolean isHarvestTask(String taskType) {
         if (taskType == null) {
             return false;
@@ -248,6 +270,7 @@ public class UserProfitService {
                 || "ΣΥΓΚΟΜΙΔΉ".equals(normalizedType);
     }
 
+    // Χειρίζεται μηδενικές τιμές.
     private BigDecimal zeroIfNull(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
     }

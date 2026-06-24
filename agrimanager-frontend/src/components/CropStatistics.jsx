@@ -72,6 +72,7 @@ const RANGE_OPTIONS = [
 
 const PIE_COLORS = ["#0f172a", "#0f766e", "#0891b2", "#65a30d", "#d97706", "#7c3aed", "#be123c", "#475569"];
 
+// Επιστρέφει δεδομένα.
 const getUserLabel = (user, labels) => user.fullName || user.username || labels.userFallback(user.id);
 
 const ADMIN_CROP_LABELS = {
@@ -231,6 +232,7 @@ const ADMIN_CROP_LABELS = {
   },
 };
 
+// Μετατρέπει δεδομένα.
 function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -243,21 +245,27 @@ function arrayBufferToBase64(buffer) {
   return btoa(binary);
 }
 
+// Μορφοποιεί τιμή.
 function displayValue(value) {
   if (value === null || value === undefined || value === "") return "-";
   return value;
 }
 
+// Μετατρέπει δεδομένα.
 function normalizeSearchValue(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export default function CropStatistics() {
   const { language } = useAppPreferences();
   const labels = ADMIN_CROP_LABELS[language] || ADMIN_CROP_LABELS.el;
   const locale = language === "en" ? "en-US" : "el-GR";
+  // Μορφοποιεί τιμή.
   const money = (value) => formatCurrency(value, locale);
+  // Μορφοποιεί τιμή.
   const number = (value, digits = 2) => formatNumber(value, digits, locale);
+  // Μορφοποιεί τιμή.
   const formatTotalArea = (stremmata) => {
     const value = Number(stremmata || 0);
     if (language === "en") return `${number(value * 1000, 0)} ${labels.squareMetersShort}`;
@@ -276,6 +284,7 @@ export default function CropStatistics() {
   useEffect(() => {
     let ignore = false;
 
+    // Φορτώνει δεδομένα.
     const fetchUsers = async () => {
       try {
         const response = await api.get("/api/admin/users");
@@ -305,6 +314,7 @@ export default function CropStatistics() {
   useEffect(() => {
     const controller = new AbortController();
 
+    // Φορτώνει δεδομένα.
     const fetchAnalytics = async () => {
       setLoading(true);
       setError("");
@@ -393,6 +403,7 @@ export default function CropStatistics() {
     return [selectedUser, ...filteredUsers];
   }, [filteredUsers, selectedUser, selectedUserId]);
   const hasUserSearch = userSearchTerm.trim().length > 0;
+  // Επιλέγει χρήστη αναζήτησης.
   const selectUserFromSearch = (userId) => {
     setSelectedUserId(String(userId));
     setUserSearchTerm("");
@@ -411,6 +422,7 @@ export default function CropStatistics() {
     ? labels.yieldRangeHelper(selectedRangeLabel)
     : labels.yieldAllHelper;
 
+  // Εξάγει αρχείο PDF.
   const exportToPdf = async () => {
     setExporting(true);
 

@@ -7,6 +7,7 @@ import { useAppPreferences } from "../../i18n";
 import { Button } from "../ui";
 import { AuthLayout } from "./Login";
 
+// Εμφανίζει στοιχείο διεπαφής.
 export default function Signup() {
   const [formData, setFormData] = useState({
     username: "",
@@ -20,6 +21,7 @@ export default function Signup() {
   const { t } = useAppPreferences();
   const labels = t.auth || {};
 
+  // Υποβάλλει φόρμα.
   const handleSignup = async (e) => {
     e.preventDefault();
     setError("");

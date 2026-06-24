@@ -18,25 +18,30 @@ import org.springframework.web.bind.annotation.RestController;
 public class StatsController {
     private final StatsService statsService;
 
+    // Αρχικοποιεί τις εξαρτήσεις.
     public StatsController(StatsService statsService) {
         this.statsService = statsService;
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @GetMapping("/dashboard")
     public DashboardDTO getDashboard(Principal principal) {
         return statsService.getDashboardStats(principal.getName());
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @GetMapping("/farmer-dashboard")
     public FarmerStatsDTO getFarmerDashboardStats(Principal principal) {
         return statsService.getFarmerDashboardStats(principal.getName());
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @GetMapping("/field-breakdown")
     public List<AdminFieldAnalyticsDTO> getFieldBreakdown(Principal principal) {
         return statsService.getFieldBreakdown(principal.getName());
     }
 
+    // Μηδενίζει οικονομικά στοιχεία.
     @DeleteMapping("/financial/{target}")
     public FarmerStatsDTO resetFinancialStats(
             @PathVariable UserProfitService.FinancialResetTarget target,

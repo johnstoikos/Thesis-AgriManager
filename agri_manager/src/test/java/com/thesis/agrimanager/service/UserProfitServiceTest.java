@@ -36,6 +36,7 @@ class UserProfitServiceTest {
     @Mock
     private TaskRepository taskRepository;
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void initializesCurrentPeriodsFromExistingTasks() {
         User user = user("farmer", null);
@@ -61,6 +62,7 @@ class UserProfitServiceTest {
         verify(userRepository).save(user);
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void recordsRevenueAndExpenseInCurrentPeriods() {
         User user = initializedUser("farmer", "10.00", "20.00", "-10.00");
@@ -78,6 +80,7 @@ class UserProfitServiceTest {
         assertMoney("10.50", result.semesterProfit());
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void deletingTasksDoesNotChangeFinancialValues() {
         User user = initializedUser("farmer", "60.00", "15.00", "45.00");
@@ -94,6 +97,7 @@ class UserProfitServiceTest {
         verify(userRepository).save(user);
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void resetsMonthlyAndSemesterValuesWhenPeriodsChange() {
         User user = initializedUser("farmer", "60.00", "15.00", "45.00");
@@ -111,6 +115,7 @@ class UserProfitServiceTest {
         assertEquals(LocalDate.of(2026, 1, 1), result.profitPeriodStart());
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void resetsOnlySelectedFinancialValue() {
         User user = initializedUser("farmer", "60.00", "15.00", "45.00");
@@ -128,6 +133,7 @@ class UserProfitServiceTest {
         verify(userRepository).save(user);
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void resetsAllFinancialValuesTogether() {
         User user = initializedUser("farmer", "60.00", "15.00", "45.00");
@@ -145,10 +151,12 @@ class UserProfitServiceTest {
         verify(userRepository).save(user);
     }
 
+    // Δημιουργεί δεδομένα δοκιμής.
     private UserProfitService service() {
         return new UserProfitService(userRepository, taskRepository, CLOCK);
     }
 
+    // Δημιουργεί δεδομένα δοκιμής.
     private User user(String username, String totalProfit) {
         User user = new User();
         user.setUsername(username);
@@ -158,6 +166,7 @@ class UserProfitServiceTest {
         return user;
     }
 
+    // Δημιουργεί δεδομένα δοκιμής.
     private User initializedUser(
             String username,
             String monthlyRevenue,
@@ -172,6 +181,7 @@ class UserProfitServiceTest {
         return user;
     }
 
+    // Δημιουργεί δεδομένα δοκιμής.
     private Task task(String type, String status, String cost, LocalDate taskDate) {
         Crop crop = new Crop();
         Task task = new Task();
@@ -183,6 +193,7 @@ class UserProfitServiceTest {
         return task;
     }
 
+    // Ελέγχει αναμενόμενη τιμή.
     private void assertMoney(String expected, BigDecimal actual) {
         assertEquals(0, new BigDecimal(expected).compareTo(actual));
     }

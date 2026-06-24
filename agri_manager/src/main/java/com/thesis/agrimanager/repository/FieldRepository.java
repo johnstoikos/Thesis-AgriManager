@@ -11,10 +11,13 @@ import java.util.Optional;
 @Repository
 public interface FieldRepository extends JpaRepository<Field, Long> {
 
+    // Αναζητά εγγραφές.
     List<Field> findByOwnerUsername(String username);
 
+    // Μετρά εγγραφές.
     long countByOwnerUsername(String username);
 
+    // Μετρά εγγραφές.
     @Query("""
             SELECT COUNT(f)
             FROM Field f
@@ -24,8 +27,10 @@ public interface FieldRepository extends JpaRepository<Field, Long> {
             """)
     long countByOwnerId(@Param("ownerId") Long ownerId);
 
+    // Αναζητά εγγραφές.
     List<Field> findByOwnerId(Long ownerId);
 
+    // Αναζητά εγγραφές.
     @Query("""
             SELECT f
             FROM Field f
@@ -36,6 +41,7 @@ public interface FieldRepository extends JpaRepository<Field, Long> {
             """)
     List<Field> findAllOwnedByFarmers();
 
+    // Αναζητά εγγραφές.
     @Query("""
             SELECT f
             FROM Field f
@@ -47,6 +53,7 @@ public interface FieldRepository extends JpaRepository<Field, Long> {
             """)
     List<Field> findOwnedByFarmerId(@Param("ownerId") Long ownerId);
 
+    // Μετρά εγγραφές.
     @Query("""
             SELECT COUNT(f)
             FROM Field f
@@ -55,8 +62,10 @@ public interface FieldRepository extends JpaRepository<Field, Long> {
             """)
     long countOwnedByFarmers();
 
+    // Αναζητά εγγραφές.
     Optional<Field> findByIdAndOwnerUsername(Long id, String username);
 
+    // Αθροίζει ποσά.
     @Query("""
             SELECT COALESCE(SUM(f.area), 0)
             FROM Field f

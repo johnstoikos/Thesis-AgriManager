@@ -29,12 +29,14 @@ const INITIAL_CROP_FORM_DATA = {
   sellingPricePerKg: "",
 };
 
+// Μετατρέπει δεδομένα.
 function toOptionalNumber(value) {
   if (value === "" || value == null) return null;
   const parsed = Number(String(value).replace(",", "."));
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+// Επιστρέφει δεδομένα.
 function getPolygonStremmata(geoJsonPolygon) {
   const coordinates = geoJsonPolygon?.coordinates;
   if (!Array.isArray(coordinates) || !Array.isArray(coordinates[0]) || coordinates[0].length < 4) {
@@ -51,6 +53,7 @@ function getPolygonStremmata(geoJsonPolygon) {
   }
 }
 
+// Επιστρέφει δεδομένα.
 function getCropAreaStremmata(crop) {
   const calculatedArea = getPolygonStremmata(crop?.zoneBoundary);
   if (calculatedArea != null) return calculatedArea;
@@ -59,6 +62,7 @@ function getCropAreaStremmata(crop) {
   return storedArea != null && storedArea > 0 ? storedArea : 0;
 }
 
+// Επιστρέφει δεδομένα.
 function getCropCoveragePercentage(crop, cropAreaStremmata, field) {
   const fieldArea = toOptionalNumber(field?.area);
   if (fieldArea != null && fieldArea > 0 && cropAreaStremmata > 0) {
@@ -69,6 +73,7 @@ function getCropCoveragePercentage(crop, cropAreaStremmata, field) {
   return storedCoverage != null ? storedCoverage : 0;
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 function WikiInfoModal({ crop, data, loading, error, onClose, labels }) {
   return (
     <ModalShell
@@ -120,6 +125,7 @@ function WikiInfoModal({ crop, data, loading, error, onClose, labels }) {
   );
 }
 
+// Εμφανίζει στοιχείο διεπαφής.
 export default function FieldCrops() {
   const { language, t } = useAppPreferences();
   const labels = t.cropsPage || {};
@@ -156,9 +162,10 @@ export default function FieldCrops() {
   const [focusedTaskLocation, setFocusedTaskLocation] = useState(null);
   const [openedTaskId, setOpenedTaskId] = useState(null);
   
-  // Στοιχεία φόρμας εργασίας (η θέση αποθηκεύεται στο pendingLocation)
+  // Κρατά στοιχεία φόρμας εργασίας.
   const [taskFormData, setTaskFormData] = useState(INITIAL_TASK_FORM_DATA);
 
+  // Μορφοποιεί τιμή.
   const formatArea = (stremmata) => {
     const numericArea = Number(stremmata || 0);
     if (language === "en") {
@@ -177,6 +184,7 @@ export default function FieldCrops() {
     { value: "Άλλο", label: labels.other || "Other" },
   ];
 
+  // Εστιάζει στοιχείο στον χάρτη.
   const focusCropOnMap = (cropId) => {
     setMapSelectedCropId(cropId);
     setMapSelectionRequest((request) => request + 1);
@@ -204,6 +212,7 @@ export default function FieldCrops() {
     }
   }, [fieldId]);
 
+  // Φορτώνει δεδομένα.
   const fetchTasks = async (cropId) => {
     try {
       const res = await api.get(`/api/tasks/crop/${cropId}`);
@@ -276,6 +285,7 @@ export default function FieldCrops() {
     setOpenedTaskId(taskId);
   }, [searchParams, loading, crops, openedTaskId]);
 
+  // Καθαρίζει query εργασίας.
   const clearNewTaskQuery = () => {
     const next = new URLSearchParams(searchParams);
     next.delete("newTask");
@@ -301,6 +311,7 @@ export default function FieldCrops() {
     setShowModal(true);
   };
 
+  // Υποβάλλει φόρμα.
   const handleSubmitCrop = async (e) => {
     e.preventDefault();
     const sellingPricePerKg = toOptionalNumber(formData.sellingPricePerKg);
@@ -339,8 +350,10 @@ export default function FieldCrops() {
     setShowTaskModal(true);
   };
 
+  // Κλείνει modal φόρμας.
   const handleCloseCropModal = () => setShowModal(false);
 
+  // Κλείνει modal φόρμας.
   const handleCloseTaskModal = () => {
     setShowTaskModal(false);
     setIsAddingTask(false);
@@ -348,6 +361,7 @@ export default function FieldCrops() {
     setFocusedTaskLocation(null);
   };
 
+  // Υποβάλλει φόρμα.
   const handleSaveTask = async (e) => {
     e.preventDefault();
     const [longitude, latitude] = Array.isArray(pendingLocation) ? pendingLocation : [];
@@ -365,7 +379,7 @@ export default function FieldCrops() {
       return;
     }
 
-    // Έλεγχος Turf: Πρέπει το σημείο να είναι εντός του πολυγώνου της καλλιέργειας
+    // Ελέγχει σημείο μέσα στην καλλιέργεια.
     if (hasSelectedLocation) {
       try {
         const point = turf.point([Number(longitude), Number(latitude)]);
@@ -417,6 +431,7 @@ export default function FieldCrops() {
     }
   };
 
+  // Φορτώνει δεδομένα επεξεργασίας.
   const handleEditTask = (task) => {
     const coordinates = task?.location?.coordinates;
     setTaskFormData({
@@ -434,6 +449,7 @@ export default function FieldCrops() {
     setIsAddingTask(true);
   };
 
+  // Αποθηκεύει πρόοδο εργασίας.
   const handleProgressSave = async (taskId, { progress, yieldAmount }) => {
     const params = { progress };
     if (yieldAmount !== null) params.yieldAmount = yieldAmount;
@@ -450,6 +466,7 @@ export default function FieldCrops() {
     return updatedTask;
   };
 
+  // Διαγράφει επιλεγμένη εγγραφή.
   const handleDeleteCrop = async (id) => {
     if (window.confirm(labels.deleteCropConfirm || "Are you sure you want to delete this crop?")) {
       try {
@@ -468,6 +485,7 @@ export default function FieldCrops() {
     }
   };
 
+  // Φορτώνει δεδομένα.
   const fetchWikiSummary = async (query) => {
     const normalizedQuery = String(query || "")
       .replace(/[0-9]+/g, " ")
@@ -486,6 +504,7 @@ export default function FieldCrops() {
     return response.json();
   };
 
+  // Ανοίγει πληροφορίες Wikipedia.
   const handleOpenWikiInfo = async (crop) => {
     setWikiCrop(crop);
     setWikiData(null);

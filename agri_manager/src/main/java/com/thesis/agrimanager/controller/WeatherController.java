@@ -13,10 +13,12 @@ public class WeatherController {
 
     private final WeatherService weatherService;
 
+    // Αρχικοποιεί τις εξαρτήσεις.
     public WeatherController(WeatherService weatherService) {
         this.weatherService = weatherService;
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @GetMapping("/field/{fieldId}")
     public WeatherInfo getWeather(@PathVariable Long fieldId) {
         return weatherService.getWeatherForField(fieldId);

@@ -49,6 +49,7 @@ class AdminAnalyticsServiceTest {
     @Mock
     private FinancialRecordService financialRecordService;
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void globalAnalyticsReturnsSeparateMonthlyExpensesAndRevenue() {
         LocalDate today = LocalDate.now();
@@ -83,6 +84,7 @@ class AdminAnalyticsServiceTest {
         assertEquals(12.5, result.pieChartData().get("Βόρειο Χωράφι"));
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void globalKpisIncludeFarmerDataOutsideSelectedChartRange() {
         LocalDate today = LocalDate.now();
@@ -115,6 +117,7 @@ class AdminAnalyticsServiceTest {
         );
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void globalAnalyticsIgnoresCropHarvestWhenHarvestTaskWasDeleted() {
         LocalDate today = LocalDate.now();
@@ -141,6 +144,7 @@ class AdminAnalyticsServiceTest {
         ));
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void individualAnalyticsUsesFarmerFilteredQueries() {
         Long farmerId = 7L;
@@ -169,6 +173,7 @@ class AdminAnalyticsServiceTest {
         verify(taskRepository).countByStatusAndCropFieldOwnerId("COMPLETED", farmerId);
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void individualAnalyticsUsesStoredFarmerFinancialSnapshotAndCompletedHarvestTasksForProduction() {
         Long farmerId = 7L;
@@ -208,6 +213,7 @@ class AdminAnalyticsServiceTest {
         ));
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void individualAnalyticsIgnoresCropHarvestWithoutCompletedHarvestTask() {
         Long farmerId = 7L;
@@ -237,6 +243,7 @@ class AdminAnalyticsServiceTest {
         assertEquals(0.0, result.fieldsBreakdown().get(0).totalYieldKg());
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void individualAnalyticsDoesNotDoubleCountTaskExpensesWhenFinancialRecordsExist() {
         Long farmerId = 7L;
@@ -288,6 +295,7 @@ class AdminAnalyticsServiceTest {
         ));
     }
 
+    // Δημιουργεί δεδομένα δοκιμής.
     private AdminAnalyticsService service() {
         return new AdminAnalyticsService(
                 userRepository,
@@ -316,6 +324,7 @@ class AdminAnalyticsServiceTest {
         );
     }
 
+    // Δημιουργεί δεδομένα δοκιμής.
     private Field field(Long id, String name, Double area) {
         Field field = new Field();
         field.setId(id);
@@ -326,6 +335,7 @@ class AdminAnalyticsServiceTest {
         return field;
     }
 
+    // Δημιουργεί δεδομένα δοκιμής.
     private Crop crop(
             Long id,
             Field field,
@@ -342,6 +352,7 @@ class AdminAnalyticsServiceTest {
         return crop;
     }
 
+    // Δημιουργεί δεδομένα δοκιμής.
     private Task task(Long id, Crop crop, LocalDate taskDate, String cost) {
         Task task = new Task();
         task.setId(id);
@@ -355,6 +366,7 @@ class AdminAnalyticsServiceTest {
         return task;
     }
 
+    // Δημιουργεί δεδομένα δοκιμής.
     private FinancialRecord financialRecord(
             Field field,
             FinancialRecordType type,

@@ -790,6 +790,7 @@ export const translations = {
 
 export const LanguageContext = createContext(null);
 
+// Παρέχει context εφαρμογής.
 export function AppPreferencesProvider({ children }) {
   const [language, setLanguage] = useState(() => localStorage.getItem("agrimanager-language") || "el");
 
@@ -811,6 +812,7 @@ export function AppPreferencesProvider({ children }) {
   return <LanguageContext.Provider value={languageValue}>{children}</LanguageContext.Provider>;
 }
 
+// Παρέχει hook εφαρμογής.
 export function useAppPreferences() {
   const languageContext = useContext(LanguageContext);
   const themeContext = useTheme();
@@ -820,6 +822,7 @@ export function useAppPreferences() {
   return { ...languageContext, ...themeContext };
 }
 
+// Παρέχει hook εφαρμογής.
 export function useLanguage() {
   const context = useContext(LanguageContext);
   if (!context) {

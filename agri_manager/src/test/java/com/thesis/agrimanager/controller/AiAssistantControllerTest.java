@@ -35,11 +35,13 @@ class AiAssistantControllerTest {
     @Mock
     private CropRepository cropRepository;
 
+    // Καθαρίζει κατάσταση δοκιμής.
     @AfterEach
     void clearSecurityContext() {
         SecurityContextHolder.clearContext();
     }
 
+    // Ελέγχει σενάριο δοκιμής.
     @Test
     void buildsPromptFromAuthenticatedFarmersFieldsAndCrops() {
         SecurityContextHolder.getContext().setAuthentication(

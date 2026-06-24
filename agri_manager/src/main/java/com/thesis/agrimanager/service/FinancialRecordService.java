@@ -17,10 +17,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class FinancialRecordService {
     private final FinancialRecordRepository financialRecordRepository;
 
+    // Αρχικοποιεί τις εξαρτήσεις.
     public FinancialRecordService(FinancialRecordRepository financialRecordRepository) {
         this.financialRecordRepository = financialRecordRepository;
     }
 
+    // Καταγράφει οικονομική μεταβολή.
     @Transactional
     public void recordHarvestRevenue(Task task, BigDecimal revenue) {
         if (isZero(revenue)) {
@@ -32,6 +34,7 @@ public class FinancialRecordService {
         financialRecordRepository.save(record);
     }
 
+    // Καταγράφει οικονομική μεταβολή.
     @Transactional
     public void recordTaskExpense(Task task, BigDecimal expense) {
         if (isZero(expense)) {
@@ -40,41 +43,49 @@ public class FinancialRecordService {
         financialRecordRepository.save(fromTask(task, FinancialRecordType.EXPENSE, expense));
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @Transactional(readOnly = true)
     public List<FinancialRecord> getRecords(String ownerUsername) {
         return financialRecordRepository.findByOwnerUsername(ownerUsername);
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @Transactional(readOnly = true)
     public List<FinancialRecord> getRecords(Long ownerId, LocalDate startDate, LocalDate endDate) {
         return financialRecordRepository.findByOwnerIdAndRecordDateBetween(ownerId, startDate, endDate);
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @Transactional(readOnly = true)
     public List<FinancialRecord> getRecords(LocalDate startDate, LocalDate endDate) {
         return financialRecordRepository.findByRecordDateBetween(startDate, endDate);
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     @Transactional(readOnly = true)
     public List<FinancialRecord> getAllRecords() {
         return financialRecordRepository.findAll();
     }
 
+    // Διαγράφει εγγραφές.
     @Transactional
     public void deleteRevenueRecords(String ownerUsername) {
         financialRecordRepository.deleteByOwnerUsernameAndType(ownerUsername, FinancialRecordType.REVENUE);
     }
 
+    // Διαγράφει εγγραφές.
     @Transactional
     public void deleteExpenseRecords(String ownerUsername) {
         financialRecordRepository.deleteByOwnerUsernameAndType(ownerUsername, FinancialRecordType.EXPENSE);
     }
 
+    // Διαγράφει εγγραφές.
     @Transactional
     public void deleteAllRecords(String ownerUsername) {
         financialRecordRepository.deleteByOwnerUsername(ownerUsername);
     }
 
+    // Μετατρέπει δεδομένα.
     private FinancialRecord fromTask(Task task, FinancialRecordType type, BigDecimal amount) {
         Crop crop = task.getCrop();
         Field field = crop.getField();
@@ -94,6 +105,7 @@ public class FinancialRecordService {
         return record;
     }
 
+    // Ελέγχει συνθήκη.
     private boolean isZero(BigDecimal value) {
         return value == null || value.signum() == 0;
     }

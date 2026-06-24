@@ -12,6 +12,7 @@ import api from "../api/axios";
 
 const COMPLETED_STATUS = "COMPLETED";
 
+// Μετατρέπει δεδομένα.
 function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -25,6 +26,7 @@ function arrayBufferToBase64(buffer) {
   return btoa(binary);
 }
 
+// Μορφοποιεί τιμή.
 export function formatTaskDate(date, fallback = "No date", locale = "en-US") {
   if (!date) return fallback;
   return new Date(date).toLocaleDateString(locale, {
@@ -34,6 +36,7 @@ export function formatTaskDate(date, fallback = "No date", locale = "en-US") {
   });
 }
 
+// Μορφοποιεί τιμή.
 export function formatCurrency(value, locale = "el-GR") {
   const amount = Number(value || 0);
   return new Intl.NumberFormat(locale, {
@@ -43,6 +46,7 @@ export function formatCurrency(value, locale = "el-GR") {
   }).format(Number.isFinite(amount) ? amount : 0);
 }
 
+// Μορφοποιεί τιμή.
 export function formatLaborHours(value, labels, locale = "el-GR") {
   if (value == null || value === "") return "-";
 
@@ -59,6 +63,7 @@ export function formatLaborHours(value, labels, locale = "el-GR") {
   return `${formattedHours} ${unit}`;
 }
 
+// Επιστρέφει δεδομένα.
 export function getTaskIcon(taskType = "") {
   const type = taskType ? String(taskType).toLowerCase() : "default";
   if (type.includes("ποτ")) return Droplets;
@@ -69,6 +74,7 @@ export function getTaskIcon(taskType = "") {
   return Tractor;
 }
 
+// Ελέγχει εγκυρότητα.
 function isDeletedTask(task) {
   return Boolean(
     task?.deleted === true ||
@@ -79,10 +85,12 @@ function isDeletedTask(task) {
   );
 }
 
+// Ελέγχει εγκυρότητα.
 export function isValidTask(task) {
   return Boolean(task && typeof task === "object" && task.id != null && !isDeletedTask(task));
 }
 
+// Φορτώνει δεδομένα.
 export async function loadGlobalTasksData({ language }) {
   const fieldLabel = language === "el" ? "Χωράφι" : "Field";
   const unknownCropLabel = language === "el" ? "Άγνωστη καλλιέργεια" : "Unknown crop";
@@ -131,6 +139,7 @@ export async function loadGlobalTasksData({ language }) {
   };
 }
 
+// Εξάγει αρχείο PDF.
 export async function exportGlobalTasksPdf({
   tasks,
   cropLookup,
@@ -161,6 +170,7 @@ export async function exportGlobalTasksPdf({
   );
   doc.text(`${labels.totalRecords || "Total records"}: ${exportTasks.length}`, 40, 80);
 
+  // Δημιουργεί γραμμές πίνακα.
   const createRows = (sectionTasks) => sectionTasks.map((task) => {
     const cropInfo = cropLookup[task.cropId];
     return [
@@ -188,6 +198,7 @@ export async function exportGlobalTasksPdf({
   const pageHeight = doc.internal.pageSize.getHeight();
   let nextSectionY = 108;
 
+  // Σχεδιάζει ενότητα εργασιών.
   const drawTaskSection = (title, sectionTasks, headerColor) => {
     if (nextSectionY > pageHeight - 90) {
       doc.addPage();

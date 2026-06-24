@@ -17,11 +17,13 @@ public class WeatherService {
     @Value("${weather.api.key}")
     private String apiKey;
 
+    // Αρχικοποιεί τις εξαρτήσεις.
     public WeatherService(FieldRepository fieldRepository, RestTemplate restTemplate) {
         this.fieldRepository = fieldRepository;
         this.restTemplate = restTemplate;
     }
 
+    // Επιστρέφει ζητούμενα δεδομένα.
     public WeatherInfo getWeatherForField(Long fieldId) {
         Field field = fieldRepository.findById(fieldId)
                 .orElseThrow(() -> new RuntimeException("Field not found"));

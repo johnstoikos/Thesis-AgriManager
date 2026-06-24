@@ -40,6 +40,7 @@ public class AiAssistantService {
     private final String groqApiKey;
     private final String groqModel;
 
+    // Αρχικοποιεί τις εξαρτήσεις.
     public AiAssistantService(
             RestTemplate restTemplate,
             @Value("${groq.api.url:https://api.groq.com/openai/v1/chat/completions}") String groqApiUrl,
@@ -52,10 +53,12 @@ public class AiAssistantService {
         this.groqModel = groqModel;
     }
 
+    // Στέλνει μήνυμα στον βοηθό.
     public String chatWithGroq(String userMessage, String fieldDataPrompt) {
         return chatWithGroq(userMessage, fieldDataPrompt, "el");
     }
 
+    // Στέλνει μήνυμα στον βοηθό.
     public String chatWithGroq(String userMessage, String fieldDataPrompt, String language) {
         if (groqApiKey == null || groqApiKey.isBlank()) {
             throw new IllegalStateException(
@@ -93,6 +96,7 @@ public class AiAssistantService {
         }
     }
 
+    // Επιλέγει κατάλληλη τιμή.
     private String resolveTargetLanguage(String userMessage, String applicationLanguage) {
         String message = userMessage == null ? "" : userMessage;
         boolean hasGreek = message.matches(".*\\p{InGreek}.*");
@@ -103,10 +107,12 @@ public class AiAssistantService {
         return "en".equalsIgnoreCase(applicationLanguage) ? "en" : "el";
     }
 
+    // Δημιουργεί περιεχόμενο.
     private String buildSystemInstruction(String targetLanguage) {
         return "en".equals(targetLanguage) ? ENGLISH_SYSTEM_INSTRUCTION : GREEK_SYSTEM_INSTRUCTION;
     }
 
+    // Δημιουργεί περιεχόμενο.
     private String buildUserPrompt(String fieldDataPrompt, String userMessage, String targetLanguage) {
         if ("en".equals(targetLanguage)) {
             return """
@@ -130,6 +136,7 @@ public class AiAssistantService {
                 """.formatted(fieldDataPrompt, userMessage);
     }
 
+    // Εξάγει δεδομένα.
     private String extractAnswer(JsonNode responseBody) {
         if (responseBody == null) {
             throw new RuntimeException("Το Groq API επέστρεψε κενή απάντηση.");
