@@ -75,11 +75,53 @@ function MapResizer() {
   return null;
 }
 
+function closePolygonCoordinates(coords) {
+  if (!Array.isArray(coords) || coords.length < 3) return [];
+
+  // Τα polygons αποθηκεύονται ως GeoJSON rings, άρα πρέπει να είναι κλειστά και numeric.
+  const cleanCoords = coords
+    .filter((coord) => Array.isArray(coord) && coord.length >= 2)
+    .map(([lng, lat]) => [Number(lng), Number(lat)])
+    .filter(([lng, lat]) => Number.isFinite(lng) && Number.isFinite(lat));
+
+  if (cleanCoords.length < 3) return [];
+
+  const first = cleanCoords[0];
+  const last = cleanCoords[cleanCoords.length - 1];
+  if (first[0] !== last[0] || first[1] !== last[1]) {
+    cleanCoords.push([...first]);
+  }
+
+  return cleanCoords;
+}
+
+function getLayerPolygonCoordinates(layer) {
+  const latLngs = layer?.getLatLngs?.()?.[0] || [];
+  return closePolygonCoordinates(latLngs.map((point) => [point.lng, point.lat]));
+}
+
+function getPolygonAreaInStremmata(coords) {
+  if (!coords.length) return "";
+  try {
+    return (turf.area(turf.polygon([coords])) / 1000).toFixed(2);
+  } catch {
+    return "";
+  }
+}
+
 // --- 2. Εργαλεία Σχεδίασης (Geoman) ---
-function GeomanControls({ onPolygonComplete, boundary }) {
+function GeomanControls({ onPolygonComplete }) {
   const map = useMap();
+  const onPolygonCompleteRef = useRef(onPolygonComplete);
+  const hasPolygonHandler = Boolean(onPolygonComplete);
+
+  // Κρατάμε πάντα το νεότερο callback χωρίς να ξαναστήνονται τα Geoman controls σε κάθε render.
   useEffect(() => {
-    if (!map || !map.pm || !onPolygonComplete) return;
+    onPolygonCompleteRef.current = onPolygonComplete;
+  }, [onPolygonComplete]);
+
+  useEffect(() => {
+    if (!map || !map.pm || !hasPolygonHandler) return;
 
     map.pm.addControls({
       position: 'topleft',
@@ -92,21 +134,36 @@ function GeomanControls({ onPolygonComplete, boundary }) {
       removalMode: true,
     });
 
-    map.on('pm:create', (e) => {
+    let createdLayer = null;
+
+    const handleCreate = (e) => {
       const layer = e.layer;
-      const coords = layer.getLatLngs()[0].map(p => [p.lng, p.lat]);
-      const closedCoords = [...coords, coords[0]];
-      const polygon = turf.polygon([closedCoords]);
-      const areaInStremmata = (turf.area(polygon) / 1000).toFixed(2);
-      onPolygonComplete(closedCoords, areaInStremmata);
+      const closedCoords = getLayerPolygonCoordinates(layer);
+      const areaInStremmata = getPolygonAreaInStremmata(closedCoords);
+      onPolygonCompleteRef.current?.(closedCoords, areaInStremmata);
+      createdLayer = layer;
+      // Το drawn layer αντικαθίσταται από React state, ώστε edit/delete να δουλεύουν πάνω στο ίδιο boundary.
       layer.remove(); 
-    });
+      window.setTimeout(() => {
+        if (createdLayer === layer) createdLayer = null;
+      }, 0);
+    };
+
+    const handleRemove = (event) => {
+      // Η αφαίρεση του προσωρινού layer μετά το draw δεν είναι πραγματική διαγραφή από τον χρήστη.
+      if (event?.layer && event.layer === createdLayer) return;
+      onPolygonCompleteRef.current?.([], "");
+    };
+
+    map.on('pm:create', handleCreate);
+    map.on('pm:remove', handleRemove);
 
     return () => {
       map.pm.removeControls();
-      map.off('pm:create');
+      map.off('pm:create', handleCreate);
+      map.off('pm:remove', handleRemove);
     };
-  }, [map, onPolygonComplete, boundary]);
+  }, [hasPolygonHandler, map]);
   return null;
 }
 
@@ -198,6 +255,14 @@ export default function MapComponent({
   const { t } = useAppPreferences();
   const fieldMarkerRefs = useRef(new Map());
   const cropLayerRefs = useRef(new Map());
+  const canEditBoundary = Boolean(onPolygonComplete);
+
+  // Όταν ο χρήστης κάνει edit στο υπάρχον boundary, συγχρονίζουμε coords και υπολογισμένη έκταση.
+  const handleBoundaryLayerChange = (layer) => {
+    if (!onPolygonComplete) return;
+    const closedCoords = getLayerPolygonCoordinates(layer);
+    onPolygonComplete(closedCoords, getPolygonAreaInStremmata(closedCoords));
+  };
 
   const fieldMarkers = Array.isArray(dashboardFields)
     ? dashboardFields
@@ -259,7 +324,7 @@ export default function MapComponent({
           fieldMarkerRefs={fieldMarkerRefs}
           cropLayerRefs={cropLayerRefs}
         />
-        <GeomanControls onPolygonComplete={onPolygonComplete} boundary={boundary} />
+        <GeomanControls onPolygonComplete={onPolygonComplete} />
         <TaskClickHandler isAddingTask={isAddingTask} onPointSelect={onPointSelect} />
 
         {fieldMarkers.map((marker) => (
@@ -381,7 +446,13 @@ export default function MapComponent({
         {boundary && boundary.length >= 3 && (
           <Polygon 
             positions={boundary.map(c => [c[1], c[0]])} 
-            pathOptions={{ color: 'orange', fillOpacity: 0.4, pmIgnore: true }} 
+            // Το ενεργό boundary πρέπει να είναι Geoman-editable μόνο στις φόρμες σχεδίασης.
+            pathOptions={{ color: 'orange', fillOpacity: 0.4, pmIgnore: !canEditBoundary }}
+            eventHandlers={canEditBoundary ? {
+              'pm:edit': (event) => handleBoundaryLayerChange(event.target),
+              'pm:update': (event) => handleBoundaryLayerChange(event.target),
+              'pm:remove': () => onPolygonComplete([], ""),
+            } : undefined}
           />
         )}
       </MapContainer>

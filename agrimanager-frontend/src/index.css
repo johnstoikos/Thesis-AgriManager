@@ -81,17 +81,8 @@ h3 {
 }
 
 .leaflet-container {
+  /* Κρατάμε χαμηλά μόνο το container. Τα Leaflet panes/controls χρειάζονται τα default z-index για clicks. */
   z-index: 0;
-}
-
-.leaflet-pane,
-.leaflet-top,
-.leaflet-bottom {
-  z-index: 0;
-}
-
-.leaflet-control {
-  z-index: 20;
 }
 
 .task-div-marker {
