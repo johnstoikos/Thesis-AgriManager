@@ -29,6 +29,71 @@ const INITIAL_CROP_FORM_DATA = {
   sellingPricePerKg: "",
 };
 
+const GENERIC_VARIETY_WORDS = new Set([
+  "γενικη",
+  "γενικησ",
+  "γενικο",
+  "γενικεσ",
+  "γενικων",
+  "γενικα",
+  "ποικιλια",
+  "ποικιλιεσ",
+  "general",
+  "variety",
+]);
+
+// Κανονικοποιεί ελληνικό κείμενο για συγκρίσεις χωρίς διάκριση τόνων/κεφαλαίων.
+function normalizeComparableText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("el-GR")
+    .replace(/ς/g, "σ")
+    .replace(/[^\p{L}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function cleanWikiQuery(value) {
+  return String(value || "")
+    .normalize("NFC")
+    .replace(/[0-9]+/g, " ")
+    .replace(/[^\p{L}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getComparableTokens(value) {
+  return normalizeComparableText(value).split(" ").filter(Boolean);
+}
+
+function getTokenVariants(token) {
+  const variants = new Set([token]);
+
+  if (token.endsWith("εσ")) variants.add(`${token.slice(0, -2)}α`);
+  if (token.endsWith("ια")) variants.add(`${token.slice(0, -1)}ι`);
+  if (token.endsWith("οι")) variants.add(`${token.slice(0, -2)}οσ`);
+  if (token.endsWith("α")) variants.add(`${token.slice(0, -1)}ο`);
+
+  return Array.from(variants).filter((variant) => variant.length > 1);
+}
+
+function normalizedTextIncludesToken(text, token) {
+  return getTokenVariants(token).some((variant) => text.includes(variant));
+}
+
+function removeGenericVarietyWords(value) {
+  return cleanWikiQuery(value)
+    .split(/\s+/)
+    .filter((word) => word && !GENERIC_VARIETY_WORDS.has(normalizeComparableText(word)))
+    .join(" ");
+}
+
+function getWikiCropTitle(crop, labels) {
+  const cleanVariety = removeGenericVarietyWords(crop?.variety);
+  return cleanVariety || crop?.type || labels.wikiCropFallback || "Crop";
+}
+
 // Μετατρέπει δεδομένα.
 function toOptionalNumber(value) {
   if (value === "" || value == null) return null;
@@ -77,7 +142,7 @@ function getCropCoveragePercentage(crop, cropAreaStremmata, field) {
 function WikiInfoModal({ crop, data, loading, error, onClose, labels }) {
   return (
     <ModalShell
-      title={`${labels.wikiTitle || "Wikipedia Info"}: ${crop?.variety || crop?.type || labels.wikiCropFallback || "Crop"}`}
+      title={`${labels.wikiTitle || "Wikipedia Info"}: ${getWikiCropTitle(crop, labels)}`}
       description={labels.wikiDescription || "Short encyclopedic summary from Greek Wikipedia."}
       onClose={onClose}
       cancelText={labels.cancel || "Cancel"}
@@ -485,23 +550,58 @@ export default function FieldCrops() {
     }
   };
 
-  // Φορτώνει δεδομένα.
-  const fetchWikiSummary = async (query) => {
-    const normalizedQuery = String(query || "")
-      .replace(/[0-9]+/g, " ")
-      .replace(/[^\p{L}\s]/gu, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    if (!normalizedQuery) return null;
-    const apiQuery = normalizedQuery.charAt(0).toLocaleUpperCase("el-GR") + normalizedQuery.slice(1);
+  const fetchWikiPageSummary = async (title) => {
     const response = await fetch(
-      `https://el.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(apiQuery)}`
+      `https://el.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`
     );
 
     if (response.status === 404) return null;
     if (!response.ok) throw new Error("Wikipedia request failed");
-    return response.json();
+    const data = await response.json();
+    return data?.type === "disambiguation" ? null : data;
+  };
+
+  const wikiCandidateMatches = (candidate, { requiredTokens = [], relatedTokens = [] } = {}) => {
+    const searchableText = normalizeComparableText(
+      `${candidate?.title || ""} ${String(candidate?.snippet || "").replace(/<[^>]*>/g, " ")}`
+    );
+
+    const hasRequiredTokens = requiredTokens.every((token) =>
+      normalizedTextIncludesToken(searchableText, token)
+    );
+    const isRelatedToType =
+      relatedTokens.length === 0 ||
+      relatedTokens.some((token) => normalizedTextIncludesToken(searchableText, token));
+
+    return hasRequiredTokens && isRelatedToType;
+  };
+
+  // Χρησιμοποιούμε search πριν το summary για να πιάνει κεφαλαία/μικρά/άτονες λέξεις χωρίς άσχετα hits.
+  const fetchWikiSummary = async (query, matchOptions = {}) => {
+    const normalizedQuery = cleanWikiQuery(query);
+    if (!normalizedQuery) return null;
+
+    const searchParams = new URLSearchParams({
+      action: "query",
+      list: "search",
+      format: "json",
+      origin: "*",
+      srlimit: "6",
+      srsearch: normalizedQuery,
+    });
+
+    const searchResponse = await fetch(
+      `https://el.wikipedia.org/w/api.php?${searchParams.toString()}`
+    );
+
+    if (!searchResponse.ok) throw new Error("Wikipedia search failed");
+    const searchData = await searchResponse.json();
+    const candidates = Array.isArray(searchData?.query?.search) ? searchData.query.search : [];
+    const bestCandidate = candidates.find((candidate) =>
+      wikiCandidateMatches(candidate, matchOptions)
+    );
+
+    return bestCandidate ? fetchWikiPageSummary(bestCandidate.title) : null;
   };
 
   // Ανοίγει πληροφορίες Wikipedia.
@@ -513,8 +613,19 @@ export default function FieldCrops() {
     setWikiModalOpen(true);
 
     try {
-      const varietyResult = await fetchWikiSummary(crop.variety);
-      const typeResult = varietyResult || (await fetchWikiSummary(crop.type));
+      const typeQuery = cleanWikiQuery(crop.type);
+      const varietyQuery = removeGenericVarietyWords(crop.variety);
+      const typeTokens = getComparableTokens(typeQuery);
+      const varietyTokens = getComparableTokens(varietyQuery);
+      const varietyResult = varietyQuery
+        ? await fetchWikiSummary(`${typeQuery} ${varietyQuery}`, {
+            requiredTokens: varietyTokens,
+            relatedTokens: typeTokens,
+          })
+        : null;
+      const typeResult = varietyResult || (await fetchWikiSummary(typeQuery, {
+        relatedTokens: typeTokens,
+      }));
 
       if (!typeResult) {
         setWikiError(labels.wikiNoInfo || "No information found for this crop.");
