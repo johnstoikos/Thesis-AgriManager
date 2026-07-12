@@ -29,6 +29,7 @@ export default function Profile() {
 
   const [formData, setFormData] = useState({
     fullName: user?.fullName || user?.name || user?.username || labels.defaultUser || "AgriManager User",
+    username: user?.username || "",
     email: user?.email || user?.username || "user@agrimanager.local",
     phone: user?.phone || "",
     profilePhoto: user?.profilePhoto || user?.avatarUrl || "",
@@ -62,6 +63,7 @@ export default function Profile() {
     setFormData((prev) => ({
       ...prev,
       fullName: updatedProfile.fullName || "",
+      username: updatedProfile.username || prev.username || "",
       phone: updatedProfile.phone || "",
       profilePhoto: updatedProfile.profilePhoto || "",
     }));
@@ -182,6 +184,10 @@ export default function Profile() {
                   placeholder={labels.fullNamePlaceholder || "e.g. John Papadopoulos"}
                   onChange={(e) => updateField("fullName", e.target.value)}
                 />
+              </div>
+              <div>
+                <FieldLabel>{labels.username || "Username"}</FieldLabel>
+                <FieldInput value={formData.username} disabled />
               </div>
               <div>
                 <FieldLabel>{labels.email || "Email"}</FieldLabel>

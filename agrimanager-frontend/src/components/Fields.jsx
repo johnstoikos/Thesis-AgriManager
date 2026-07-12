@@ -186,7 +186,11 @@ export default function Fields() {
         if (closed[0][0] !== closed[closed.length - 1][0] || closed[0][1] !== closed[closed.length - 1][1]) {
           closed.push(closed[0]);
         }
-        setFormData(prev => ({ ...prev, boundary: closed }));
+        setFormData(prev => ({
+          ...prev,
+          boundary: closed,
+          area: calculateAreaInStremmata(closed)
+        }));
       }
     } catch { /* ignore parse errors */ }
   };

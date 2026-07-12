@@ -230,7 +230,7 @@ export default function GlobalTasks() {
   const exportToPDF = async () => {
     try {
       await exportGlobalTasksPdf({
-        tasks,
+        tasks: filteredTasks,
         cropLookup,
         labels,
         language,
